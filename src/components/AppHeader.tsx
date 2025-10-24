@@ -1,0 +1,336 @@
+import { useState, useEffect } from "react";
+import { Button } from "./ui/button";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { 
+  Bell, 
+  Settings,
+  PenSquare,
+  Sparkles,
+  Command as CommandIcon,
+  LogOut,
+  Plus,
+} from "lucide-react";
+import { PlatformIcon } from "./PlatformIcon";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Badge } from "./ui/badge";
+import { useAuth } from "./AuthContext";
+import { useConnectedPlatforms } from "./useConnectedPlatforms";
+
+type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "settings";
+type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
+type InboxView = "all" | "unread" | "comments" | "messages";
+type SettingsTab = "connections" | "automation" | "templates" | "shortcuts" | "preferences" | "notifications";
+
+interface AppHeaderProps {
+  currentView: View;
+  selectedPlatform: Platform;
+  onPlatformChange: (platform: Platform) => void;
+  onNavigate: (view: View, subView?: InboxView | SettingsTab) => void;
+  onOpenSettings: () => void;
+  onOpenCommandPalette: () => void;
+  onOpenAIChat: (query?: string) => void;
+}
+
+export function AppHeader({
+  currentView,
+  selectedPlatform,
+  onPlatformChange,
+  onNavigate,
+  onOpenSettings,
+  onOpenCommandPalette,
+  onOpenAIChat,
+}: AppHeaderProps) {
+  const [aiQuery, setAIQuery] = useState("");
+  const { user, signout } = useAuth();
+  const { connectedPlatforms, hasUnconnectedPlatforms } = useConnectedPlatforms();
+
+  const handleAIQuerySubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      onOpenAIChat(aiQuery);
+      setAIQuery("");
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signout();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    const name = user?.user_metadata?.name || user?.email || 'User';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const allPlatforms: { id: Platform; label: string }[] = [
+    { id: "all", label: "ALL" },
+    { id: "twitter", label: "Twitter" },
+    { id: "instagram", label: "Instagram" },
+    { id: "linkedin", label: "LinkedIn" },
+    { id: "facebook", label: "Facebook" },
+    { id: "youtube", label: "YouTube" },
+    { id: "tiktok", label: "TikTok" },
+    { id: "pinterest", label: "Pinterest" },
+    { id: "reddit", label: "Reddit" },
+    { id: "blog", label: "Blog" },
+  ];
+
+  // Build platform list dynamically based on connected platforms
+  const platforms = [
+    { id: "all" as Platform, label: "ALL" },
+    ...allPlatforms
+      .filter(p => p.id !== "all" && connectedPlatforms.includes(p.id as any))
+      .map(p => ({ id: p.id, label: p.label }))
+  ];
+
+  // Auto-reset to "all" if the selected platform is no longer connected
+  useEffect(() => {
+    if (selectedPlatform !== "all" && !connectedPlatforms.includes(selectedPlatform as any)) {
+      onPlatformChange("all");
+    }
+  }, [connectedPlatforms, selectedPlatform, onPlatformChange]);
+
+  const getPageTitle = () => {
+    switch (currentView) {
+      case "home":
+        return "Home";
+      case "compose":
+        return "Create Content";
+      case "inbox":
+        return "Unified Inbox";
+      case "calendar":
+        return "Content Calendar";
+      case "analytics":
+        return "Analytics";
+      case "library":
+        return "Remix";
+      case "templates":
+        return "Templates";
+      case "settings":
+        return "Settings";
+      default:
+        return "Home";
+    }
+  };
+
+  const getBreadcrumbs = () => {
+    if (currentView === "home" && selectedPlatform !== "all") {
+      const platform = allPlatforms.find(p => p.id === selectedPlatform);
+      return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Home</span>
+          <span>/</span>
+          <span className="text-foreground">{platform?.label}</span>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const handleConnectPlatformClick = () => {
+    onNavigate("settings", "connections");
+  };
+
+  // Only show platform tabs on views where filtering by platform makes sense
+  const showPlatformSelector = currentView === "home" || currentView === "calendar" || currentView === "inbox" || currentView === "analytics" || currentView === "library";
+
+  return (
+    <header className="border-b border-border/50 bg-black/20 backdrop-blur-xl sticky top-0 z-10">
+      {/* Combined Row - Platform Tabs and Actions */}
+      {showPlatformSelector ? (
+        <div className="pl-0 pr-6 overflow-x-auto h-[53px] flex items-center justify-between gap-4">
+          <div className="flex items-center">
+            <Tabs value={selectedPlatform} onValueChange={onPlatformChange}>
+              <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-0">
+                {platforms.map((platform) => (
+                  <TabsTrigger
+                    key={platform.id}
+                    value={platform.id}
+                    className="flex items-center gap-2 px-4 h-[53px] data-[state=active]:border-b-2 data-[state=active]:border-emerald-500 data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500/80 data-[state=active]:to-teal-500/50 data-[state=active]:text-white rounded-none data-[state=active]:shadow-none whitespace-nowrap"
+                  >
+                    {platform.id === "all" ? (
+                      <span>{platform.label}</span>
+                    ) : (
+                      <>
+                        <PlatformIcon platform={platform.id} size={18} className="w-[18px] h-[18px]" />
+                        <span className="hidden sm:inline">{platform.label}</span>
+                      </>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            
+            {/* Connect Platform Button - only show if not all platforms are connected */}
+            {hasUnconnectedPlatforms && (
+              <button
+                onClick={handleConnectPlatformClick}
+                className="flex items-center gap-2 px-4 h-[53px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors whitespace-nowrap border-b-2 border-transparent"
+                title={connectedPlatforms.length === 0 ? "Connect your first platform to get started" : "Connect more platforms"}
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Connect Platform</span>
+              </button>
+            )}
+            
+            {/* Empty state hint when no platforms connected */}
+            {connectedPlatforms.length === 0 && (
+              <div className="px-4 h-[53px] flex items-center">
+                <span className="text-xs text-muted-foreground">No platforms connected yet</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Ask PubHub Input */}
+          <div className="flex-1 max-w-md mx-4">
+            <div className="relative group">
+              <div className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border/50 bg-card/50 focus-within:bg-card focus-within:border-emerald-500/50 transition-all">
+                <Sparkles className="w-4 h-4 text-emerald-500 group-focus-within:text-emerald-400 transition-colors flex-shrink-0" />
+                <input
+                  type="text"
+                  value={aiQuery}
+                  onChange={(e) => setAIQuery(e.target.value)}
+                  onKeyDown={handleAIQuerySubmit}
+                  placeholder="Ask PubHub..."
+                  className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                />
+                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground flex-shrink-0">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right Section */}
+          <div className="flex items-center gap-2">
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                  </Avatar>
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    3
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm">{user?.user_metadata?.name || 'User'}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onNavigate("notifications")}>
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notifications
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    3
+                  </Badge>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onOpenSettings}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      ) : (
+        <div className="px-6 h-[53px] flex items-center justify-between gap-4">
+          {/* Ask PubHub Input */}
+          <div className="flex-1 max-w-md">
+            <div className="relative group">
+              <div className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border/50 bg-card/50 focus-within:bg-card focus-within:border-emerald-500/50 transition-all">
+                <Sparkles className="w-4 h-4 text-emerald-500 group-focus-within:text-emerald-400 transition-colors flex-shrink-0" />
+                <input
+                  type="text"
+                  value={aiQuery}
+                  onChange={(e) => setAIQuery(e.target.value)}
+                  onKeyDown={handleAIQuerySubmit}
+                  placeholder="Ask PubHub..."
+                  className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                />
+                <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground flex-shrink-0">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right Section */}
+          <div className="flex items-center gap-2">
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                  </Avatar>
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    3
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm">{user?.user_metadata?.name || 'User'}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onNavigate("notifications")}>
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notifications
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    3
+                  </Badge>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onOpenSettings}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
