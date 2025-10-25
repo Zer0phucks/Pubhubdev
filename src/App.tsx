@@ -40,6 +40,7 @@ import {
   BookOpen,
   User,
   TrendingUp,
+  Trophy,
 } from "lucide-react";
 import { Home } from "./components/Home";
 import { ContentComposer } from "./components/ContentComposer";
@@ -68,7 +69,7 @@ import { Trending } from "./components/Trending";
 import { OAuthCallback } from "./components/OAuthCallback";
 import { CompetitionWatch } from "./components/CompetitionWatch";
 
-type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "project-settings";
+type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "competition" | "project-settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 type InboxView = "all" | "unread" | "comments" | "messages";
 
@@ -199,6 +200,7 @@ function AppContent() {
     { id: "inbox" as View, label: "Inbox", icon: Inbox },
     { id: "calendar" as View, label: "Calendar", icon: Calendar },
     { id: "trending" as View, label: "Trending", icon: TrendingUp },
+    { id: "competition" as View, label: "Competition Watch", icon: Trophy },
     { id: "analytics" as View, label: "Analytics", icon: BarChart3 },
     { id: "library" as View, label: "Remix", icon: Video },
     { id: "ebooks" as View, label: "Ebooks", icon: BookOpen },
@@ -302,6 +304,8 @@ function AppContent() {
         return <EbookGenerator />;
       case "trending":
         return <Trending selectedPlatform={selectedPlatform} />;
+      case "competition":
+        return <CompetitionWatch selectedPlatform={selectedPlatform} />;
       case "project-settings":
         return <ProjectSettings initialTab={projectSettingsTab} />;
       default:
@@ -509,18 +513,6 @@ function AppContent() {
                 );
               })}
             </SidebarMenu>
-
-            {/* Competition Watch Section */}
-            <SidebarSeparator className="my-3" />
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <CompetitionWatch
-                selectedPlatform={selectedPlatform}
-                onViewCompetitor={(competitor) => {
-                  // Handle competitor view - could navigate to analytics or show modal
-                  console.log("View competitor:", competitor);
-                }}
-              />
-            </div>
 
             {/* Create Post Button */}
             <div className="px-1 pt-3 pb-3 mt-auto">

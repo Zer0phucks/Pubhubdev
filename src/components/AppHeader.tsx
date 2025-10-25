@@ -26,7 +26,7 @@ import { Badge } from "./ui/badge";
 import { useAuth } from "./AuthContext";
 import { useConnectedPlatforms } from "./useConnectedPlatforms";
 
-type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "project-settings";
+type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "competition" | "project-settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 type InboxView = "all" | "unread" | "comments" | "messages";
 type AccountSettingsTab = "profile" | "shortcuts" | "notifications" | "preferences";
