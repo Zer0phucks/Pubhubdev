@@ -19,6 +19,9 @@ interface AuthContextType {
   profilePicture: string | null;
   signin: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  signinWithGoogle: () => Promise<void>;
+  signinWithFacebook: () => Promise<void>;
+  signinWithTwitter: () => Promise<void>;
   signout: () => Promise<void>;
   getToken: () => Promise<string | null>;
   refreshProfile: () => Promise<void>;
@@ -227,6 +230,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return session?.access_token || null;
   };
 
+  // OAuth sign-in methods
+  const signinWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/oauth/callback`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const signinWithFacebook = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: {
+        redirectTo: `${window.location.origin}/oauth/callback`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const signinWithTwitter = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'twitter',
+      options: {
+        redirectTo: `${window.location.origin}/oauth/callback`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
   // Load profile picture on mount
   useEffect(() => {
     if (user) {
@@ -244,6 +287,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signin,
         signout,
         signup,
+        signinWithGoogle,
+        signinWithFacebook,
+        signinWithTwitter,
         getToken,
         refreshProfile,
       }}
