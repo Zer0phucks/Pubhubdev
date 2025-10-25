@@ -13,7 +13,7 @@ export function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Get the session from the URL hash
+        // Use Supabase's built-in OAuth callback handling
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -30,8 +30,45 @@ export function AuthCallback() {
             navigate('/dashboard');
           }, 2000);
         } else {
-          setError('No session found. Please try signing in again.');
-          setStatus('error');
+          // Check URL parameters for OAuth callback
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          
+          // Check for error in URL parameters
+          const errorParam = urlParams.get('error') || hashParams.get('error');
+          const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+          
+          if (errorParam) {
+            setError(errorDescription || errorParam);
+            setStatus('error');
+            return;
+          }
+          
+          // Check for access token in hash
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            // Set the session manually
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            
+            if (setSessionError) {
+              console.error('Set session error:', setSessionError);
+              setError(setSessionError.message);
+              setStatus('error');
+            } else {
+              setStatus('success');
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 2000);
+            }
+          } else {
+            setError('No session found. Please try signing in again.');
+            setStatus('error');
+          }
         }
       } catch (err: any) {
         console.error('Auth callback error:', err);
