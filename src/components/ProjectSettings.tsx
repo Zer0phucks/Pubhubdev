@@ -4,9 +4,10 @@ import { PlatformConnections } from "./PlatformConnections";
 import { AutomationSettings } from "./AutomationSettings";
 import { Templates } from "./Templates";
 import { ProjectDetails } from "./ProjectDetails";
-import { Link2, Workflow, FileText, Settings } from "lucide-react";
+import { OAuthTester } from "./OAuthTester";
+import { Link2, Workflow, FileText, Settings, TestTube2 } from "lucide-react";
 
-export type ProjectSettingsTab = "details" | "connections" | "automation" | "templates";
+export type ProjectSettingsTab = "details" | "connections" | "automation" | "templates" | "oauth-test";
 
 interface ProjectSettingsProps {
   initialTab?: ProjectSettingsTab;
@@ -26,7 +27,7 @@ export function ProjectSettings({ initialTab = "details" }: ProjectSettingsProps
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ProjectSettingsTab)} className="flex-1 flex flex-col">
         <div className="px-6 pt-4">
-          <TabsList className="w-full grid grid-cols-4 bg-muted/50">
+          <TabsList className="w-full grid grid-cols-5 bg-muted/50">
             <TabsTrigger value="details" className="gap-2">
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Details</span>
@@ -34,6 +35,10 @@ export function ProjectSettings({ initialTab = "details" }: ProjectSettingsProps
             <TabsTrigger value="connections" className="gap-2">
               <Link2 className="w-4 h-4" />
               <span className="hidden sm:inline">Connections</span>
+            </TabsTrigger>
+            <TabsTrigger value="oauth-test" className="gap-2">
+              <TestTube2 className="w-4 h-4" />
+              <span className="hidden sm:inline">OAuth Test</span>
             </TabsTrigger>
             <TabsTrigger value="automation" className="gap-2">
               <Workflow className="w-4 h-4" />
@@ -53,6 +58,10 @@ export function ProjectSettings({ initialTab = "details" }: ProjectSettingsProps
 
           <TabsContent value="connections" className="mt-0">
             <PlatformConnections />
+          </TabsContent>
+
+          <TabsContent value="oauth-test" className="mt-0">
+            <OAuthTester />
           </TabsContent>
 
           <TabsContent value="automation" className="mt-0">

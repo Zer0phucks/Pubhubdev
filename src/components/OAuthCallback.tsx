@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { projectId } from '../utils/supabase/info';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { getAuthToken } from '../utils/api';
+import { supabase } from '../utils/supabase/client';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -46,9 +46,10 @@ export function OAuthCallback() {
       setPlatform(storedPlatform);
       setMessage(`Connecting your ${storedPlatform} account...`);
 
-      // Get auth token
-      const authToken = getAuthToken();
-      if (!authToken) {
+      // Get fresh auth token from Supabase
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session?.access_token) {
         throw new Error('Not authenticated. Please sign in first.');
       }
 
@@ -59,7 +60,7 @@ export function OAuthCallback() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             code,

@@ -43,11 +43,21 @@ export function AuthPage() {
     } catch (err: any) {
       console.error("Sign in error:", err);
       
-      // Handle common Supabase auth errors
-      if (err.message?.includes("Invalid login credentials")) {
-        setError("Invalid email or password. Please try again.");
-      } else if (err.message?.includes("Email not confirmed")) {
-        setError("Please confirm your email address before signing in.");
+      const errorMsg = (err.message || '').toLowerCase();
+      
+      // Handle common Supabase auth errors with helpful messages
+      if (errorMsg.includes('invalid login credentials') || 
+          errorMsg.includes('invalid password')) {
+        // Check if this might be a new user
+        setError("Invalid email or password. If you don't have an account yet, please sign up.");
+      } else if (errorMsg.includes('email not confirmed')) {
+        setSuccess("Please check your email and click the confirmation link before signing in.");
+        setError("");
+      } else if (errorMsg.includes('user not found') || 
+                 errorMsg.includes('no account')) {
+        setError("No account found with this email. Please sign up first.");
+      } else if (errorMsg.includes('too many requests')) {
+        setError("Too many login attempts. Please wait a few minutes and try again.");
       } else {
         setError(err.message || "Failed to sign in. Please check your credentials.");
       }

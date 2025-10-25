@@ -1,12 +1,7 @@
 import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { supabase } from '../utils/supabase/client';
+import { projectId } from '../utils/supabase/info';
 import { setAuthToken } from '../utils/api';
-
-const supabase = createClient(
-  `https://${projectId}.supabase.co`,
-  publicAnonKey
-);
 
 interface User {
   id: string;
@@ -40,9 +35,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch user profile with profile picture
   const refreshProfile = async () => {
+    if (!user) {
+      console.warn('Cannot refresh profile: no user authenticated');
+      return;
+    }
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!session?.access_token) {
+        console.warn('No session token available for profile refresh');
+        return;
+      }
 
       const response = await fetch(`${baseUrl}/auth/profile`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -63,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         }
+      } else {
+        console.error('Failed to refresh profile:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error refreshing profile:', error);
@@ -163,18 +168,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       // Normalize error messages for better handling
-      if (error.message.includes('already') || error.message.includes('registered')) {
+      const errorMsg = error.message.toLowerCase();
+      
+      if (errorMsg.includes('already') || 
+          errorMsg.includes('registered') || 
+          errorMsg.includes('exists')) {
         throw new Error('User already registered');
       }
+      
+      if (errorMsg.includes('password')) {
+        throw error; // Pass through password errors as-is
+      }
+      
       throw error;
     }
 
     // If user exists but no session, it might be waiting for email confirmation
-    // or the user already exists
     if (data.user && !data.session) {
-      // This can happen when:
-      // 1. Email confirmation is required
-      // 2. User already exists (Supabase sometimes returns user without error)
+      // Check if user was actually created (identities array is empty for existing users)
+      if (data.user.identities && data.user.identities.length === 0) {
+        throw new Error('User already registered');
+      }
+      
+      // Email confirmation is required
       throw new Error('Please check your email to confirm your account before signing in.');
     }
 

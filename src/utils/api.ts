@@ -23,13 +23,17 @@ export function getAuthToken(): string | null {
 
 async function apiCall(endpoint: string, options: RequestInit = {}) {
   const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('Not authenticated. Please sign in first.');
+  }
+  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...options.headers as Record<string, string>,
   };
 
-  // Use auth token if available, otherwise use public anon key
-  headers['Authorization'] = `Bearer ${token || publicAnonKey}`;
+  headers['Authorization'] = `Bearer ${token}`;
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
