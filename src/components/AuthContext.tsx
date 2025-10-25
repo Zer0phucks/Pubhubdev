@@ -13,6 +13,7 @@ interface User {
   email?: string;
   user_metadata?: {
     name?: string;
+    profilePicture?: string;
   };
 }
 
@@ -20,10 +21,12 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  profilePicture: string | null;
   signin: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   signout: () => Promise<void>;
   getToken: () => Promise<string | null>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +34,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  const baseUrl = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
+
+  // Fetch user profile with profile picture
+  const refreshProfile = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch(`${baseUrl}/auth/profile`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user?.profilePicture) {
+          setProfilePicture(data.user.profilePicture);
+          // Update user metadata
+          if (user) {
+            setUser({
+              ...user,
+              user_metadata: {
+                ...user.user_metadata,
+                profilePicture: data.user.profilePicture,
+              },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
 
   // Check for existing session on mount
   useEffect(() => {
@@ -98,9 +135,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Initialize user profile if needed (backend handles auto-init)
       try {
-        await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/auth/profile`, {
+        const profileResponse = await fetch(`${baseUrl}/auth/profile`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         });
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.user?.profilePicture) {
+            setProfilePicture(profileData.user.profilePicture);
+          }
+        }
       } catch (err) {
         console.error('Profile initialization error:', err);
       }
@@ -168,16 +211,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return session?.access_token || null;
   };
 
+  // Load profile picture on mount
+  useEffect(() => {
+    if (user) {
+      refreshProfile();
+    }
+  }, [user?.id]);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
         isAuthenticated: !!user,
+        profilePicture,
         signin,
         signout,
         signup,
         getToken,
+        refreshProfile,
       }}
     >
       {children}

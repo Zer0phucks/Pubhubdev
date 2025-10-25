@@ -10,6 +10,7 @@ import { PlatformIcon } from "./PlatformIcon";
 import { AutomationSettings } from "./AutomationSettings";
 import { Templates } from "./Templates";
 import { ProjectManagement } from "./ProjectManagement";
+import { ProfileSettings } from "./ProfileSettings";
 import { 
   Link2, 
   Check, 
@@ -171,6 +172,8 @@ export function Settings({ initialTab = "connections" }: SettingsProps = {}) {
 
   const getSectionTitle = () => {
     switch (initialTab) {
+      case "profile":
+        return { title: "Profile & Branding", description: "Manage your profile picture and project logos" };
       case "connections":
         return { title: "Platform Connections", description: "Connect and manage your social media accounts" };
       case "automation":
@@ -200,6 +203,11 @@ export function Settings({ initialTab = "connections" }: SettingsProps = {}) {
           {sectionInfo.description}
         </p>
       </div>
+
+      {/* Profile & Branding */}
+      {initialTab === "profile" && (
+        <ProfileSettings />
+      )}
 
       {/* Platform Connections */}
       {initialTab === "connections" && (

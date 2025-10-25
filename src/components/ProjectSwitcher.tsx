@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus, FolderOpen } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -11,6 +11,30 @@ import {
 } from "./ui/dropdown-menu";
 import { useProject } from "./ProjectContext";
 import { CreateProjectDialog } from "./CreateProjectDialog";
+import { PubHubLogo } from "./PubHubLogo";
+
+interface ProjectLogoProps {
+  logo?: string;
+  name: string;
+}
+
+function ProjectLogo({ logo, name }: ProjectLogoProps) {
+  if (logo) {
+    return (
+      <img 
+        src={logo} 
+        alt={name}
+        className="w-4 h-4 flex-shrink-0 object-contain rounded"
+      />
+    );
+  }
+  
+  return (
+    <div className="w-4 h-4 flex-shrink-0">
+      <PubHubLogo className="w-full h-full" />
+    </div>
+  );
+}
 
 export function ProjectSwitcher() {
   const { currentProject, projects, setCurrentProject } = useProject();
@@ -33,7 +57,7 @@ export function ProjectSwitcher() {
             className="w-full justify-between h-10 px-3 bg-sidebar-accent/50 hover:bg-sidebar-accent border-sidebar-border"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <FolderOpen className="w-4 h-4 flex-shrink-0" />
+              <ProjectLogo logo={currentProject?.logo} name={currentProject?.name || "Project"} />
               <span className="truncate">
                 {currentProject?.name || "Select project"}
               </span>
@@ -51,7 +75,7 @@ export function ProjectSwitcher() {
               className="flex items-center justify-between"
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <FolderOpen className="w-4 h-4 flex-shrink-0" />
+                <ProjectLogo logo={project.logo} name={project.name} />
                 <span className="truncate">{project.name}</span>
               </div>
               {currentProject?.id === project.id && (

@@ -10,6 +10,8 @@ interface Project {
   createdAt: string;
   updatedAt?: string;
   isDefault?: boolean;
+  logo?: string;
+  logoPath?: string;
 }
 
 interface ProjectContextType {

@@ -27,6 +27,30 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 );
 
+// Initialize storage buckets on startup
+async function initializeStorage() {
+  const bucketName = 'make-19ccd85e-uploads';
+  
+  try {
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+    
+    if (!bucketExists) {
+      await supabaseAdmin.storage.createBucket(bucketName, {
+        public: false,
+        fileSizeLimit: 5242880, // 5MB
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+      });
+      console.log('Storage bucket created:', bucketName);
+    }
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+}
+
+// Initialize storage on server start
+initializeStorage();
+
 // Auth middleware for Supabase
 async function requireAuth(c: any, next: any) {
   const authHeader = c.req.header('Authorization');
@@ -52,6 +76,140 @@ async function requireAuth(c: any, next: any) {
 // Health check endpoint
 app.get("/make-server-19ccd85e/health", (c) => {
   return c.json({ status: "ok" });
+});
+
+// ============= STORAGE/UPLOAD ROUTES =============
+
+// Upload profile picture
+app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      return c.json({ error: 'Invalid file type. Only JPEG, PNG, GIF, WebP, and SVG are allowed.' }, 400);
+    }
+    
+    // Validate file size (5MB max)
+    if (file.size > 5242880) {
+      return c.json({ error: 'File size exceeds 5MB limit' }, 400);
+    }
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `profile-pictures/${userId}.${fileExt}`;
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabaseAdmin.storage
+      .from('make-19ccd85e-uploads')
+      .upload(fileName, arrayBuffer, {
+        contentType: file.type,
+        upsert: true, // Replace existing file
+      });
+    
+    if (error) {
+      console.error('Upload error:', error);
+      return c.json({ error: `Upload failed: ${error.message}` }, 500);
+    }
+    
+    // Generate signed URL (valid for 1 year)
+    const { data: urlData } = await supabaseAdmin.storage
+      .from('make-19ccd85e-uploads')
+      .createSignedUrl(fileName, 31536000); // 1 year
+    
+    if (!urlData?.signedUrl) {
+      return c.json({ error: 'Failed to generate signed URL' }, 500);
+    }
+    
+    // Update user profile with image URL
+    const profile = await kv.get(`user:${userId}:profile`) || {};
+    profile.profilePicture = urlData.signedUrl;
+    profile.profilePicturePath = fileName;
+    await kv.set(`user:${userId}:profile`, profile);
+    
+    return c.json({ url: urlData.signedUrl, path: fileName });
+  } catch (error: any) {
+    console.error('Profile picture upload error:', error);
+    return c.json({ error: `Upload failed: ${error.message}` }, 500);
+  }
+});
+
+// Upload project logo
+app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const projectId = c.req.param('projectId');
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+    
+    // Verify project ownership
+    const project = await kv.get(`project:${projectId}`);
+    if (!project || project.userId !== userId) {
+      return c.json({ error: 'Project not found' }, 404);
+    }
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      return c.json({ error: 'Invalid file type. Only JPEG, PNG, GIF, WebP, and SVG are allowed.' }, 400);
+    }
+    
+    // Validate file size (5MB max)
+    if (file.size > 5242880) {
+      return c.json({ error: 'File size exceeds 5MB limit' }, 400);
+    }
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `project-logos/${projectId}.${fileExt}`;
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabaseAdmin.storage
+      .from('make-19ccd85e-uploads')
+      .upload(fileName, arrayBuffer, {
+        contentType: file.type,
+        upsert: true, // Replace existing file
+      });
+    
+    if (error) {
+      console.error('Upload error:', error);
+      return c.json({ error: `Upload failed: ${error.message}` }, 500);
+    }
+    
+    // Generate signed URL (valid for 1 year)
+    const { data: urlData } = await supabaseAdmin.storage
+      .from('make-19ccd85e-uploads')
+      .createSignedUrl(fileName, 31536000); // 1 year
+    
+    if (!urlData?.signedUrl) {
+      return c.json({ error: 'Failed to generate signed URL' }, 500);
+    }
+    
+    // Update project with logo URL
+    const updatedProject = {
+      ...project,
+      logo: urlData.signedUrl,
+      logoPath: fileName,
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`project:${projectId}`, updatedProject);
+    
+    return c.json({ url: urlData.signedUrl, path: fileName, project: updatedProject });
+  } catch (error: any) {
+    console.error('Project logo upload error:', error);
+    return c.json({ error: `Upload failed: ${error.message}` }, 500);
+  }
 });
 
 // ============= AUTH ROUTES =============
@@ -1157,6 +1315,425 @@ app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
   } catch (error: any) {
     console.error('Export ebook error:', error);
     return c.json({ error: `Failed to export ebook: ${error.message}` }, 500);
+  }
+});
+
+// ============= OAUTH ROUTES =============
+
+// OAuth configuration
+const getOAuthConfig = (platform: string) => {
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:5173';
+  const redirectUri = `${frontendUrl}/oauth/callback`;
+  
+  const configs: Record<string, any> = {
+    twitter: {
+      authUrl: 'https://twitter.com/i/oauth2/authorize',
+      tokenUrl: 'https://api.twitter.com/2/oauth2/token',
+      clientId: Deno.env.get('TWITTER_CLIENT_ID'),
+      clientSecret: Deno.env.get('TWITTER_CLIENT_SECRET'),
+      scope: 'tweet.read tweet.write users.read offline.access',
+      redirectUri: `${frontendUrl}/oauth/callback?platform=twitter`,
+    },
+    instagram: {
+      authUrl: 'https://api.instagram.com/oauth/authorize',
+      tokenUrl: 'https://api.instagram.com/oauth/access_token',
+      clientId: Deno.env.get('INSTAGRAM_CLIENT_ID'),
+      clientSecret: Deno.env.get('INSTAGRAM_CLIENT_SECRET'),
+      scope: 'user_profile,user_media',
+      redirectUri: Deno.env.get('INSTAGRAM_REDIRECT_URI') || redirectUri,
+    },
+    linkedin: {
+      authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+      tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+      clientId: Deno.env.get('LINKEDIN_CLIENT_ID'),
+      clientSecret: Deno.env.get('LINKEDIN_CLIENT_SECRET'),
+      scope: 'w_member_social r_liteprofile',
+      redirectUri: Deno.env.get('LINKEDIN_REDIRECT_URI') || redirectUri,
+    },
+    facebook: {
+      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+      clientId: Deno.env.get('FACEBOOK_APP_ID'),
+      clientSecret: Deno.env.get('FACEBOOK_APP_SECRET'),
+      scope: 'pages_manage_posts,pages_read_engagement',
+      redirectUri: Deno.env.get('FACEBOOK_REDIRECT_URI') || redirectUri,
+    },
+    youtube: {
+      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      clientId: Deno.env.get('YOUTUBE_CLIENT_ID') || Deno.env.get('GOOGLE_CLIENT_ID'),
+      clientSecret: Deno.env.get('YOUTUBE_CLIENT_SECRET') || Deno.env.get('GOOGLE_CLIENT_SECRET'),
+      scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube',
+      redirectUri: Deno.env.get('YOUTUBE_REDIRECT_URI') || Deno.env.get('OAUTH_REDIRECT_URL') || redirectUri,
+    },
+    tiktok: {
+      authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
+      tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
+      clientId: Deno.env.get('TIKTOK_CLIENT_KEY'),
+      clientSecret: Deno.env.get('TIKTOK_CLIENT_SECRET'),
+      scope: 'user.info.basic,video.upload',
+      redirectUri: Deno.env.get('TIKTOK_REDIRECT_URI') || redirectUri,
+    },
+    pinterest: {
+      authUrl: 'https://www.pinterest.com/oauth/',
+      tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
+      clientId: Deno.env.get('PINTEREST_APP_ID'),
+      clientSecret: Deno.env.get('PINTEREST_APP_SECRET'),
+      scope: 'boards:read,pins:read,pins:write',
+      redirectUri: Deno.env.get('PINTEREST_REDIRECT_URI') || redirectUri,
+    },
+    reddit: {
+      authUrl: 'https://www.reddit.com/api/v1/authorize',
+      tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+      clientId: Deno.env.get('REDDIT_CLIENT_ID'),
+      clientSecret: Deno.env.get('REDDIT_CLIENT_SECRET'),
+      scope: 'submit,identity',
+      redirectUri: Deno.env.get('REDDIT_REDIRECT_URI') || redirectUri,
+    },
+  };
+  
+  return configs[platform];
+};
+
+// Start OAuth flow - generates authorization URL
+app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c) => {
+  try {
+    const platform = c.req.param('platform');
+    const userId = c.get('userId');
+    const projectId = c.req.query('projectId');
+    
+    if (!projectId) {
+      return c.json({ error: 'projectId is required' }, 400);
+    }
+    
+    const config = getOAuthConfig(platform);
+    
+    if (!config || !config.clientId) {
+      return c.json({ 
+        error: `OAuth not configured for ${platform}. Please add ${platform.toUpperCase()}_CLIENT_ID and ${platform.toUpperCase()}_CLIENT_SECRET environment variables.` 
+      }, 400);
+    }
+    
+    // Generate state for CSRF protection
+    const state = `${userId}:${projectId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Store state temporarily for verification
+    await kv.set(`oauth:state:${state}`, {
+      userId,
+      projectId,
+      platform,
+      createdAt: Date.now(),
+    }, { expiresIn: 600 }); // 10 minute expiry
+    
+    // Build authorization URL
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      scope: config.scope,
+      state,
+    });
+    
+    // Platform-specific params
+    if (platform === 'twitter') {
+      params.set('code_challenge', 'challenge');
+      params.set('code_challenge_method', 'plain');
+    }
+    
+    const authUrl = `${config.authUrl}?${params.toString()}`;
+    
+    return c.json({ authUrl, state });
+  } catch (error: any) {
+    console.error('OAuth authorize error:', error);
+    return c.json({ error: `Authorization failed: ${error.message}` }, 500);
+  }
+});
+
+// Handle OAuth callback - exchange code for token
+app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
+  try {
+    const { code, state, platform } = await c.req.json();
+    const userId = c.get('userId');
+    
+    if (!code || !state || !platform) {
+      return c.json({ error: 'Missing required parameters' }, 400);
+    }
+    
+    // Verify state
+    const stateData = await kv.get(`oauth:state:${state}`);
+    
+    if (!stateData || stateData.userId !== userId) {
+      return c.json({ error: 'Invalid or expired state' }, 400);
+    }
+    
+    const config = getOAuthConfig(platform);
+    
+    if (!config) {
+      return c.json({ error: `OAuth not configured for ${platform}` }, 400);
+    }
+    
+    // Exchange code for access token
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: config.redirectUri,
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+    });
+    
+    // Some platforms need special handling
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    
+    // Reddit requires Basic Auth
+    if (platform === 'reddit') {
+      const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
+      headers['Authorization'] = `Basic ${basicAuth}`;
+      delete tokenParams['client_id'];
+      delete tokenParams['client_secret'];
+    }
+    
+    const tokenResponse = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers,
+      body: tokenParams.toString(),
+    });
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error(`Token exchange failed for ${platform}:`, errorText);
+      return c.json({ error: `Token exchange failed: ${errorText}` }, 400);
+    }
+    
+    const tokenData = await tokenResponse.json();
+    
+    // Get user info from platform
+    let userInfo: any = {};
+    
+    try {
+      if (platform === 'twitter') {
+        const meResponse = await fetch('https://api.twitter.com/2/users/me', {
+          headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.data?.username,
+          name: meData.data?.name,
+          id: meData.data?.id,
+        };
+      } else if (platform === 'instagram') {
+        const meResponse = await fetch(`https://graph.instagram.com/me?fields=id,username&access_token=${tokenData.access_token}`);
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.username,
+          id: meData.id,
+        };
+      } else if (platform === 'linkedin') {
+        const meResponse = await fetch('https://api.linkedin.com/v2/me', {
+          headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          name: `${meData.localizedFirstName} ${meData.localizedLastName}`,
+          id: meData.id,
+        };
+      } else if (platform === 'facebook') {
+        const meResponse = await fetch(`https://graph.facebook.com/me?fields=id,name&access_token=${tokenData.access_token}`);
+        const meData = await meResponse.json();
+        userInfo = {
+          name: meData.name,
+          id: meData.id,
+        };
+      } else if (platform === 'youtube') {
+        const meResponse = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {
+          headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.items?.[0]?.snippet?.title,
+          id: meData.items?.[0]?.id,
+        };
+      } else if (platform === 'reddit') {
+        const meResponse = await fetch('https://oauth.reddit.com/api/v1/me', {
+          headers: { 
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'User-Agent': 'PubHub/1.0',
+          },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.name,
+          id: meData.id,
+        };
+      } else if (platform === 'tiktok') {
+        const meResponse = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name', {
+          headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.data?.user?.display_name,
+          id: meData.data?.user?.open_id,
+        };
+      } else if (platform === 'pinterest') {
+        const meResponse = await fetch('https://api.pinterest.com/v5/user_account', {
+          headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.username,
+          id: meData.id,
+        };
+      }
+    } catch (error) {
+      console.error(`Failed to fetch user info for ${platform}:`, error);
+      // Continue anyway - we have the token
+    }
+    
+    // Store tokens securely
+    const tokenRecord = {
+      platform,
+      userId,
+      projectId: stateData.projectId,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      expiresAt: tokenData.expires_in ? Date.now() + (tokenData.expires_in * 1000) : null,
+      userInfo,
+      connectedAt: new Date().toISOString(),
+    };
+    
+    await kv.set(`oauth:token:${platform}:${stateData.projectId}`, tokenRecord);
+    
+    // Update project connections
+    const connections = await kv.get(`project:${stateData.projectId}:connections`) || [];
+    const updatedConnections = connections.map((conn: any) => {
+      if (conn.platform === platform) {
+        return {
+          ...conn,
+          connected: true,
+          username: userInfo.username || userInfo.name || `Connected Account`,
+          accountId: userInfo.id,
+          connectedAt: new Date().toISOString(),
+        };
+      }
+      return conn;
+    });
+    
+    await kv.set(`project:${stateData.projectId}:connections`, updatedConnections);
+    
+    // Clean up state
+    await kv.del(`oauth:state:${state}`);
+    
+    return c.json({ 
+      success: true, 
+      platform,
+      username: userInfo.username || userInfo.name,
+      connections: updatedConnections,
+    });
+  } catch (error: any) {
+    console.error('OAuth callback error:', error);
+    return c.json({ error: `Callback failed: ${error.message}` }, 500);
+  }
+});
+
+// Disconnect OAuth platform
+app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
+  try {
+    const { platform, projectId } = await c.req.json();
+    const userId = c.get('userId');
+    
+    if (!platform || !projectId) {
+      return c.json({ error: 'Missing required parameters' }, 400);
+    }
+    
+    // Delete OAuth tokens
+    await kv.del(`oauth:token:${platform}:${projectId}`);
+    
+    // Update project connections
+    const connections = await kv.get(`project:${projectId}:connections`) || [];
+    const updatedConnections = connections.map((conn: any) => {
+      if (conn.platform === platform) {
+        return {
+          ...conn,
+          connected: false,
+          username: undefined,
+          accountId: undefined,
+          connectedAt: undefined,
+        };
+      }
+      return conn;
+    });
+    
+    await kv.set(`project:${projectId}:connections`, updatedConnections);
+    
+    return c.json({ 
+      success: true, 
+      connections: updatedConnections,
+    });
+  } catch (error: any) {
+    console.error('OAuth disconnect error:', error);
+    return c.json({ error: `Disconnect failed: ${error.message}` }, 500);
+  }
+});
+
+// Get OAuth token (for making API calls)
+app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, async (c) => {
+  try {
+    const platform = c.req.param('platform');
+    const projectId = c.req.param('projectId');
+    const userId = c.get('userId');
+    
+    const tokenRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
+    
+    if (!tokenRecord || tokenRecord.userId !== userId) {
+      return c.json({ error: 'Token not found' }, 404);
+    }
+    
+    // Check if token expired and needs refresh
+    if (tokenRecord.expiresAt && Date.now() > tokenRecord.expiresAt && tokenRecord.refreshToken) {
+      // Refresh the token
+      const config = getOAuthConfig(platform);
+      
+      if (config) {
+        try {
+          const refreshParams = new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: tokenRecord.refreshToken,
+            client_id: config.clientId,
+            client_secret: config.clientSecret,
+          });
+          
+          const refreshResponse = await fetch(config.tokenUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: refreshParams.toString(),
+          });
+          
+          if (refreshResponse.ok) {
+            const newTokenData = await refreshResponse.json();
+            
+            // Update stored token
+            const updatedRecord = {
+              ...tokenRecord,
+              accessToken: newTokenData.access_token,
+              refreshToken: newTokenData.refresh_token || tokenRecord.refreshToken,
+              expiresAt: newTokenData.expires_in ? Date.now() + (newTokenData.expires_in * 1000) : null,
+            };
+            
+            await kv.set(`oauth:token:${platform}:${projectId}`, updatedRecord);
+            
+            return c.json({ accessToken: newTokenData.access_token });
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+        }
+      }
+    }
+    
+    return c.json({ accessToken: tokenRecord.accessToken });
+  } catch (error: any) {
+    console.error('Get token error:', error);
+    return c.json({ error: `Failed to get token: ${error.message}` }, 500);
   }
 });
 

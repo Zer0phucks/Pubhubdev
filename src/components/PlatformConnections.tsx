@@ -8,6 +8,7 @@ import { Label } from "./ui/label";
 import { PlatformIcon } from "./PlatformIcon";
 import { connectionsAPI } from "../utils/api";
 import { useProject } from "./ProjectContext";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -159,17 +160,45 @@ export function PlatformConnections() {
   };
 
   const confirmDisconnect = async () => {
-    if (platformToDisconnect) {
-      const updatedConnections = connections.map(conn => 
-        conn.platform === platformToDisconnect 
-          ? { ...conn, connected: false, username: undefined, followers: undefined, autoPost: false }
-          : conn
-      );
-      setConnections(updatedConnections);
-      await saveConnections(updatedConnections);
-      
-      const platformName = connections.find(c => c.platform === platformToDisconnect)?.name;
-      toast.success(`${platformName} disconnected successfully`);
+    if (platformToDisconnect && currentProject) {
+      try {
+        // Call backend to disconnect OAuth
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/disconnect`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${publicAnonKey}`,
+            },
+            body: JSON.stringify({
+              platform: platformToDisconnect,
+              projectId: currentProject.id,
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to disconnect');
+        }
+
+        // Update local state with response
+        if (data.connections) {
+          const merged = defaultConnections.map(defaultConn => {
+            const saved = data.connections.find((s: any) => s.platform === defaultConn.platform);
+            return saved ? { ...defaultConn, ...saved } : defaultConn;
+          });
+          setConnections(merged);
+        }
+        
+        const platformName = connections.find(c => c.platform === platformToDisconnect)?.name;
+        toast.success(`${platformName} disconnected successfully`);
+      } catch (error: any) {
+        console.error('Disconnect error:', error);
+        toast.error(error.message || 'Failed to disconnect platform');
+      }
     }
     setPlatformToDisconnect(null);
   };
@@ -180,21 +209,48 @@ export function PlatformConnections() {
       // If disconnecting, show confirmation
       handleDisconnectClick(platform);
     } else {
-      // If connecting, simulate OAuth flow
-      toast.info(`Connecting to ${conn?.name}...`, {
-        description: 'In a production app, this would redirect to OAuth authorization.'
+      // Start OAuth flow
+      await startOAuthFlow(platform);
+    }
+  };
+
+  const startOAuthFlow = async (platform: Platform) => {
+    if (!currentProject) {
+      toast.error('No project selected');
+      return;
+    }
+
+    try {
+      toast.info(`Connecting to ${platform}...`, {
+        description: 'You will be redirected to authorize PubHub'
       });
-      
-      // Simulate connection (in production, this would be real OAuth)
-      const updatedConnections = connections.map(c => 
-        c.platform === platform 
-          ? { ...c, connected: true, username: `@${conn?.name.toLowerCase()}user`, followers: "0" }
-          : c
+
+      // Get authorization URL from backend
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=${currentProject.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+        }
       );
-      setConnections(updatedConnections);
-      await saveConnections(updatedConnections);
-      
-      toast.success(`${conn?.name} connected successfully`);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start OAuth flow');
+      }
+
+      // Store state for callback verification
+      sessionStorage.setItem('oauth_state', data.state);
+      sessionStorage.setItem('oauth_platform', platform);
+      sessionStorage.setItem('oauth_project_id', currentProject.id);
+
+      // Redirect to OAuth provider
+      window.location.href = data.authUrl;
+    } catch (error: any) {
+      console.error('OAuth flow error:', error);
+      toast.error(error.message || 'Failed to connect platform');
     }
   };
 
@@ -233,6 +289,27 @@ export function PlatformConnections() {
 
   return (
     <div className="space-y-6">
+      {/* OAuth Info Banner */}
+      {connectedCount === 0 && (
+        <Card className="p-4 bg-blue-500/10 border-blue-500/20">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5">
+              <LinkIcon className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm mb-1 text-blue-400">Connect Your Social Accounts</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                Click "Connect" on any platform below to authorize PubHub with your social media accounts. 
+                You'll be redirected to the platform's authorization page and back automatically.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Note: Make sure OAuth credentials are configured in your Supabase environment variables. 
+                See OAUTH_SETUP.md for details.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Summary Card */}
       <Card className="p-6 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">

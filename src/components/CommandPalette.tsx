@@ -19,10 +19,11 @@ import {
   Video,
   Bell,
   BookOpen,
+  TrendingUp,
 } from "lucide-react";
 import { PlatformIcon } from "./PlatformIcon";
 
-type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "settings";
+type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "project-settings";
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
 interface CommandPaletteProps {
@@ -37,14 +38,16 @@ export function CommandPalette({ open, onOpenChange, onNavigate, onPlatformSelec
   // Keyboard listener is now in App.tsx to avoid conflicts
 
   const pages = [
-    { id: "home" as View, label: "Home", icon: LayoutDashboard, shortcut: "⌘H" },
+    { id: "project-overview" as View, label: "Project Overview", icon: LayoutDashboard, shortcut: "⌘H" },
+    { id: "compose" as View, label: "Compose", icon: PenSquare, shortcut: "⌘N" },
     { id: "inbox" as View, label: "Inbox", icon: Inbox, shortcut: "⌘I" },
     { id: "calendar" as View, label: "Calendar", icon: Calendar, shortcut: "⌘C" },
+    { id: "trending" as View, label: "Trending", icon: TrendingUp, shortcut: "⌘T" },
     { id: "analytics" as View, label: "Analytics", icon: BarChart3, shortcut: "⌘A" },
     { id: "library" as View, label: "Remix", icon: Video, shortcut: "⌘M" },
     { id: "ebooks" as View, label: "Ebook Generator", icon: BookOpen, shortcut: "⌘E" },
     { id: "notifications" as View, label: "Notifications", icon: Bell, shortcut: "⌘B" },
-    { id: "settings" as View, label: "Settings", icon: Settings, shortcut: "⌘," },
+    { id: "project-settings" as View, label: "Project Settings", icon: Settings, shortcut: "⌘S" },
   ];
 
   const platforms: { id: Platform; label: string }[] = [

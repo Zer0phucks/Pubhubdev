@@ -37,13 +37,16 @@ import {
   Sparkles,
   FolderOpen,
   BookOpen,
+  User,
+  TrendingUp,
 } from "lucide-react";
 import { Home } from "./components/Home";
 import { ContentComposer } from "./components/ContentComposer";
 import { UnifiedInbox } from "./components/UnifiedInbox";
 import { ContentCalendar } from "./components/ContentCalendar";
 import { Analytics } from "./components/Analytics";
-import { Settings, SettingsTab } from "./components/Settings";
+import { AccountSettings, AccountSettingsTab } from "./components/AccountSettings";
+import { ProjectSettings, ProjectSettingsTab } from "./components/ProjectSettings";
 import { MediaLibrary } from "./components/MediaLibrary";
 import { Notifications } from "./components/Notifications";
 import { EbookGenerator } from "./components/EbookGenerator";
@@ -51,6 +54,7 @@ import { PubHubLogo } from "./components/PubHubLogo";
 import { AppHeader } from "./components/AppHeader";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { Dialog, DialogContent } from "./components/ui/dialog";
 import { AIChatDialog } from "./components/AIChatDialog";
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import { ProjectProvider } from "./components/ProjectContext";
@@ -59,8 +63,10 @@ import { AuthPage } from "./components/AuthPage";
 import { Landing } from "./components/Landing";
 import { Toaster } from "./components/ui/sonner";
 import { TransformedContent } from "./utils/contentTransformer";
+import { Trending } from "./components/Trending";
+import { OAuthCallback } from "./components/OAuthCallback";
 
-type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "settings";
+type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "project-settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 type InboxView = "all" | "unread" | "comments" | "messages";
 
@@ -74,10 +80,12 @@ interface RemixContent {
 }
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<View>("home");
+  const [currentView, setCurrentView] = useState<View>("project-overview");
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>("all");
   const [inboxView, setInboxView] = useState<InboxView>("unread");
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("connections");
+  const [projectSettingsTab, setProjectSettingsTab] = useState<ProjectSettingsTab>("details");
+  const [accountSettingsTab, setAccountSettingsTab] = useState<AccountSettingsTab>("profile");
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
@@ -132,10 +140,10 @@ function AppContent() {
         e.preventDefault();
         setCurrentView("compose");
       }
-      // Cmd/Ctrl + H for home
+      // Cmd/Ctrl + H for project overview
       if (e.key === "h" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setCurrentView("home");
+        setCurrentView("project-overview");
       }
       // Cmd/Ctrl + I for inbox
       if (e.key === "i" && (e.metaKey || e.ctrlKey)) {
@@ -167,10 +175,15 @@ function AppContent() {
         e.preventDefault();
         setCurrentView("ebooks");
       }
-      // Cmd/Ctrl + S for settings
+      // Cmd/Ctrl + T for trending
+      if (e.key === "t" && (e.metaKey || e.ctrlKey) && e.target === document.body) {
+        e.preventDefault();
+        setCurrentView("trending");
+      }
+      // Cmd/Ctrl + S for project settings
       if (e.key === "s" && (e.metaKey || e.ctrlKey) && e.target === document.body) {
         e.preventDefault();
-        setCurrentView("settings");
+        setCurrentView("project-settings");
       }
     };
 
@@ -179,26 +192,28 @@ function AppContent() {
   }, []);
 
   const menuItems = [
-    { id: "home" as View, label: "Home", icon: LayoutDashboard },
+    { id: "project-overview" as View, label: "Project Overview", icon: LayoutDashboard },
+    { id: "compose" as View, label: "Compose", icon: PenSquare },
     { id: "inbox" as View, label: "Inbox", icon: Inbox },
     { id: "calendar" as View, label: "Calendar", icon: Calendar },
+    { id: "trending" as View, label: "Trending", icon: TrendingUp },
     { id: "analytics" as View, label: "Analytics", icon: BarChart3 },
     { id: "library" as View, label: "Remix", icon: Video },
     { id: "ebooks" as View, label: "Ebooks", icon: BookOpen },
-    { id: "settings" as View, label: "Settings", icon: SettingsIcon },
+    { id: "project-settings" as View, label: "Project Settings", icon: SettingsIcon },
   ];
 
-  const handleNavigate = (view: View, subView?: InboxView | SettingsTab) => {
+  const handleNavigate = (view: View, subView?: InboxView | ProjectSettingsTab) => {
     setCurrentView(view);
     if (view === "inbox") {
       setInboxOpen(true);
       if (subView && typeof subView === "string" && ["all", "unread", "comments", "messages"].includes(subView)) {
         setInboxView(subView as InboxView);
       }
-    } else if (view === "settings") {
+    } else if (view === "project-settings") {
       setSettingsOpen(true);
       if (subView && typeof subView === "string") {
-        setSettingsTab(subView as SettingsTab);
+        setProjectSettingsTab(subView as ProjectSettingsTab);
       }
     }
   };
@@ -208,9 +223,16 @@ function AppContent() {
     setCurrentView("inbox");
   };
 
-  const handleSettingsTabChange = (tab: SettingsTab) => {
-    setSettingsTab(tab);
-    setCurrentView("settings");
+  const handleProjectSettingsTabChange = (tab: ProjectSettingsTab) => {
+    setProjectSettingsTab(tab);
+    setCurrentView("project-settings");
+  };
+
+  const handleOpenAccountSettings = (tab?: AccountSettingsTab) => {
+    if (tab) {
+      setAccountSettingsTab(tab);
+    }
+    setAccountSettingsOpen(true);
   };
 
   const handlePlatformChange = (platform: Platform) => {
@@ -230,7 +252,7 @@ function AppContent() {
 
   const renderContent = () => {
     switch (currentView) {
-      case "home":
+      case "project-overview":
         return (
           <Home 
             selectedPlatform={selectedPlatform} 
@@ -270,16 +292,16 @@ function AppContent() {
         return (
           <Notifications 
             onOpenSettings={() => {
-              setCurrentView("settings");
-              setSettingsTab("notifications");
-              setSettingsOpen(true);
+              handleOpenAccountSettings("notifications");
             }}
           />
         );
       case "ebooks":
         return <EbookGenerator />;
-      case "settings":
-        return <Settings initialTab={settingsTab} />;
+      case "trending":
+        return <Trending selectedPlatform={selectedPlatform} />;
+      case "project-settings":
+        return <ProjectSettings initialTab={projectSettingsTab} />;
       default:
         return <Home selectedPlatform={selectedPlatform} />;
     }
@@ -295,6 +317,11 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  // Check if this is an OAuth callback
+  if (window.location.pathname === '/oauth/callback') {
+    return <OAuthCallback />;
   }
 
   // Show landing page or auth page if not authenticated
@@ -393,7 +420,7 @@ function AppContent() {
                   );
                 }
 
-                if (item.id === "settings") {
+                if (item.id === "project-settings") {
                   return (
                     <Collapsible
                       key={item.id}
@@ -418,9 +445,20 @@ function AppContent() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={currentView === "settings" && settingsTab === "connections"}
+                                isActive={currentView === "project-settings" && projectSettingsTab === "details"}
                               >
-                                <button onClick={() => handleSettingsTabChange("connections")}>
+                                <button onClick={() => handleProjectSettingsTabChange("details")}>
+                                  <SettingsIcon className="w-4 h-4" />
+                                  <span>Details</span>
+                                </button>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={currentView === "project-settings" && projectSettingsTab === "connections"}
+                              >
+                                <button onClick={() => handleProjectSettingsTabChange("connections")}>
                                   <Link2 className="w-4 h-4" />
                                   <span>Connections</span>
                                 </button>
@@ -429,9 +467,9 @@ function AppContent() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={currentView === "settings" && settingsTab === "automation"}
+                                isActive={currentView === "project-settings" && projectSettingsTab === "automation"}
                               >
-                                <button onClick={() => handleSettingsTabChange("automation")}>
+                                <button onClick={() => handleProjectSettingsTabChange("automation")}>
                                   <Workflow className="w-4 h-4" />
                                   <span>Automation</span>
                                 </button>
@@ -440,55 +478,11 @@ function AppContent() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={currentView === "settings" && settingsTab === "shortcuts"}
+                                isActive={currentView === "project-settings" && projectSettingsTab === "templates"}
                               >
-                                <button onClick={() => handleSettingsTabChange("shortcuts")}>
-                                  <Keyboard className="w-4 h-4" />
-                                  <span>Shortcuts</span>
-                                </button>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={currentView === "settings" && settingsTab === "preferences"}
-                              >
-                                <button onClick={() => handleSettingsTabChange("preferences")}>
-                                  <Palette className="w-4 h-4" />
-                                  <span>Preferences</span>
-                                </button>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={currentView === "settings" && settingsTab === "notifications"}
-                              >
-                                <button onClick={() => handleSettingsTabChange("notifications")}>
-                                  <Bell className="w-4 h-4" />
-                                  <span>Notifications</span>
-                                </button>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={currentView === "settings" && settingsTab === "templates"}
-                              >
-                                <button onClick={() => handleSettingsTabChange("templates")}>
+                                <button onClick={() => handleProjectSettingsTabChange("templates")}>
                                   <FileText className="w-4 h-4" />
                                   <span>Templates</span>
-                                </button>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={currentView === "settings" && settingsTab === "projects"}
-                              >
-                                <button onClick={() => handleSettingsTabChange("projects")}>
-                                  <FolderOpen className="w-4 h-4" />
-                                  <span>Projects</span>
                                 </button>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
@@ -533,7 +527,7 @@ function AppContent() {
             selectedPlatform={selectedPlatform}
             onPlatformChange={handlePlatformChange}
             onNavigate={handleNavigate}
-            onOpenSettings={() => setSettingsPanelOpen(true)}
+            onOpenAccountSettings={handleOpenAccountSettings}
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onOpenAIChat={(query) => {
               setAIChatOpen(true);
@@ -579,6 +573,16 @@ function AppContent() {
           theme={theme}
           onThemeChange={setTheme}
         />
+
+        {/* Account Settings Dialog */}
+        <Dialog open={accountSettingsOpen} onOpenChange={setAccountSettingsOpen}>
+          <DialogContent className="max-w-4xl h-[80vh] p-0">
+            <AccountSettings 
+              initialTab={accountSettingsTab}
+              onClose={() => setAccountSettingsOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Toast Notifications */}
         <Toaster />

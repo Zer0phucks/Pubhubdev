@@ -9,9 +9,12 @@ import {
   Command as CommandIcon,
   LogOut,
   Plus,
+  User,
+  Keyboard,
+  Palette,
 } from "lucide-react";
 import { PlatformIcon } from "./PlatformIcon";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,17 +26,18 @@ import { Badge } from "./ui/badge";
 import { useAuth } from "./AuthContext";
 import { useConnectedPlatforms } from "./useConnectedPlatforms";
 
-type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "settings";
+type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "project-settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 type InboxView = "all" | "unread" | "comments" | "messages";
-type SettingsTab = "connections" | "automation" | "templates" | "shortcuts" | "preferences" | "notifications";
+type AccountSettingsTab = "profile" | "shortcuts" | "notifications" | "preferences";
+type ProjectSettingsTab = "details" | "connections" | "automation" | "templates";
 
 interface AppHeaderProps {
   currentView: View;
   selectedPlatform: Platform;
   onPlatformChange: (platform: Platform) => void;
-  onNavigate: (view: View, subView?: InboxView | SettingsTab) => void;
-  onOpenSettings: () => void;
+  onNavigate: (view: View, subView?: InboxView | ProjectSettingsTab) => void;
+  onOpenAccountSettings: (tab?: AccountSettingsTab) => void;
   onOpenCommandPalette: () => void;
   onOpenAIChat: (query?: string) => void;
 }
@@ -43,12 +47,12 @@ export function AppHeader({
   selectedPlatform,
   onPlatformChange,
   onNavigate,
-  onOpenSettings,
+  onOpenAccountSettings,
   onOpenCommandPalette,
   onOpenAIChat,
 }: AppHeaderProps) {
   const [aiQuery, setAIQuery] = useState("");
-  const { user, signout } = useAuth();
+  const { user, signout, profilePicture } = useAuth();
   const { connectedPlatforms, hasUnconnectedPlatforms } = useConnectedPlatforms();
 
   const handleAIQuerySubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -107,8 +111,8 @@ export function AppHeader({
 
   const getPageTitle = () => {
     switch (currentView) {
-      case "home":
-        return "Home";
+      case "project-overview":
+        return "Project Overview";
       case "compose":
         return "Create Content";
       case "inbox":
@@ -119,21 +123,23 @@ export function AppHeader({
         return "Analytics";
       case "library":
         return "Remix";
+      case "trending":
+        return "Trending Content";
       case "templates":
         return "Templates";
-      case "settings":
-        return "Settings";
+      case "project-settings":
+        return "Project Settings";
       default:
-        return "Home";
+        return "Project Overview";
     }
   };
 
   const getBreadcrumbs = () => {
-    if (currentView === "home" && selectedPlatform !== "all") {
+    if (currentView === "project-overview" && selectedPlatform !== "all") {
       const platform = allPlatforms.find(p => p.id === selectedPlatform);
       return (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Home</span>
+          <span>Project Overview</span>
           <span>/</span>
           <span className="text-foreground">{platform?.label}</span>
         </div>
@@ -147,7 +153,7 @@ export function AppHeader({
   };
 
   // Only show platform tabs on views where filtering by platform makes sense
-  const showPlatformSelector = currentView === "home" || currentView === "calendar" || currentView === "inbox" || currentView === "analytics" || currentView === "library";
+  const showPlatformSelector = currentView === "project-overview" || currentView === "calendar" || currentView === "inbox" || currentView === "analytics" || currentView === "library" || currentView === "trending";
 
   return (
     <header className="border-b border-border/50 bg-black/20 backdrop-blur-xl sticky top-0 z-10">
@@ -223,6 +229,7 @@ export function AppHeader({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative">
                   <Avatar className="w-8 h-8">
+                    {profilePicture && <AvatarImage src={profilePicture} alt="Profile" />}
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
                   <Badge 
@@ -239,7 +246,15 @@ export function AppHeader({
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onNavigate("notifications")}>
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("profile")}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("shortcuts")}>
+                  <Keyboard className="w-4 h-4 mr-2" />
+                  Shortcuts
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("notifications")}>
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
                   <Badge 
@@ -249,9 +264,9 @@ export function AppHeader({
                     3
                   </Badge>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onOpenSettings}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("preferences")}>
+                  <Palette className="w-4 h-4 mr-2" />
+                  Preferences
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
@@ -291,6 +306,7 @@ export function AppHeader({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative">
                   <Avatar className="w-8 h-8">
+                    {profilePicture && <AvatarImage src={profilePicture} alt="Profile" />}
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
                   <Badge 
@@ -307,7 +323,15 @@ export function AppHeader({
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onNavigate("notifications")}>
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("profile")}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("shortcuts")}>
+                  <Keyboard className="w-4 h-4 mr-2" />
+                  Shortcuts
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("notifications")}>
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
                   <Badge 
@@ -317,9 +341,9 @@ export function AppHeader({
                     3
                   </Badge>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onOpenSettings}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
+                <DropdownMenuItem onClick={() => onOpenAccountSettings("preferences")}>
+                  <Palette className="w-4 h-4 mr-2" />
+                  Preferences
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>

@@ -147,6 +147,44 @@ export const connectionsAPI = {
   },
 };
 
+// ============= OAUTH API =============
+
+export const oauthAPI = {
+  /**
+   * Start OAuth flow for a platform
+   */
+  async authorize(platform: string, projectId: string) {
+    return apiCall(`/oauth/authorize/${platform}?projectId=${projectId}`);
+  },
+
+  /**
+   * Complete OAuth callback
+   */
+  async callback(code: string, state: string, platform: string) {
+    return apiCall('/oauth/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code, state, platform }),
+    });
+  },
+
+  /**
+   * Disconnect a platform
+   */
+  async disconnect(platform: string, projectId: string) {
+    return apiCall('/oauth/disconnect', {
+      method: 'POST',
+      body: JSON.stringify({ platform, projectId }),
+    });
+  },
+
+  /**
+   * Get access token for a platform
+   */
+  async getToken(platform: string, projectId: string) {
+    return apiCall(`/oauth/token/${platform}/${projectId}`);
+  },
+};
+
 // ============= SETTINGS API =============
 
 export const settingsAPI = {
@@ -167,5 +205,51 @@ export const settingsAPI = {
 export const analyticsAPI = {
   async get(platform: string = 'all') {
     return apiCall(`/analytics?platform=${platform}`);
+  },
+};
+
+// ============= UPLOAD API =============
+
+export const uploadAPI = {
+  async uploadProfilePicture(file: File) {
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_URL}/upload/profile-picture`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    
+    return response.json();
+  },
+  
+  async uploadProjectLogo(projectId: string, file: File) {
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_URL}/upload/project-logo/${projectId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    
+    return response.json();
   },
 };
