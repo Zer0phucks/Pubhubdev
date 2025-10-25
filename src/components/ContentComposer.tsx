@@ -34,6 +34,7 @@ import {
 import { PLATFORM_CONSTRAINTS, type Platform, type Attachment } from "../types";
 import { toast } from "sonner@2.0.3";
 import { TransformedContent } from "../utils/contentTransformer";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 
 interface PlatformSelection {
   id: Platform;
@@ -264,32 +265,103 @@ export function ContentComposer({ transformedContent = null, remixContent = null
       toast.error("No project selected");
       return;
     }
-    
+
     setPublishingPlatforms(prev => new Set(prev).add(platform));
-    
+
     try {
-      // Note: In production, we would check if platform is connected
-      // For now, we'll save the post to the database
+      // First, save the post to database
       const { post } = await postsAPI.create({
         projectId: currentProject.id,
         platforms: [platform],
         content,
-        status: 'published',
-        publishedAt: new Date().toISOString(),
+        status: 'publishing',
         attachments: attachments.filter(a => a.platform === platform),
       });
 
-      toast.success("Post Published!", {
-        description: `Your content has been saved. Connect ${platforms.find(p => p.id === platform)?.name} in Settings to publish live.`,
-      });
+      // Get media attachment if any
+      const media = attachments.find(a => a.platform === platform);
 
-      // Remove this preview after posting
-      setGeneratedPreviews(prev => prev.filter(p => p.platform !== platform));
+      // Now publish to the actual platform via our Edge Function
+      const publishResponse = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/posts/publish`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({
+            postId: post.id,
+            projectId: currentProject.id,
+            platforms: [platform],
+            content: {
+              text: content,
+              caption: content,
+              title: content.split('\n')[0].substring(0, 100), // First line as title
+              subreddit: platform === 'reddit' ? 'test' : undefined, // For Reddit
+            },
+            media: media ? {
+              url: media.url,
+              type: media.type,
+              videoUrl: media.type === 'video' ? media.url : undefined,
+            } : null,
+          }),
+        }
+      );
+
+      const publishData = await publishResponse.json();
+
+      if (!publishResponse.ok) {
+        throw new Error(publishData.error || 'Failed to publish');
+      }
+
+      // Check if platform was successfully posted
+      const platformResult = publishData.results?.find((r: any) => r.platform === platform);
+
+      if (platformResult?.success) {
+        // Update post status
+        await postsAPI.update(post.id, {
+          status: 'published',
+          publishedAt: new Date().toISOString(),
+        });
+
+        toast.success("🎉 Post Published!", {
+          description: `Successfully posted to ${platforms.find(p => p.id === platform)?.name}`,
+          action: platformResult.url ? {
+            label: "View Post",
+            onClick: () => window.open(platformResult.url, '_blank'),
+          } : undefined,
+        });
+
+        // Remove this preview after posting
+        setGeneratedPreviews(prev => prev.filter(p => p.platform !== platform));
+      } else {
+        throw new Error(platformResult?.error || 'Failed to publish to platform');
+      }
     } catch (error: any) {
-      console.error('Post creation error:', error);
-      toast.error("Publishing Failed", {
-        description: error.message || "Failed to publish post. Please try again.",
-      });
+      console.error('Publishing error:', error);
+
+      // Check if it's a connection issue
+      if (error.message?.includes('not connected') || error.message?.includes('Platform not connected')) {
+        toast.error("Platform Not Connected", {
+          description: `Connect your ${platforms.find(p => p.id === platform)?.name} account in Settings to publish live.`,
+          action: {
+            label: "Go to Settings",
+            onClick: () => {
+              // Navigate to connections settings - this would be handled by parent component
+              window.dispatchEvent(new CustomEvent('navigate-to-settings', { detail: { tab: 'connections' } }));
+            },
+          },
+        });
+      } else if (error.message?.includes('OAuth not configured')) {
+        toast.error("Platform Setup Required", {
+          description: "OAuth credentials need to be configured for this platform.",
+        });
+      } else {
+        toast.error("Publishing Failed", {
+          description: error.message || "Failed to publish post. Please try again.",
+        });
+      }
     } finally {
       setPublishingPlatforms(prev => {
         const next = new Set(prev);

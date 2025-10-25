@@ -2,33 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# IMPORTANT RULE
+
+There  is only one rule, and that is to make sure you submit your work to codex whenever  you complete atask, or if you get stuck or need help,but ESPECIALLY before ending a session.
+
 ## Project Overview
 
 ## Recent Session Summary
 
-**Last Updated**: 2025-10-25 05:07:42
+**Last Updated**: 2025-10-25 12:27:12
 
 ### Session Activities
 <!-- Auto-updated by session-end hook -->
 
 **Recent Changes**:
-- Update files from Figma Make (2 hours ago)
-- Update files from Figma Make (10 hours ago)
-- Update files from Figma Make (12 hours ago)
-- Add files from Figma Make (12 hours ago)
-- Initial commit (12 hours ago)
+- Add Sentry integration and update package dependencies (78 minutes ago)
+- Enhance OAuth handling in AuthCallback and AuthContext (2 hours ago)
+- Add OAuth sign-in methods for Google, Facebook, and Twitter (4 hours ago)
+- Update dependencies and change script permissions (4 hours ago)
+- Update package.json and remove obsolete feature documentation (7 hours ago)
 
 **Modified Files**:
-- package.json
-- src/AI_AUTO_REPLY_FEATURE.md
-- src/AI_CHAT_FEATURE.md
-- src/AI_TEXT_GENERATION_FEATURE.md
-- src/ARCHITECTURE.md
-- src/AUTH_ERROR_HANDLING.md
-- src/Attributions.md
-- src/BACKEND_IMPLEMENTATION_COMPLETE.md
-- src/BACKEND_INTEGRATION_GUIDE.md
-- src/BACKEND_SETUP.md
+- .mcp.json
+- AGENTS.md
+- CLAUDE.md
+- OAUTH_CONFIGURATION_FIX.md
+- build/assets/index-DPY1pKhD.js
+- build/index.html
+- next.config.js
+- src/instrumentation.js
+- src/utils/supabase/info.tsx
 
 
 **Notes**:

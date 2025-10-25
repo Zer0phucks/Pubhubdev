@@ -10,17 +10,18 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  SidebarSeparator,
 } from "./components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./components/ui/collapsible";
-import { 
-  LayoutDashboard, 
-  PenSquare, 
-  Inbox, 
-  Calendar, 
+import {
+  LayoutDashboard,
+  PenSquare,
+  Inbox,
+  Calendar,
   Settings as SettingsIcon,
   ChevronDown,
   Mail,
@@ -65,6 +66,7 @@ import { Toaster } from "./components/ui/sonner";
 import { TransformedContent } from "./utils/contentTransformer";
 import { Trending } from "./components/Trending";
 import { OAuthCallback } from "./components/OAuthCallback";
+import { CompetitionWatch } from "./components/CompetitionWatch";
 
 type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "project-settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
@@ -507,7 +509,19 @@ function AppContent() {
                 );
               })}
             </SidebarMenu>
-            
+
+            {/* Competition Watch Section */}
+            <SidebarSeparator className="my-3" />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <CompetitionWatch
+                selectedPlatform={selectedPlatform}
+                onViewCompetitor={(competitor) => {
+                  // Handle competitor view - could navigate to analytics or show modal
+                  console.log("View competitor:", competitor);
+                }}
+              />
+            </div>
+
             {/* Create Post Button */}
             <div className="px-1 pt-3 pb-3 mt-auto">
               <button
