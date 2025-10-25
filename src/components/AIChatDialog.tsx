@@ -29,6 +29,7 @@ interface AIChatDialogProps {
   currentView: View;
   selectedPlatform: Platform;
   initialQuery?: string;
+  autoSubmit?: boolean;
 }
 
 export function AIChatDialog({
@@ -37,10 +38,12 @@ export function AIChatDialog({
   currentView,
   selectedPlatform,
   initialQuery = "",
+  autoSubmit = false,
 }: AIChatDialogProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize with welcome message
@@ -58,8 +61,42 @@ export function AIChatDialog({
       if (initialQuery) {
         setInput(initialQuery);
       }
+      
+      // Reset auto-submit flag when dialog opens
+      setHasAutoSubmitted(false);
     }
   }, [open, initialQuery, messages.length]);
+
+  // Auto-submit the initial query if autoSubmit is true
+  useEffect(() => {
+    if (open && autoSubmit && initialQuery && messages.length > 0 && !hasAutoSubmitted && !isLoading) {
+      setHasAutoSubmitted(true);
+      // Trigger the submission
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: initialQuery,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      setIsLoading(true);
+
+      // Simulate AI response
+      setTimeout(() => {
+        const aiResponse = generateAIResponse(initialQuery, currentView, selectedPlatform);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: aiResponse,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setIsLoading(false);
+      }, 1000 + Math.random() * 1000);
+    }
+  }, [open, autoSubmit, initialQuery, messages.length, hasAutoSubmitted, isLoading, currentView, selectedPlatform]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -271,8 +308,8 @@ function generateAIResponse(query: string, currentView: View, platform: Platform
     return `Based on your audience analytics, the best times to post this week are:\n\n• Twitter: 9 AM and 5 PM EST\n• Instagram: 11 AM and 7 PM EST\n• LinkedIn: 8 AM and 12 PM EST\n\nWould you like me to schedule a post for one of these optimal times?`;
   }
 
-  if (lowercaseQuery.includes("idea") || lowercaseQuery.includes("content")) {
-    return `Here are 3 content ideas based on your recent performance:\n\n1. "5 Sustainability Hacks" - Tutorial style (similar posts got 450+ likes)\n2. Behind-the-scenes of your composting setup (visual content performs 40% better)\n3. Q&A about common composting mistakes (engagement-heavy format)\n\nWhich one interests you?`;
+  if (lowercaseQuery.includes("idea") || lowercaseQuery.includes("content") || lowercaseQuery.includes("suggestion")) {
+    return `Here are some content suggestions tailored to your audience:\n\n📝 **Trending Topics:**\n1. "Top 5 Productivity Tips for 2025" - How-to format (high engagement potential)\n2. "Behind-the-Scenes: A Day in the Life" - Authentic storytelling (builds connection)\n3. "Ask Me Anything" - Interactive Q&A session (boosts engagement by 60%)\n\n🎯 **Platform-Specific Ideas:**\n• Twitter: Thread on industry insights or personal journey\n• Instagram: Carousel post with actionable tips + eye-catching visuals\n• LinkedIn: Professional case study or thought leadership piece\n• TikTok/Reels: Quick tutorial or trending challenge\n\n💡 **Based on Your Best Performing Content:**\nYour tutorial-style posts get 45% more engagement. Consider creating educational content with step-by-step breakdowns.\n\nWould you like me to help you develop any of these ideas further?`;
   }
 
   if (lowercaseQuery.includes("hashtag")) {

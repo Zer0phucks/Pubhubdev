@@ -36,6 +36,7 @@ import {
   FileText,
   Sparkles,
   FolderOpen,
+  BookOpen,
 } from "lucide-react";
 import { Home } from "./components/Home";
 import { ContentComposer } from "./components/ContentComposer";
@@ -45,6 +46,7 @@ import { Analytics } from "./components/Analytics";
 import { Settings, SettingsTab } from "./components/Settings";
 import { MediaLibrary } from "./components/MediaLibrary";
 import { Notifications } from "./components/Notifications";
+import { EbookGenerator } from "./components/EbookGenerator";
 import { PubHubLogo } from "./components/PubHubLogo";
 import { AppHeader } from "./components/AppHeader";
 import { CommandPalette } from "./components/CommandPalette";
@@ -58,7 +60,7 @@ import { Landing } from "./components/Landing";
 import { Toaster } from "./components/ui/sonner";
 import { TransformedContent } from "./utils/contentTransformer";
 
-type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "settings";
+type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 type InboxView = "all" | "unread" | "comments" | "messages";
 
@@ -82,6 +84,8 @@ function AppContent() {
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [aiChatOpen, setAIChatOpen] = useState(false);
+  const [aiInitialQuery, setAIInitialQuery] = useState<string>("");
+  const [aiAutoSubmit, setAIAutoSubmit] = useState(false);
   const [transformedContent, setTransformedContent] = useState<TransformedContent | null>(null);
   const [remixContent, setRemixContent] = useState<RemixContent | null>(null);
   const [showLanding, setShowLanding] = useState(true);
@@ -158,6 +162,11 @@ function AppContent() {
         e.preventDefault();
         setCurrentView("notifications");
       }
+      // Cmd/Ctrl + E for ebooks
+      if (e.key === "e" && (e.metaKey || e.ctrlKey) && e.target === document.body) {
+        e.preventDefault();
+        setCurrentView("ebooks");
+      }
       // Cmd/Ctrl + S for settings
       if (e.key === "s" && (e.metaKey || e.ctrlKey) && e.target === document.body) {
         e.preventDefault();
@@ -175,6 +184,7 @@ function AppContent() {
     { id: "calendar" as View, label: "Calendar", icon: Calendar },
     { id: "analytics" as View, label: "Analytics", icon: BarChart3 },
     { id: "library" as View, label: "Remix", icon: Video },
+    { id: "ebooks" as View, label: "Ebooks", icon: BookOpen },
     { id: "settings" as View, label: "Settings", icon: SettingsIcon },
   ];
 
@@ -221,7 +231,17 @@ function AppContent() {
   const renderContent = () => {
     switch (currentView) {
       case "home":
-        return <Home selectedPlatform={selectedPlatform} />;
+        return (
+          <Home 
+            selectedPlatform={selectedPlatform} 
+            onNavigate={(view) => setCurrentView(view)}
+            onOpenAIChat={(query, autoSubmit) => {
+              if (query) setAIInitialQuery(query);
+              if (autoSubmit !== undefined) setAIAutoSubmit(autoSubmit);
+              setAIChatOpen(true);
+            }}
+          />
+        );
       case "compose":
         return (
           <ContentComposer 
@@ -256,6 +276,8 @@ function AppContent() {
             }}
           />
         );
+      case "ebooks":
+        return <EbookGenerator />;
       case "settings":
         return <Settings initialTab={settingsTab} />;
       default:
@@ -527,9 +549,18 @@ function AppContent() {
         {/* AI Chat Dialog */}
         <AIChatDialog
           open={aiChatOpen}
-          onOpenChange={setAIChatOpen}
+          onOpenChange={(open) => {
+            setAIChatOpen(open);
+            if (!open) {
+              // Reset when closing
+              setAIInitialQuery("");
+              setAIAutoSubmit(false);
+            }
+          }}
           currentView={currentView}
           selectedPlatform={selectedPlatform}
+          initialQuery={aiInitialQuery}
+          autoSubmit={aiAutoSubmit}
         />
 
         {/* Command Palette */}

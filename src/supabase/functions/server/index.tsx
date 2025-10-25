@@ -94,11 +94,28 @@ app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
     await kv.set(`user:${userId}:projects`, [defaultProjectId]);
     await kv.set(`user:${userId}:currentProject`, defaultProjectId);
 
+    // Initialize empty platform connections for the default project
+    const initialConnections = [
+      { platform: 'twitter', connected: false },
+      { platform: 'instagram', connected: false },
+      { platform: 'linkedin', connected: false },
+      { platform: 'facebook', connected: false },
+      { platform: 'youtube', connected: false },
+      { platform: 'tiktok', connected: false },
+      { platform: 'pinterest', connected: false },
+      { platform: 'reddit', connected: false },
+      { platform: 'blog', connected: false },
+    ];
+    await kv.set(`project:${defaultProjectId}:connections`, initialConnections);
+    await kv.set(`project:${defaultProjectId}:posts`, []);
+    await kv.set(`project:${defaultProjectId}:templates`, []);
+    await kv.set(`project:${defaultProjectId}:automations`, []);
+
     // Initialize empty collections (legacy, for backwards compatibility)
     await kv.set(`user:${userId}:posts`, []);
     await kv.set(`user:${userId}:templates`, []);
     await kv.set(`user:${userId}:automations`, []);
-    await kv.set(`user:${userId}:connections`, []);
+    await kv.set(`user:${userId}:connections`, initialConnections);
     await kv.set(`user:${userId}:settings`, {
       theme: 'dark',
       notifications: {
@@ -151,10 +168,28 @@ app.get("/make-server-19ccd85e/auth/profile", requireAuth, async (c) => {
       await kv.set(`project:${defaultProjectId}`, defaultProject);
       await kv.set(`user:${userId}:projects`, [defaultProjectId]);
       await kv.set(`user:${userId}:currentProject`, defaultProjectId);
+      
+      // Initialize empty platform connections for the default project
+      const initialConnections = [
+        { platform: 'twitter', connected: false },
+        { platform: 'instagram', connected: false },
+        { platform: 'linkedin', connected: false },
+        { platform: 'facebook', connected: false },
+        { platform: 'youtube', connected: false },
+        { platform: 'tiktok', connected: false },
+        { platform: 'pinterest', connected: false },
+        { platform: 'reddit', connected: false },
+        { platform: 'blog', connected: false },
+      ];
+      await kv.set(`project:${defaultProjectId}:connections`, initialConnections);
+      await kv.set(`project:${defaultProjectId}:posts`, []);
+      await kv.set(`project:${defaultProjectId}:templates`, []);
+      await kv.set(`project:${defaultProjectId}:automations`, []);
+      
       await kv.set(`user:${userId}:posts`, []);
       await kv.set(`user:${userId}:templates`, []);
       await kv.set(`user:${userId}:automations`, []);
-      await kv.set(`user:${userId}:connections`, []);
+      await kv.set(`user:${userId}:connections`, initialConnections);
       await kv.set(`user:${userId}:settings`, {
         theme: 'dark',
         notifications: { email: true, push: true, desktop: true },
@@ -473,10 +508,34 @@ app.get("/make-server-19ccd85e/connections", requireAuth, async (c) => {
     const userId = c.get('userId');
     const projectId = c.req.query('projectId');
     
+    // Default platform list if no connections exist
+    const defaultConnections = [
+      { platform: 'twitter', connected: false },
+      { platform: 'instagram', connected: false },
+      { platform: 'linkedin', connected: false },
+      { platform: 'facebook', connected: false },
+      { platform: 'youtube', connected: false },
+      { platform: 'tiktok', connected: false },
+      { platform: 'pinterest', connected: false },
+      { platform: 'reddit', connected: false },
+      { platform: 'blog', connected: false },
+    ];
+    
     // Use project-specific connections if projectId provided, otherwise legacy user connections
-    const connections = projectId
-      ? await kv.get(`project:${projectId}:connections`) || []
-      : await kv.get(`user:${userId}:connections`) || [];
+    let connections = projectId
+      ? await kv.get(`project:${projectId}:connections`)
+      : await kv.get(`user:${userId}:connections`);
+    
+    // If no connections exist, initialize with defaults
+    if (!connections || connections.length === 0) {
+      connections = defaultConnections;
+      // Save defaults for future requests
+      if (projectId) {
+        await kv.set(`project:${projectId}:connections`, defaultConnections);
+      } else {
+        await kv.set(`user:${userId}:connections`, defaultConnections);
+      }
+    }
     
     return c.json({ connections });
   } catch (error: any) {
@@ -656,6 +715,23 @@ app.post("/make-server-19ccd85e/projects", requireAuth, async (c) => {
     projectIds.push(projectId);
     await kv.set(`user:${userId}:projects`, projectIds);
     
+    // Initialize empty platform connections for the new project
+    const initialConnections = [
+      { platform: 'twitter', connected: false },
+      { platform: 'instagram', connected: false },
+      { platform: 'linkedin', connected: false },
+      { platform: 'facebook', connected: false },
+      { platform: 'youtube', connected: false },
+      { platform: 'tiktok', connected: false },
+      { platform: 'pinterest', connected: false },
+      { platform: 'reddit', connected: false },
+      { platform: 'blog', connected: false },
+    ];
+    await kv.set(`project:${projectId}:connections`, initialConnections);
+    await kv.set(`project:${projectId}:posts`, []);
+    await kv.set(`project:${projectId}:templates`, []);
+    await kv.set(`project:${projectId}:automations`, []);
+    
     return c.json({ project });
   } catch (error: any) {
     console.error('Create project error:', error);
@@ -771,6 +847,316 @@ app.get("/make-server-19ccd85e/analytics", requireAuth, async (c) => {
   } catch (error: any) {
     console.error('Get analytics error:', error);
     return c.json({ error: `Failed to fetch analytics: ${error.message}` }, 500);
+  }
+});
+
+// ============= EBOOK ROUTES =============
+
+// Get previous books
+app.get("/make-server-19ccd85e/ebooks/previous", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const books = await kv.get(`user:${userId}:ebooks`) || [];
+    
+    return c.json({ books });
+  } catch (error: any) {
+    console.error('Get previous books error:', error);
+    return c.json({ error: `Failed to fetch previous books: ${error.message}` }, 500);
+  }
+});
+
+// Get AI suggestions for ebook
+app.post("/make-server-19ccd85e/ebooks/suggestions", requireAuth, async (c) => {
+  try {
+    const { currentDetails, projectNiche, previousBooks } = await c.req.json();
+    
+    // Build context for AI
+    const context = [];
+    if (currentDetails.title) context.push(`Title: ${currentDetails.title}`);
+    if (currentDetails.description) context.push(`Description: ${currentDetails.description}`);
+    if (currentDetails.genre) context.push(`Genre: ${currentDetails.genre}`);
+    if (projectNiche) context.push(`Project niche: ${projectNiche}`);
+    if (previousBooks?.length > 0) {
+      context.push(`Previous books: ${previousBooks.map((b: any) => b.title).join(', ')}`);
+    }
+    
+    const prompt = `Based on the following ebook information, suggest appropriate values for any missing fields:
+${context.join('\n')}
+
+Please provide suggestions in JSON format for:
+- genre (if not provided)
+- subGenre
+- tone
+- intendedLength
+- targetAudience
+- writingStyle
+
+Return ONLY valid JSON without any markdown formatting or explanation.`;
+
+    // Call AI API
+    const response = await fetch(
+      `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant that provides ebook writing suggestions. Always respond with valid JSON only.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`AI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content.trim();
+    
+    // Parse JSON response
+    let suggestions;
+    try {
+      // Remove markdown code blocks if present
+      const cleanedResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      suggestions = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', aiResponse);
+      throw new Error('Failed to parse AI suggestions');
+    }
+    
+    return c.json(suggestions);
+  } catch (error: any) {
+    console.error('Get AI suggestions error:', error);
+    return c.json({ error: `Failed to get AI suggestions: ${error.message}` }, 500);
+  }
+});
+
+// Generate book outline
+app.post("/make-server-19ccd85e/ebooks/outline", requireAuth, async (c) => {
+  try {
+    const { bookDetails } = await c.req.json();
+    
+    const genre = bookDetails.genre === "Other" ? bookDetails.customGenre : bookDetails.genre;
+    const subGenre = bookDetails.subGenre === "Other" ? bookDetails.customSubGenre : bookDetails.subGenre;
+    const tone = bookDetails.tone === "Other" ? bookDetails.customTone : bookDetails.tone;
+    const audience = bookDetails.targetAudience === "Other" ? bookDetails.customAudience : bookDetails.targetAudience;
+    const style = bookDetails.writingStyle === "Other" ? bookDetails.customStyle : bookDetails.writingStyle;
+    
+    const prompt = `Create a detailed outline for an ebook with the following specifications:
+
+Title: ${bookDetails.title}
+Description: ${bookDetails.description}
+Genre: ${genre}
+Sub-Genre: ${subGenre}
+Tone: ${tone}
+Target Audience: ${audience}
+Writing Style: ${style}
+Intended Length: ${bookDetails.intendedLength || bookDetails.customLength}
+
+Please provide a comprehensive chapter-by-chapter outline. Each chapter should have:
+- A descriptive title
+- A detailed description of what the chapter will cover
+- Estimated word count
+
+Return the outline as a JSON object with this structure:
+{
+  "chapters": [
+    {
+      "id": "chapter-1",
+      "title": "Chapter Title",
+      "description": "What this chapter covers",
+      "wordCount": 2500
+    }
+  ],
+  "totalEstimatedWords": 25000
+}
+
+Return ONLY valid JSON without any markdown formatting or explanation.`;
+
+    const response = await fetch(
+      `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are an expert book editor and writing coach. Always respond with valid JSON only.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`AI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content.trim();
+    
+    // Parse JSON response
+    let outline;
+    try {
+      const cleanedResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      outline = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', aiResponse);
+      throw new Error('Failed to parse outline');
+    }
+    
+    return c.json(outline);
+  } catch (error: any) {
+    console.error('Generate outline error:', error);
+    return c.json({ error: `Failed to generate outline: ${error.message}` }, 500);
+  }
+});
+
+// Generate chapter content
+app.post("/make-server-19ccd85e/ebooks/chapter", requireAuth, async (c) => {
+  try {
+    const { bookDetails, chapter, previousChapters } = await c.req.json();
+    
+    const genre = bookDetails.genre === "Other" ? bookDetails.customGenre : bookDetails.genre;
+    const tone = bookDetails.tone === "Other" ? bookDetails.customTone : bookDetails.tone;
+    const style = bookDetails.writingStyle === "Other" ? bookDetails.customStyle : bookDetails.writingStyle;
+    
+    let contextInfo = '';
+    if (previousChapters && previousChapters.length > 0) {
+      contextInfo = `\n\nPrevious chapters for context:\n${previousChapters.map((ch: any) => 
+        `- ${ch.title}: ${ch.content.substring(0, 200)}...`
+      ).join('\n')}`;
+    }
+    
+    const prompt = `Write a complete chapter for an ebook with these specifications:
+
+Book Title: ${bookDetails.title}
+Book Description: ${bookDetails.description}
+Genre: ${genre}
+Tone: ${tone}
+Writing Style: ${style}
+
+Chapter Title: ${chapter.title}
+Chapter Description: ${chapter.description}
+${contextInfo}
+
+Write the complete chapter content. Make it engaging, well-structured, and appropriate for the genre and target audience. Include proper paragraphs and natural flow.
+
+Return ONLY the chapter content as plain text, without any JSON formatting or markdown.`;
+
+    const response = await fetch(
+      `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are an expert author who writes engaging and professional book content.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.8,
+          max_tokens: 4000,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`AI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content.trim();
+    const wordCount = content.split(/\s+/).length;
+    
+    return c.json({ content, wordCount });
+  } catch (error: any) {
+    console.error('Generate chapter error:', error);
+    return c.json({ error: `Failed to generate chapter: ${error.message}` }, 500);
+  }
+});
+
+// Generate cover art
+app.post("/make-server-19ccd85e/ebooks/cover", requireAuth, async (c) => {
+  try {
+    const { title, genre, description } = await c.req.json();
+    
+    const prompt = `Professional ebook cover design for "${title}", ${genre} genre. ${description.substring(0, 100)}. High quality, modern, eye-catching design suitable for Amazon KDP.`;
+    
+    // Use DALL-E or similar image generation
+    // For now, returning a placeholder - you would integrate with an actual image generation API
+    const imageUrl = `https://placehold.co/400x600/1a1a1a/10b981?text=${encodeURIComponent(title)}`;
+    
+    return c.json({ imageUrl });
+  } catch (error: any) {
+    console.error('Generate cover art error:', error);
+    return c.json({ error: `Failed to generate cover art: ${error.message}` }, 500);
+  }
+});
+
+// Export ebook
+app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { bookDetails, chapters, coverArtUrl, format } = await c.req.json();
+    
+    // Save book to user's collection
+    const bookId = `${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const book = {
+      id: bookId,
+      ...bookDetails,
+      chapters: chapters.length,
+      totalWords: chapters.reduce((sum: number, ch: any) => sum + ch.wordCount, 0),
+      coverArtUrl,
+      createdAt: new Date().toISOString(),
+    };
+    
+    const books = await kv.get(`user:${userId}:ebooks`) || [];
+    books.push(book);
+    await kv.set(`user:${userId}:ebooks`, books);
+    
+    // Save full book data
+    await kv.set(`ebook:${bookId}`, {
+      ...book,
+      fullChapters: chapters,
+    });
+    
+    // Create simple text export (in a real implementation, you'd use a library to create DOCX/PDF)
+    let exportContent = `${bookDetails.title}\n\n`;
+    exportContent += `${bookDetails.description}\n\n`;
+    exportContent += `${'='.repeat(50)}\n\n`;
+    
+    chapters.forEach((chapter: any, index: number) => {
+      exportContent += `Chapter ${index + 1}: ${chapter.title}\n\n`;
+      exportContent += `${chapter.content}\n\n`;
+      exportContent += `${'='.repeat(50)}\n\n`;
+    });
+    
+    // Return as downloadable file
+    const blob = new TextEncoder().encode(exportContent);
+    
+    return new Response(blob, {
+      headers: {
+        'Content-Type': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${bookDetails.title}.${format}"`,
+      },
+    });
+  } catch (error: any) {
+    console.error('Export ebook error:', error);
+    return c.json({ error: `Failed to export ebook: ${error.message}` }, 500);
   }
 });
 

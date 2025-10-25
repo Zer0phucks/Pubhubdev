@@ -18,10 +18,11 @@ import {
   Settings,
   Video,
   Bell,
+  BookOpen,
 } from "lucide-react";
 import { PlatformIcon } from "./PlatformIcon";
 
-type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "settings";
+type View = "home" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "settings";
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
 interface CommandPaletteProps {
@@ -41,6 +42,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate, onPlatformSelec
     { id: "calendar" as View, label: "Calendar", icon: Calendar, shortcut: "⌘C" },
     { id: "analytics" as View, label: "Analytics", icon: BarChart3, shortcut: "⌘A" },
     { id: "library" as View, label: "Remix", icon: Video, shortcut: "⌘M" },
+    { id: "ebooks" as View, label: "Ebook Generator", icon: BookOpen, shortcut: "⌘E" },
     { id: "notifications" as View, label: "Notifications", icon: Bell, shortcut: "⌘B" },
     { id: "settings" as View, label: "Settings", icon: Settings, shortcut: "⌘," },
   ];

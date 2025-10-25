@@ -84,16 +84,23 @@ export function AuthPage() {
     } catch (err: any) {
       console.error("Sign up error:", err);
       
+      const errorMessage = (err.message || '').toLowerCase();
+      
       // Handle common Supabase auth errors
-      if (err.message?.includes("already registered") || err.message?.includes("User already registered")) {
+      if (errorMessage.includes('already') || 
+          errorMessage.includes('registered') ||
+          errorMessage.includes('exists')) {
         // Switch to sign-in mode and show helpful message
         setIsSignUp(false);
+        setPassword(''); // Clear password for security
         setError("This email is already registered. Please sign in below.");
-      } else if (err.message?.includes("check your email")) {
+      } else if (errorMessage.includes('check your email') || 
+                 errorMessage.includes('confirm')) {
         // Email confirmation required
         setSuccess("Account created! Please check your email to confirm your account before signing in.");
         setIsSignUp(false);
-      } else if (err.message?.includes("Password")) {
+        setPassword(''); // Clear password for security
+      } else if (errorMessage.includes('password')) {
         setError(err.message);
       } else {
         setError(err.message || "Failed to sign up. Please try again.");

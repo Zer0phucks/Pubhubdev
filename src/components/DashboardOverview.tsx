@@ -57,9 +57,11 @@ function StatCard({ title, value, change, icon, isPositive }: StatCardProps) {
 
 interface DashboardOverviewProps {
   selectedPlatform: Platform;
+  onNavigate?: (view: "compose" | "calendar") => void;
+  onOpenAIChat?: (query?: string, autoSubmit?: boolean) => void;
 }
 
-export function DashboardOverview({ selectedPlatform }: DashboardOverviewProps) {
+export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }: DashboardOverviewProps) {
   const [loading, setLoading] = useState(true);
   const [postsData, setPostsData] = useState<any[]>([]);
   const [connectionsData, setConnectionsData] = useState<any[]>([]);
@@ -515,7 +517,10 @@ export function DashboardOverview({ selectedPlatform }: DashboardOverviewProps) 
           <Zap className="w-5 h-5 text-muted-foreground" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <button className="p-4 border border-blue-500/20 rounded-lg hover:bg-blue-500/10 transition-all hover:border-blue-500/40 text-left group">
+          <button 
+            onClick={() => onNavigate?.("compose")}
+            className="p-4 border border-blue-500/20 rounded-lg hover:bg-blue-500/10 transition-all hover:border-blue-500/40 text-left group"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-shadow">
                 <MessageSquare className="w-5 h-5 text-white" />
@@ -526,7 +531,10 @@ export function DashboardOverview({ selectedPlatform }: DashboardOverviewProps) 
               </div>
             </div>
           </button>
-          <button className="p-4 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-all hover:border-purple-500/40 text-left group">
+          <button 
+            onClick={() => onNavigate?.("calendar")}
+            className="p-4 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-all hover:border-purple-500/40 text-left group"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-shadow">
                 <Calendar className="w-5 h-5 text-white" />
@@ -537,7 +545,10 @@ export function DashboardOverview({ selectedPlatform }: DashboardOverviewProps) 
               </div>
             </div>
           </button>
-          <button className="p-4 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/10 transition-all hover:border-emerald-500/40 text-left group">
+          <button 
+            onClick={() => onOpenAIChat?.("Can you give me some suggestions for content to create?", true)}
+            className="p-4 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/10 transition-all hover:border-emerald-500/40 text-left group"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow">
                 <Zap className="w-5 h-5 text-white" />

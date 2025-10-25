@@ -119,13 +119,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
+      // Normalize error messages for better handling
+      if (error.message.includes('already') || error.message.includes('registered')) {
+        throw new Error('User already registered');
+      }
       throw error;
     }
 
     // If user exists but no session, it might be waiting for email confirmation
     // or the user already exists
     if (data.user && !data.session) {
-      // Check if email confirmation is required
+      // This can happen when:
+      // 1. Email confirmation is required
+      // 2. User already exists (Supabase sometimes returns user without error)
       throw new Error('Please check your email to confirm your account before signing in.');
     }
 
