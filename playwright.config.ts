@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'https://pubhub.dev',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -38,7 +38,7 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'https://pubhub.dev',
     reuseExistingServer: !process.env.CI,
   },
 });

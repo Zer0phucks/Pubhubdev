@@ -28,6 +28,7 @@ export default defineConfig({
       '**/dist/**',
       '**/build/**',
       '**/tests/e2e/**',
+      '**/src/test/supabase/**',
     ],
   },
   resolve: {

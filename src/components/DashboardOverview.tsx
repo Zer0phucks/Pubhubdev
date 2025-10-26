@@ -6,8 +6,9 @@ import { getAutomationRules, getTransformationLabel } from "../utils/automationR
 import { postsAPI, connectionsAPI } from "../utils/api";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useProject } from "./ProjectContext";
+import { OnboardingChecklist } from "./OnboardingChecklist";
 
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -345,6 +346,9 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
 
   return (
     <div className="space-y-6">
+      {/* Onboarding Checklist */}
+      <OnboardingChecklist />
+      
       {/* Header with Refresh */}
       <div className="flex items-center justify-between">
         <div>
@@ -366,7 +370,7 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-tour="dashboard">
         {realStats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
@@ -520,6 +524,7 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
           <button 
             onClick={() => onNavigate?.("compose")}
             className="p-4 border border-blue-500/20 rounded-lg hover:bg-blue-500/10 transition-all hover:border-blue-500/40 text-left group"
+            data-tour="compose"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-shadow">
@@ -534,6 +539,7 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
           <button 
             onClick={() => onNavigate?.("calendar")}
             className="p-4 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-all hover:border-purple-500/40 text-left group"
+            data-tour="calendar"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-shadow">

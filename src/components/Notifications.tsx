@@ -12,7 +12,7 @@ import {
 } from "./ui/dropdown-menu";
 import { PlatformIcon } from "./PlatformIcon";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 type NotificationType = "all" | "unread" | "comments" | "mentions" | "engagement" | "system";
 

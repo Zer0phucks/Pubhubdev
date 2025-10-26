@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from "./ui/popover";
 import { Sparkles, Loader2, Wand2, Copy, Check, RotateCw } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 interface AITextGeneratorProps {
   onGenerate: (text: string) => void;

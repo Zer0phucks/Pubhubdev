@@ -3,6 +3,7 @@ import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
+import { rateLimit, rateLimitConfigs } from "./rate-limit.tsx";
 
 const app = new Hono();
 
@@ -13,13 +14,17 @@ app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
-    origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    origin: Deno.env.get('FRONTEND_URL') || "http://localhost:5173",
+    allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    exposeHeaders: ["Content-Length"],
+    exposeHeaders: ["Content-Length", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     maxAge: 600,
+    credentials: true,
   }),
 );
+
+// Apply rate limiting to all routes
+app.use('*', rateLimit(rateLimitConfigs.api));
 
 // Supabase admin client for database access and auth verification
 const supabaseAdmin = createClient(
@@ -81,7 +86,7 @@ app.get("/make-server-19ccd85e/health", (c) => {
 // ============= STORAGE/UPLOAD ROUTES =============
 
 // Upload profile picture
-app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/profile-picture", rateLimit(rateLimitConfigs.upload), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const formData = await c.req.formData();
@@ -142,7 +147,7 @@ app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) 
 });
 
 // Upload project logo
-app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/project-logo/:projectId", rateLimit(rateLimitConfigs.upload), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const projectId = c.req.param('projectId');
@@ -215,7 +220,7 @@ app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, as
 // ============= AUTH ROUTES =============
 
 // Initialize user on first login (called automatically after sign up/in)
-app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/auth/initialize", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const user = c.get('user');
@@ -294,7 +299,7 @@ app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
 });
 
 // Get user profile
-app.get("/make-server-19ccd85e/auth/profile", requireAuth, async (c) => {
+app.get("/make-server-19ccd85e/auth/profile", rateLimit(rateLimitConfigs.api), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     
@@ -1322,7 +1327,7 @@ app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
 
 // OAuth configuration
 const getOAuthConfig = (platform: string) => {
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:5173';
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
   const redirectUri = `${frontendUrl}/oauth/callback`;
   
   const configs: Record<string, any> = {
@@ -1396,7 +1401,7 @@ const getOAuthConfig = (platform: string) => {
 };
 
 // Start OAuth flow - generates authorization URL
-app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c) => {
+app.get("/make-server-19ccd85e/oauth/authorize/:platform", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
   try {
     const platform = c.req.param('platform');
     const userId = c.get('userId');
@@ -1450,7 +1455,7 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
 });
 
 // Handle OAuth callback - exchange code for token
-app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
   try {
     const { code, state, platform } = await c.req.json();
     const userId = c.get('userId');

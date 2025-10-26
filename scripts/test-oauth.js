@@ -11,7 +11,7 @@ const readline = require('readline');
 const CONFIG = {
   supabaseUrl: process.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL',
   supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || 'YOUR_ANON_KEY',
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  frontendUrl: process.env.FRONTEND_URL || 'https://pubhub.dev',
   platforms: [
     'twitter',
     'instagram',

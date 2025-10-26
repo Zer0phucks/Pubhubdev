@@ -9,7 +9,7 @@ import { Upload, User, Image as ImageIcon, Loader2, Check } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useProject } from "./ProjectContext";
 import { uploadAPI } from "../utils/api";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export function ProfileSettings() {
   const { user, profilePicture, refreshProfile } = useAuth();

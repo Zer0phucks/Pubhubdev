@@ -11,7 +11,7 @@ import { AITextGenerator } from "./AITextGenerator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Sparkles, Plus, X } from "lucide-react";
 import type { Platform, ContentTemplate, TemplateCategory } from "../types";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 interface CreateTemplateDialogProps {
   open: boolean;

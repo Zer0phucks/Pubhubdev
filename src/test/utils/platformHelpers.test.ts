@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getPlatformName, isPlatformConnected, arePlatformsConnected } from '../utils/platformHelpers';
-import { connectionsAPI } from '../utils/api';
+import { getPlatformName, isPlatformConnected, arePlatformsConnected } from '@/utils/platformHelpers';
+import { connectionsAPI } from '@/utils/api';
 
 // Mock the API module
-vi.mock('../utils/api', () => ({
+vi.mock('@/utils/api', () => ({
   connectionsAPI: {
     getAll: vi.fn(),
   },

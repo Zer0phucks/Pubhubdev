@@ -28,7 +28,7 @@ import {
   getTransformationLabel,
   getActionLabel,
 } from "../utils/automationRules";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export function AutomationSettings() {
   const [rules, setRules] = useState<AutomationRule[]>([]);

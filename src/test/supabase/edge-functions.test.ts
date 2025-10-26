@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
+import { app } from '../../supabase/functions/server/index'; // Import the Hono app
 
 // Mock environment variables
 const mockEnv = {
   SUPABASE_URL: 'https://test.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
-  FRONTEND_URL: 'http://localhost:3000',
+  FRONTEND_URL: 'https://pubhub.dev',
 };
 
 // Mock Deno.env
@@ -434,63 +435,72 @@ describe('Supabase Edge Functions', () => {
     });
 
     it('should upload profile picture', async () => {
+      // Mock Supabase auth
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { user: mockUser }, error: null }),
+      });
+
       const formData = new FormData();
       const file = new File(['test content'], 'test.jpg', { type: 'image/jpeg' });
       formData.append('file', file);
 
-      const response = await fetch('/make-server-19ccd85e/upload/profile-picture', {
+      const req = new Request('http://localhost/make-server-19ccd85e/upload/profile-picture', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer test-token',
-        },
+        headers: { 'Authorization': 'Bearer valid-token' },
         body: formData,
       });
-
-      const data = await response.json();
-      
-      expect(response.status).toBe(200);
-      expect(data.url).toBeDefined();
-      expect(data.path).toBeDefined();
+      const res = await app.fetch(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.url).toBe('http://mock.url/file.jpg');
+      expect(body.path).toBe('profile-pictures/test-user-id.png');
     });
 
     it('should reject invalid file types', async () => {
+      // Mock Supabase auth
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { user: mockUser }, error: null }),
+      });
+
       const formData = new FormData();
       const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
       formData.append('file', file);
 
-      const response = await fetch('/make-server-19ccd85e/upload/profile-picture', {
+      const req = new Request('http://localhost/make-server-19ccd85e/upload/profile-picture', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer test-token',
-        },
+        headers: { 'Authorization': 'Bearer valid-token' },
         body: formData,
       });
-
-      const data = await response.json();
-      
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('Invalid file type');
+      const res = await app.fetch(req);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain('Invalid file type');
     });
 
     it('should reject oversized files', async () => {
+      // Mock Supabase auth
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { user: mockUser }, error: null }),
+      });
+
       const formData = new FormData();
       // Create a large file (6MB)
       const largeContent = 'x'.repeat(6 * 1024 * 1024);
       const file = new File([largeContent], 'large.jpg', { type: 'image/jpeg' });
       formData.append('file', file);
 
-      const response = await fetch('/make-server-19ccd85e/upload/profile-picture', {
+      const req = new Request('http://localhost/make-server-19ccd85e/upload/profile-picture', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer test-token',
-        },
+        headers: { 'Authorization': 'Bearer valid-token' },
         body: formData,
       });
-
-      const data = await response.json();
-      
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('File size exceeds 5MB limit');
+      const res = await app.fetch(req);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain('File size exceeds 5MB limit');
     });
   });
 });

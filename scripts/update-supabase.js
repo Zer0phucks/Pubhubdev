@@ -127,7 +127,7 @@ export const publicAnonKey = "${anonKey}"
   log('\n📝 Next Steps:', colors.bright);
   log('\n1. Test locally:', colors.cyan);
   log('   npm run dev', colors.blue);
-  log('   # Open http://localhost:3000 and test authentication', colors.blue);
+  log('   # Open https://pubhub.dev and test authentication', colors.blue);
 
   log('\n2. Set Vercel environment variables:', colors.cyan);
   log('   vercel env add VITE_SUPABASE_URL production', colors.blue);

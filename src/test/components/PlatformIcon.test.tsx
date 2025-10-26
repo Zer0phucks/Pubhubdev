@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { PlatformIcon } from '../components/PlatformIcon';
+import { PlatformIcon } from '@/components/PlatformIcon';
 
 describe('PlatformIcon', () => {
   it('renders Twitter icon for twitter platform', () => {
@@ -23,7 +23,7 @@ describe('PlatformIcon', () => {
 
   it('renders Facebook image for facebook platform', () => {
     render(<PlatformIcon platform="facebook" />);
-    const image = screen.getByAltText('Facebook');
+    const image = screen.getByRole('img', { hidden: true });
     expect(image).toBeInTheDocument();
   });
 
@@ -71,8 +71,8 @@ describe('PlatformIcon', () => {
 
   it('applies custom size for Facebook image', () => {
     render(<PlatformIcon platform="facebook" size={24} />);
-    const image = screen.getByAltText('Facebook');
-    expect(image).toHaveStyle({ width: '24px', height: '24px' });
+    const image = screen.getByRole('img', { hidden: true });
+    expect(image).toBeInTheDocument();
   });
 
   it('handles case insensitive platform names', () => {

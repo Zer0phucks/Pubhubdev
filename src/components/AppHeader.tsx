@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { 
-  Bell, 
+import {
+  Bell,
   Settings,
   PenSquare,
   Sparkles,
@@ -12,6 +12,7 @@ import {
   User,
   Keyboard,
   Palette,
+  Menu,
 } from "lucide-react";
 import { PlatformIcon } from "./PlatformIcon";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -40,6 +41,7 @@ interface AppHeaderProps {
   onOpenAccountSettings: (tab?: AccountSettingsTab) => void;
   onOpenCommandPalette: () => void;
   onOpenAIChat: (query?: string) => void;
+  onToggleSidebar?: () => void;
 }
 
 export function AppHeader({
@@ -50,6 +52,7 @@ export function AppHeader({
   onOpenAccountSettings,
   onOpenCommandPalette,
   onOpenAIChat,
+  onToggleSidebar,
 }: AppHeaderProps) {
   const [aiQuery, setAIQuery] = useState("");
   const { user, signout, profilePicture } = useAuth();
@@ -161,6 +164,16 @@ export function AppHeader({
       {showPlatformSelector ? (
         <div className="pl-0 pr-6 overflow-x-auto h-[53px] flex items-center justify-between gap-4">
           <div className="flex items-center">
+            {/* Mobile Menu Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden ml-2 mr-2"
+              onClick={onToggleSidebar}
+              aria-label="Toggle navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
             <Tabs value={selectedPlatform} onValueChange={onPlatformChange}>
               <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-0">
                 {platforms.map((platform) => (
@@ -279,6 +292,17 @@ export function AppHeader({
         </div>
       ) : (
         <div className="px-6 h-[53px] flex items-center justify-between gap-4">
+          {/* Mobile Menu Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onToggleSidebar}
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
           {/* Ask PubHub Input */}
           <div className="flex-1 max-w-md">
             <div className="relative group">

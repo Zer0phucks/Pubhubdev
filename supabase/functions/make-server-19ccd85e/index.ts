@@ -1322,7 +1322,7 @@ app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
 
 // OAuth configuration
 const getOAuthConfig = (platform: string) => {
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:5173';
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
   const redirectUri = `${frontendUrl}/oauth/callback`;
   
   const configs: Record<string, any> = {

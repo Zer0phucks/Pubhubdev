@@ -9,6 +9,171 @@ const supabaseHandlers = [
   }),
 
   // Auth endpoints
+  http.post('*/make-server-19ccd85e/auth/initialize', () => {
+    return HttpResponse.json({ 
+      message: 'User initialized successfully',
+      user: {
+        id: 'test-user-id',
+        email: 'test@example.com',
+        name: 'Test User'
+      }
+    });
+  }),
+
+  http.get('*/make-server-19ccd85e/auth/profile', () => {
+    return HttpResponse.json({ 
+      user: { 
+        id: 'test-user-id', 
+        name: 'Test User',
+        profilePicture: null 
+      } 
+    });
+  }),
+
+  // Posts endpoints
+  http.get('*/make-server-19ccd85e/posts', ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    
+    let posts = [
+      { id: 'post-1', content: 'Test post 1', status: 'draft', platforms: ['twitter'] },
+      { id: 'post-2', content: 'Test post 2', status: 'published', platforms: ['instagram'] }
+    ];
+    
+    if (status) {
+      posts = posts.filter(post => post.status === status);
+    }
+    
+    return HttpResponse.json({ posts });
+  }),
+
+  http.post('*/make-server-19ccd85e/posts', () => {
+    return HttpResponse.json({ 
+      post: { 
+        id: 'post-new', 
+        content: 'New test post', 
+        status: 'draft',
+        platforms: ['twitter'],
+        userId: 'test-user-id'
+      } 
+    });
+  }),
+
+  http.put('*/make-server-19ccd85e/posts/*', () => {
+    return HttpResponse.json({ 
+      post: { 
+        id: 'post-1', 
+        content: 'Updated post content', 
+        status: 'published' 
+      } 
+    });
+  }),
+
+  http.delete('*/make-server-19ccd85e/posts/*', () => {
+    return HttpResponse.json({ message: 'Post deleted successfully' });
+  }),
+
+  // Projects endpoints
+  http.get('*/make-server-19ccd85e/projects', () => {
+    return HttpResponse.json({ 
+      projects: [
+        { id: 'project-1', name: 'Test Project', description: 'A test project' }
+      ] 
+    });
+  }),
+
+  http.post('*/make-server-19ccd85e/projects', () => {
+    return HttpResponse.json({ 
+      project: { 
+        id: 'project-new', 
+        name: 'New Test Project', 
+        description: 'A new test project',
+        userId: 'test-user-id'
+      } 
+    });
+  }),
+
+  http.put('*/make-server-19ccd85e/projects/*', () => {
+    return HttpResponse.json({ 
+      project: { 
+        id: 'project-1', 
+        name: 'Updated Project Name', 
+        description: 'Updated description' 
+      } 
+    });
+  }),
+
+  // OAuth endpoints
+  http.get('*/make-server-19ccd85e/oauth/authorize/*', () => {
+    return HttpResponse.json({ 
+      authUrl: 'https://twitter.com/i/oauth2/authorize?client_id=test&redirect_uri=test',
+      state: 'test-state'
+    });
+  }),
+
+  http.post('*/make-server-19ccd85e/oauth/callback', () => {
+    return HttpResponse.json({ 
+      success: true,
+      platform: 'twitter',
+      username: 'testuser'
+    });
+  }),
+
+  // File upload endpoints
+  http.post('*/make-server-19ccd85e/upload/profile-picture', async ({ request }) => {
+    try {
+      // Handle both FormData and regular requests
+      let file: File | null = null;
+      
+      if (request.headers.get('content-type')?.includes('multipart/form-data')) {
+        const formData = await request.formData();
+        file = formData.get('file') as File;
+      } else {
+        // For test environment, try to parse as FormData anyway
+        try {
+          const formData = await request.formData();
+          file = formData.get('file') as File;
+        } catch (e) {
+          // If that fails, return error
+          return HttpResponse.json({ 
+            error: 'Invalid request format' 
+          }, { status: 400 });
+        }
+      }
+      
+      if (!file) {
+        return HttpResponse.json({ 
+          error: 'No file provided' 
+        }, { status: 400 });
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        return HttpResponse.json({ 
+          error: 'Invalid file type. Only JPEG, PNG, GIF, WebP, and SVG are allowed.' 
+        }, { status: 400 });
+      }
+      
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        return HttpResponse.json({ 
+          error: 'File size exceeds 5MB limit' 
+        }, { status: 400 });
+      }
+      
+      return HttpResponse.json({ 
+        url: 'http://mock.url/file.jpg',
+        path: 'profile-pictures/test-user-id.png'
+      });
+    } catch (error) {
+      console.error('File upload error:', error);
+      return HttpResponse.json({ 
+        error: 'Invalid request' 
+      }, { status: 400 });
+    }
+  }),
+
+  // Auth endpoints
   http.post('*/auth/v1/signup', () => {
     return HttpResponse.json({
       user: {

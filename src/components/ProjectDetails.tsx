@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Upload, Image as ImageIcon, Loader2, Check, Save, FolderOpen } from "lucide-react";
 import { useProject } from "./ProjectContext";
 import { uploadAPI } from "../utils/api";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export function ProjectDetails() {
   const { currentProject, projects, refreshProjects, updateProject } = useProject();

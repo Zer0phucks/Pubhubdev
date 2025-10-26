@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { getAuthToken } from '../utils/api';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface DebugInfo {
   section: string;
@@ -211,7 +211,7 @@ export function OAuthDebugPanel() {
         status: 'success',
         message: 'Using HTTPS (recommended for production)',
       });
-    } else if (currentUrl.startsWith('http://localhost')) {
+    } else if (currentUrl.startsWith('https://pubhub.dev')) {
       info.push({
         section: 'Configuration',
         status: 'warning',

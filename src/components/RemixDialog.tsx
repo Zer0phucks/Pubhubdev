@@ -21,7 +21,7 @@ import {
   CheckCircle2,
   ArrowLeft
 } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { transformVideoContent, TransformedContent } from "../utils/contentTransformer";
 

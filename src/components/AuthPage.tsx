@@ -363,6 +363,28 @@ export function AuthPage() {
                 ? "Already have an account? Sign In"
                 : "Don't have an account? Sign Up"}
             </Button>
+
+            {/* Terms and Privacy Links */}
+            <div className="text-center text-xs text-muted-foreground">
+              By {isSignUp ? "signing up" : "signing in"}, you agree to our{" "}
+              <a
+                href="/terms"
+                className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy"
+                className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Privacy Policy
+              </a>
+            </div>
           </CardFooter>
         </form>
       </Card>

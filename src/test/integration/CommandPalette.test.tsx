@@ -1,18 +1,49 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AuthProvider } from '../components/AuthContext';
-import { ProjectProvider } from '../components/ProjectContext';
-import { CommandPalette } from '../components/CommandPalette';
+import { AuthProvider } from '@/components/AuthContext';
+import { ProjectProvider } from '@/components/ProjectContext';
+import { CommandPalette } from '@/components/CommandPalette';
+import React, { useState, useEffect } from 'react';
 
 // Mock the CommandPalette component dependencies
-vi.mock('../components/CommandPalette', () => ({
-  CommandPalette: ({ onViewChange }: { onViewChange: (view: string) => void }) => (
-    <div data-testid="command-palette">
-      <button onClick={() => onViewChange('compose')}>Compose</button>
-      <button onClick={() => onViewChange('analytics')}>Analytics</button>
-    </div>
-  ),
+vi.mock('@/components/CommandPalette', () => ({
+  CommandPalette: ({ onViewChange }: { onViewChange: (view: string) => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          setIsOpen(prev => !prev);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsOpen(false);
+        }
+      };
+
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    if (!isOpen) return null;
+
+    return (
+      <div data-testid="command-palette">
+        <input
+          type="text"
+          placeholder="Search commands..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          role="textbox"
+        />
+        <button onClick={() => onViewChange('compose')}>Compose</button>
+        <button onClick={() => onViewChange('analytics')}>Analytics</button>
+        <button onClick={() => setIsOpen(false)}>Close</button>
+      </div>
+    );
+  },
 }));
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (

@@ -257,3 +257,21 @@ export const uploadAPI = {
     return response.json();
   },
 };
+
+// ============= INBOX API =============
+
+export const inboxAPI = {
+  getMessages: (projectId: string, platform?: string) => {
+    const params = new URLSearchParams({ projectId });
+    if (platform) params.append('platform', platform);
+    return apiCall(`/inbox?${params}`);
+  },
+  replyToMessage: (messageId: string, reply: string, projectId: string) => apiCall('/inbox/reply', {
+    method: 'POST',
+    body: JSON.stringify({ messageId, reply, projectId }),
+  }),
+  markAsRead: (messageId: string, projectId: string) => apiCall('/inbox/mark-read', {
+    method: 'POST',
+    body: JSON.stringify({ messageId, projectId }),
+  }),
+};

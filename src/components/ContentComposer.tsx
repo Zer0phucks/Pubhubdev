@@ -32,7 +32,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { PLATFORM_CONSTRAINTS, type Platform, type Attachment } from "../types";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { TransformedContent } from "../utils/contentTransformer";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 

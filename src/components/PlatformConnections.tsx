@@ -28,7 +28,7 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 

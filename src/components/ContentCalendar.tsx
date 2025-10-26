@@ -10,7 +10,7 @@ import { CalendarWeekView } from "./calendar/CalendarWeekView";
 import { CalendarDayDetail } from "./calendar/CalendarDayDetail";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { postsAPI } from "../utils/api";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useProject } from "./ProjectContext";
 import { 
   ChevronLeft, 

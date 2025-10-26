@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import type { Platform, ContentTemplate, TemplateCategory } from "../types";
 import { getCustomTemplates, saveCustomTemplate, deleteCustomTemplate } from "../utils/customTemplates";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,

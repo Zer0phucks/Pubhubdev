@@ -25,7 +25,7 @@ Use this checklist whenever a platform connection fails. It covers the Supabase 
 | Pinterest | `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_REDIRECT_URI`. |
 | Reddit    | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_REDIRECT_URI`. |
 
-Configure them inside `.env.local` (for `supabase functions serve`) or the Supabase dashboard → Edge Functions → Secrets. Make sure `FRONTEND_URL` matches the React app URL (default `http://localhost:5173`).
+Configure them inside `.env.local` (for `supabase functions serve`) or the Supabase dashboard → Edge Functions → Secrets. Make sure `FRONTEND_URL` matches the React app URL (default `https://pubhub.dev`).
 
 ## 3. Run the Edge function locally
 

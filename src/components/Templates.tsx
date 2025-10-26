@@ -15,7 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import { getCustomTemplates, deleteCustomTemplate, type CustomTemplate } from "../utils/customTemplates";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 export function Templates() {
   const [templates, setTemplates] = useState<CustomTemplate[]>(getCustomTemplates());
