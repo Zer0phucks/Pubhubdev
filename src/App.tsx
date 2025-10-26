@@ -99,7 +99,6 @@ function AppContent() {
   const [aiInitialQuery, setAIInitialQuery] = useState<string>("");
   const [aiAutoSubmit, setAIAutoSubmit] = useState(false);
   const [transformedContent, setTransformedContent] = useState<TransformedContent | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [remixContent, setRemixContent] = useState<RemixContent | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const { user, loading, isAuthenticated } = useAuth();
@@ -222,10 +221,6 @@ function AppContent() {
         setProjectSettingsTab(subView as ProjectSettingsTab);
       }
     }
-    // Close sidebar on mobile after navigation
-    if (window.innerWidth < 768) {
-      setSidebarOpen(false);
-    }
   };
 
   const handleInboxViewChange = (view: InboxView) => {
@@ -339,28 +334,18 @@ function AppContent() {
   // Show landing page or auth page if not authenticated
   if (!isAuthenticated) {
     if (showLanding) {
-      return <Landing onGetStarted={() => setShowLanding(false)} />;
+      return <Landing 
+        onGetStarted={() => setShowLanding(false)} 
+        onSignUp={() => setShowLanding(false)}
+      />;
     }
     return <AuthPage />;
   }
 
   return (
-    <SidebarProvider defaultOpen={sidebarOpen}>
+    <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
-        {/* Mobile overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-30 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        <Sidebar
-          collapsible="none"
-          className={`fixed left-0 top-0 h-screen z-40 transition-transform ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0`}
-        >
+        <Sidebar collapsible="none" className="fixed left-0 top-0 h-screen z-20">
           <SidebarHeader className="border-b border-sidebar-border px-4 h-[53px] flex items-center">
             <PubHubLogo className="h-12 w-auto" />
           </SidebarHeader>
@@ -546,7 +531,7 @@ function AppContent() {
           </SidebarContent>
         </Sidebar>
 
-        <main className="flex-1 flex flex-col min-w-0 md:ml-[var(--sidebar-width)]">
+        <main className="flex-1 flex flex-col min-w-0 ml-[var(--sidebar-width)]">
           <AppHeader
             currentView={currentView}
             selectedPlatform={selectedPlatform}
@@ -558,7 +543,6 @@ function AppContent() {
               setAIChatOpen(true);
               // You can pass the query to the AI chat dialog if needed
             }}
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
 
           <div className="flex-1 px-6 py-6 overflow-auto">

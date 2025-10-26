@@ -20,9 +20,10 @@ import { PlatformIcon } from "./PlatformIcon";
 
 interface LandingProps {
   onGetStarted: () => void;
+  onSignUp?: () => void;
 }
 
-export function Landing({ onGetStarted }: LandingProps) {
+export function Landing({ onGetStarted, onSignUp }: LandingProps) {
   const [theme] = useState<"dark">("dark");
 
   const features = [
@@ -106,9 +107,17 @@ export function Landing({ onGetStarted }: LandingProps) {
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <PubHubLogo className="h-12 w-auto" />
-          <Button onClick={onGetStarted} variant="outline">
-            Sign In
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button onClick={onGetStarted} variant="outline">
+              Sign In
+            </Button>
+            <Button 
+              onClick={onSignUp || onGetStarted}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
+            >
+              Sign Up
+            </Button>
+          </div>
         </div>
       </nav>
 
