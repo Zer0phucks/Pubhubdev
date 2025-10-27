@@ -1328,7 +1328,9 @@ app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
 // OAuth configuration
 const getOAuthConfig = (platform: string) => {
   const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
-  const redirectUri = `${frontendUrl}/oauth/callback`;
+  // Default redirect URI - check environment variables first, otherwise use /oauth/callback with platform query
+  const baseRedirectUri = Deno.env.get('OAUTH_REDIRECT_URL') || `${frontendUrl}/oauth/callback`;
+  const redirectUri = `${baseRedirectUri}?platform=${platform}`;
   
   const configs: Record<string, any> = {
     twitter: {
@@ -1337,7 +1339,7 @@ const getOAuthConfig = (platform: string) => {
       clientId: Deno.env.get('TWITTER_CLIENT_ID'),
       clientSecret: Deno.env.get('TWITTER_CLIENT_SECRET'),
       scope: 'tweet.read tweet.write users.read offline.access',
-      redirectUri: `${frontendUrl}/oauth/callback?platform=twitter`,
+      redirectUri: Deno.env.get('TWITTER_REDIRECT_URI') || redirectUri,
     },
     instagram: {
       authUrl: 'https://api.instagram.com/oauth/authorize',

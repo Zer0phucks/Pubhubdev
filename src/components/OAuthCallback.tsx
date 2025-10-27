@@ -22,20 +22,33 @@ export function OAuthCallback() {
       const state = params.get('state');
       const error = params.get('error');
       const errorDescription = params.get('error_description');
+      const platform = params.get('platform'); // Get platform from URL
       
       // Get stored OAuth data
       const storedState = sessionStorage.getItem('oauth_state');
-      const storedPlatform = sessionStorage.getItem('oauth_platform');
+      const storedPlatform = sessionStorage.getItem('oauth_platform') || platform; // Fallback to URL param
       const storedProjectId = sessionStorage.getItem('oauth_project_id');
+
+      console.log('OAuth Callback Debug:', {
+        code: code ? 'present' : 'missing',
+        state: state ? 'present' : 'missing',
+        platform: platform || storedPlatform,
+        storedState,
+        url: window.location.href
+      });
 
       // Handle OAuth errors
       if (error) {
         throw new Error(errorDescription || error);
       }
 
-      // Validate parameters
-      if (!code || !state || !storedPlatform) {
-        throw new Error('Missing required OAuth parameters');
+      // Validate parameters - be more lenient with platform
+      if (!code || !state) {
+        throw new Error('Missing required OAuth parameters (code or state)');
+      }
+
+      if (!storedPlatform) {
+        throw new Error('Missing platform information. Please try connecting again.');
       }
 
       // Validate state matches (CSRF protection)
