@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # IMPORTANT RULE
 
-There  is only one rule, and that is to make sure you submit your work to codex whenever  you complete atask, or if you get stuck or need help,but ESPECIALLY before ending a session.
+There is only one rule, and that is to make sure you submit your work to codex whenever you complete a task, or if you get stuck or need help, but ESPECIALLY before ending a session.
 
 ## Project Overview
+
+Creator Dashboard Design is a multi-platform social media management tool built with React 18, TypeScript, Vite, and Supabase. It enables creators to manage content across Twitter/X, Instagram, LinkedIn, Facebook, YouTube, TikTok, Pinterest, Reddit, and blogs from a unified interface.
 
 ## Recent Session Summary
 
@@ -44,11 +46,35 @@ There  is only one rule, and that is to make sure you submit your work to codex 
 # Install dependencies
 npm install
 
-# Run development server (port 3000)
+# Development server (opens automatically on port 3000)
 npm run dev
 
-# Build for production
+# Production build (outputs to build/ directory)
 npm run build
+
+# Run unit tests (Vitest)
+npm run test
+
+# Run unit tests with UI
+npm run test:ui
+
+# Run unit tests once (CI mode)
+npm run test:run
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run E2E tests (Playwright)
+npm run test:e2e
+
+# Run E2E tests with UI
+npm run test:e2e:ui
+
+# Run E2E tests in headed mode (visible browser)
+npm run test:e2e:headed
+
+# Run all tests (unit + E2E)
+npm run test:all
 ```
 
 ## Architecture Overview

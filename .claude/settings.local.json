@@ -3,5 +3,10 @@
     "supabase",
     "Vercel",
     "Sentry"
-  ]
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(mv:*)"
+    ]
+  }
 }
