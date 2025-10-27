@@ -1,5 +1,6 @@
 // Platform API utilities for making authenticated requests to social media platforms
-import { projectId as supabaseProjectId, publicAnonKey } from './supabase/info';
+import { projectId as supabaseProjectId } from './supabase/info';
+import { supabase } from './supabase/client';
 
 export interface PlatformPost {
   content: string;
@@ -11,11 +12,16 @@ export interface PlatformPost {
  * Get OAuth access token for a platform
  */
 async function getAccessToken(platform: string, projectId: string): Promise<string> {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !session?.access_token) {
+    throw new Error('Not authenticated');
+  }
+
   const response = await fetch(
     `https://${supabaseProjectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/token/${platform}/${projectId}`,
     {
       headers: {
-        'Authorization': `Bearer ${publicAnonKey}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
     }
   );

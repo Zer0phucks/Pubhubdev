@@ -34,7 +34,8 @@ import {
 import { PLATFORM_CONSTRAINTS, type Platform, type Attachment } from "../types";
 import { toast } from "sonner";
 import { TransformedContent } from "../utils/contentTransformer";
-import { projectId, publicAnonKey } from "../utils/supabase/info";
+import { projectId } from "../utils/supabase/info";
+import { supabase } from "../utils/supabase/client";
 
 interface PlatformSelection {
   id: Platform;
@@ -282,13 +283,19 @@ export function ContentComposer({ transformedContent = null, remixContent = null
       const media = attachments.find(a => a.platform === platform);
 
       // Now publish to the actual platform via our Edge Function
+      // Ensure authenticated session for publishing
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('You must be signed in to publish');
+      }
+
       const publishResponse = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/posts/publish`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             postId: post.id,

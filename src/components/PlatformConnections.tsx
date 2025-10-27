@@ -8,7 +8,8 @@ import { Label } from "./ui/label";
 import { PlatformIcon } from "./PlatformIcon";
 import { connectionsAPI } from "../utils/api";
 import { useProject } from "./ProjectContext";
-import { projectId, publicAnonKey } from "../utils/supabase/info";
+import { projectId } from "../utils/supabase/info";
+import { supabase } from "../utils/supabase/client";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -225,12 +226,18 @@ export function PlatformConnections() {
         description: 'You will be redirected to authorize PubHub'
       });
 
-      // Get authorization URL from backend
+      // Get current user session for authenticated request
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('You must be signed in to connect platforms');
+      }
+
+      // Get authorization URL from backend (requires authenticated bearer token)
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=${currentProject.id}`,
         {
           headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
         }
       );

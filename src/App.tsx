@@ -67,6 +67,7 @@ import { Toaster } from "./components/ui/sonner";
 import { TransformedContent } from "./utils/contentTransformer";
 import { Trending } from "./components/Trending";
 import { OAuthCallback } from "./components/OAuthCallback";
+import { AuthCallback } from "./components/AuthCallback";
 import { CompetitionWatch } from "./components/CompetitionWatch";
 import { NotFound } from "./components/NotFound";
 
@@ -328,7 +329,11 @@ function AppContent() {
 
   // Check if this is an OAuth callback
   if (window.location.pathname === '/oauth/callback') {
-    return <OAuthCallback />;
+    const url = new URL(window.location.href);
+    const hasPlatformParam = !!url.searchParams.get('platform');
+    const hasStoredOAuthState = !!sessionStorage.getItem('oauth_state');
+    // If it's a platform integration callback, render OAuthCallback; otherwise handle Supabase auth callback
+    return (hasPlatformParam || hasStoredOAuthState) ? <OAuthCallback /> : <AuthCallback />;
   }
 
   // Show landing page or auth page if not authenticated
