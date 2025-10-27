@@ -214,9 +214,9 @@ export function OAuthDebugPanel() {
     } else if (currentUrl.startsWith('https://pubhub.dev')) {
       info.push({
         section: 'Configuration',
-        status: 'warning',
-        message: 'Using localhost (development mode)',
-        details: 'Make sure FRONTEND_URL is set correctly in production',
+        status: 'success',
+        message: 'Using production domain (pubhub.dev)',
+        details: 'This is the correct production configuration',
       });
     } else {
       info.push({

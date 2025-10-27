@@ -113,8 +113,7 @@ If you still get CORS errors, update the Edge Function's CORS settings in `supab
 // Update the CORS configuration
 cors({
   origin: [
-    "http://localhost:3000",
-    "http://localhost:5173",
+    "https://pubhub.dev",
     "https://pubhubdev-5p7cc2lfd-pubhub.vercel.app",
     "https://*.vercel.app",
     "https://pubhub.dev"

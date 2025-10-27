@@ -14,7 +14,7 @@ app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
-    origin: Deno.env.get('FRONTEND_URL') || "http://localhost:5173",
+    origin: Deno.env.get('FRONTEND_URL') || "https://pubhub.dev",
     allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],

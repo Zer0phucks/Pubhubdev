@@ -21,7 +21,7 @@ const PLATFORMS = [
   'reddit'
 ] as const;
 
-const BASE_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+const BASE_URL = 'https://pubhub.dev';
 const PRODUCTION_URL = 'https://pubhub.dev';
 
 test.describe('OAuth Callback URL Verification', () => {
@@ -29,10 +29,6 @@ test.describe('OAuth Callback URL Verification', () => {
   test('should verify callback URL structure', async ({ page }) => {
     for (const platform of PLATFORMS) {
       console.log(`\n📋 Testing ${platform.toUpperCase()} callback URL...`);
-      
-      // Test local development callback URL
-      const localCallbackUrl = `${BASE_URL}/oauth/callback?platform=${platform}`;
-      console.log(`🔗 Local: ${localCallbackUrl}`);
       
       // Test production callback URL
       const prodCallbackUrl = `${PRODUCTION_URL}/oauth/callback?platform=${platform}`;
