@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 
 import { createClient } from "@supabase/supabase-js";
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+
+// Load .env from project root if present
+try {
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+} catch {}
 
 const DEFAULT_PROJECT_ID = "vcdfzxjlahsajulpxzsn";
 const SUPABASE_URL =

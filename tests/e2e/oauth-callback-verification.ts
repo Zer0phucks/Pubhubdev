@@ -21,7 +21,7 @@ const PLATFORMS = [
   'reddit'
 ] as const;
 
-const BASE_URL = 'https://pubhub.dev';
+const BASE_URL = process.env.BASE_URL || 'https://pubhub.dev';
 const PRODUCTION_URL = 'https://pubhub.dev';
 
 test.describe('OAuth Callback URL Verification', () => {

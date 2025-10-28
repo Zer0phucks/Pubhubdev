@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { PlatformConnections } from "./PlatformConnections";
 import { AutomationSettings } from "./AutomationSettings";
@@ -15,6 +15,11 @@ interface ProjectSettingsProps {
 
 export function ProjectSettings({ initialTab = "details" }: ProjectSettingsProps) {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(initialTab);
+
+  // Update active tab when initialTab prop changes (e.g., from sidebar navigation)
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   return (
     <div className="h-full flex flex-col">
