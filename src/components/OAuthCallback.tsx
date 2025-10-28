@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { projectId } from '../utils/supabase/info';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { supabase } from '../utils/supabase/client';
+import { oauthAPI, setAuthToken } from '../utils/api';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -61,33 +61,16 @@ export function OAuthCallback() {
 
       // Get fresh auth token from Supabase
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session?.access_token) {
         throw new Error('Not authenticated. Please sign in first.');
       }
 
-      // Exchange code for token on backend
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/callback`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            code,
-            state,
-            platform: storedPlatform,
-          }),
-        }
-      );
+      // Update auth token for API calls
+      setAuthToken(session.access_token);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to complete OAuth flow');
-      }
+      // Exchange code for token on backend using centralized API
+      const data = await oauthAPI.callback(code, state, storedPlatform);
 
       // Success!
       setStatus('success');

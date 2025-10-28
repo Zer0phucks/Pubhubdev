@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -8,7 +7,6 @@ import { PubHubLogo } from './PubHubLogo';
 export function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string>('');
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -27,7 +25,7 @@ export function AuthCallback() {
           setStatus('success');
           // Redirect to dashboard after a short delay
           setTimeout(() => {
-            navigate('/dashboard');
+            window.location.href = '/';
           }, 2000);
         } else {
           // Check URL parameters for OAuth callback
@@ -62,7 +60,7 @@ export function AuthCallback() {
             } else {
               setStatus('success');
               setTimeout(() => {
-                navigate('/dashboard');
+                window.location.href = '/';
               }, 2000);
             }
           } else {
@@ -78,7 +76,7 @@ export function AuthCallback() {
     };
 
     handleAuthCallback();
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -110,7 +108,7 @@ export function AuthCallback() {
                 <p className="text-sm text-red-600">{error}</p>
               )}
               <button
-                onClick={() => navigate('/auth')}
+                onClick={() => window.location.href = '/auth'}
                 className="text-sm text-emerald-400 hover:text-emerald-300 underline"
               >
                 Return to Sign In

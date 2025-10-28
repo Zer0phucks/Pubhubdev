@@ -6,9 +6,8 @@ import { Switch } from "./ui/switch";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlatformIcon } from "./PlatformIcon";
-import { connectionsAPI } from "../utils/api";
+import { connectionsAPI, oauthAPI, setAuthToken } from "../utils/api";
 import { useProject } from "./ProjectContext";
-import { projectId } from "../utils/supabase/info";
 import { supabase } from "../utils/supabase/client";
 import { 
   CheckCircle2, 
@@ -163,27 +162,17 @@ export function PlatformConnections() {
   const confirmDisconnect = async () => {
     if (platformToDisconnect && currentProject) {
       try {
-        // Call backend to disconnect OAuth
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/disconnect`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-            body: JSON.stringify({
-              platform: platformToDisconnect,
-              projectId: currentProject.id,
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to disconnect');
+        // Ensure we have a fresh auth token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session?.access_token) {
+          throw new Error('You must be signed in to disconnect platforms');
         }
+
+        // Update auth token for API calls
+        setAuthToken(session.access_token);
+
+        // Call backend to disconnect OAuth using centralized API
+        const data = await oauthAPI.disconnect(platformToDisconnect, currentProject.id);
 
         // Update local state with response
         if (data.connections) {
@@ -193,7 +182,7 @@ export function PlatformConnections() {
           });
           setConnections(merged);
         }
-        
+
         const platformName = connections.find(c => c.platform === platformToDisconnect)?.name;
         toast.success(`${platformName} disconnected successfully`);
       } catch (error: any) {
@@ -232,21 +221,11 @@ export function PlatformConnections() {
         throw new Error('You must be signed in to connect platforms');
       }
 
-      // Get authorization URL from backend (requires authenticated bearer token)
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=${currentProject.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
+      // Update auth token for API calls
+      setAuthToken(session.access_token);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start OAuth flow');
-      }
+      // Get authorization URL from backend using centralized API
+      const data = await oauthAPI.authorize(platform, currentProject.id);
 
       // Store state for callback verification
       sessionStorage.setItem('oauth_state', data.state);
