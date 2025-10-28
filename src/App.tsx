@@ -348,11 +348,11 @@ function AppContent() {
   }
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={false}>
       <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="none" className="fixed left-0 top-0 h-screen z-20">
-          <SidebarHeader className="border-b border-sidebar-border px-4 h-[53px] flex items-center">
-            <PubHubLogo className="h-12 w-auto" />
+        <Sidebar collapsible="icon" className="fixed left-0 top-0 h-screen z-20">
+          <SidebarHeader className="border-b border-sidebar-border px-4 h-[53px] flex items-center justify-center group-hover/sidebar:justify-start">
+            <PubHubLogo className="h-12 w-auto group-data-[collapsible=icon]:h-8 group-hover/sidebar:h-12" />
           </SidebarHeader>
 
           <SidebarContent className="px-3 pt-3 overflow-hidden flex flex-col">
@@ -376,10 +376,11 @@ function AppContent() {
                             onClick={() => handleNavigate(item.id)}
                             isActive={currentView === item.id}
                             className="w-full"
+                            tooltip={item.label}
                           >
                             <item.icon className="w-4 h-4" />
                             <span>{item.label}</span>
-                            <ChevronDown className="ml-auto w-4 h-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                            <ChevronDown className="ml-auto w-4 h-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180 group-data-[collapsible=icon]:hidden group-hover/sidebar:inline" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
@@ -449,10 +450,11 @@ function AppContent() {
                             onClick={() => handleNavigate(item.id)}
                             isActive={currentView === item.id}
                             className="w-full"
+                            tooltip={item.label}
                           >
                             <item.icon className="w-4 h-4" />
                             <span>{item.label}</span>
-                            <ChevronDown className="ml-auto w-4 h-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                            <ChevronDown className="ml-auto w-4 h-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180 group-data-[collapsible=icon]:hidden group-hover/sidebar:inline" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
@@ -514,6 +516,7 @@ function AppContent() {
                       onClick={() => handleNavigate(item.id)}
                       isActive={currentView === item.id}
                       className="w-full"
+                      tooltip={item.label}
                     >
                       <item.icon className="w-4 h-4" />
                       <span>{item.label}</span>
@@ -527,16 +530,16 @@ function AppContent() {
             <div className="px-1 pt-3 pb-3 mt-auto">
               <button
                 onClick={() => handleNavigate("compose")}
-                className="w-full h-10 px-4 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white transition-all flex items-center justify-center gap-2"
+                className="w-full h-10 px-4 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white transition-all flex items-center justify-center gap-2 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:px-0 group-hover/sidebar:w-full group-hover/sidebar:px-4"
               >
                 <PenSquare className="w-4 h-4" />
-                <span>Create Post</span>
+                <span className="group-data-[collapsible=icon]:hidden group-hover/sidebar:inline">Create Post</span>
               </button>
             </div>
           </SidebarContent>
         </Sidebar>
 
-        <main className="flex-1 flex flex-col min-w-0 ml-[var(--sidebar-width)]">
+        <main className="flex-1 flex flex-col min-w-0">
           <AppHeader
             currentView={currentView}
             selectedPlatform={selectedPlatform}

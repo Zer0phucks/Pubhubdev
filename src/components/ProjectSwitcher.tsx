@@ -54,15 +54,15 @@ export function ProjectSwitcher() {
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-10 px-3 bg-sidebar-accent/50 hover:bg-sidebar-accent border-sidebar-border"
+            className="w-full justify-between h-10 px-3 bg-sidebar-accent/50 hover:bg-sidebar-accent border-sidebar-border group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center group-hover/sidebar:w-full group-hover/sidebar:px-3 group-hover/sidebar:justify-between"
           >
             <div className="flex items-center gap-2 min-w-0">
               <ProjectLogo logo={currentProject?.logo} name={currentProject?.name || "Project"} />
-              <span className="truncate">
+              <span className="truncate group-data-[collapsible=icon]:hidden group-hover/sidebar:inline">
                 {currentProject?.name || "Select project"}
               </span>
             </div>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden group-hover/sidebar:inline" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[200px]" align="start">
