@@ -353,9 +353,9 @@ export function PlatformConnections() {
           <h3>Connected ({connectedCount})</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="platform-connections">
           {connections.filter(c => c.connected).map((connection) => (
-            <Card key={connection.platform} className="p-6">
+            <Card key={connection.platform} className="p-6" data-testid={`platform-${connection.platform}`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0">
@@ -366,7 +366,7 @@ export function PlatformConnections() {
                       {connection.name}
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
                     </h4>
-                    <p className="text-sm text-muted-foreground">{connection.username}</p>
+                    <p className="text-sm text-muted-foreground" data-testid="platform-username">{connection.username}</p>
                   </div>
                 </div>
               </div>
@@ -381,10 +381,11 @@ export function PlatformConnections() {
                   <Label htmlFor={`auto-${connection.platform}`} className="text-sm text-muted-foreground cursor-pointer">
                     Auto-post enabled
                   </Label>
-                  <Switch 
+                  <Switch
                     id={`auto-${connection.platform}`}
-                    checked={connection.autoPost} 
+                    checked={connection.autoPost}
                     onCheckedChange={() => toggleAutoPost(connection.platform)}
+                    data-testid="auto-post-toggle"
                   />
                 </div>
 

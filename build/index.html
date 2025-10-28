@@ -6,17 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Creator Dashboard Design</title>
     
-    <!-- Vercel Analytics -->
+    <!-- Vercel Analytics (guarded to avoid MIME errors off-Vercel) -->
     <script>
-      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+      (function() {
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        try {
+          var isVercelHost = /vercel\.app$/.test(location.hostname) || location.hostname === 'pubhub.dev';
+          if (isVercelHost) {
+            var s = document.createElement('script');
+            s.defer = true;
+            s.src = '/_vercel/insights/script.js';
+            s.onerror = function() { /* silently skip if not available */ };
+            document.head.appendChild(s);
+          }
+        } catch (e) { /* no-op */ }
+      })();
     </script>
-    <script defer src="/_vercel/insights/script.js"></script>
-    <script type="module" crossorigin src="/assets/index-6zay9Lq_.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-b6eKZGCy.js">
-    <link rel="modulepreload" crossorigin href="/assets/ui-C1xs-ENa.js">
-    <link rel="modulepreload" crossorigin href="/assets/utils-BY6FJsvm.js">
-    <link rel="modulepreload" crossorigin href="/assets/icons-08FpXqP2.js">
-    <link rel="modulepreload" crossorigin href="/assets/supabase-CYw1q76Z.js">
+    <script type="module" crossorigin src="/assets/index-DfA_bZvx.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-DfpUgBuF.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-CmQrQyRc.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-Bz-MY0gS.js">
+    <link rel="modulepreload" crossorigin href="/assets/icons-Bgmur7k3.js">
+    <link rel="modulepreload" crossorigin href="/assets/supabase-B6UvgScA.js">
     <link rel="stylesheet" crossorigin href="/assets/index-BlisM6E9.css">
   </head>
 

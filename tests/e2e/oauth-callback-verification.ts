@@ -102,20 +102,85 @@ test.describe('OAuth Callback URL Verification', () => {
 
   test('should verify callback handles missing parameters gracefully', async ({ page }) => {
     console.log('\n📋 Testing error handling...');
-    
+
     // Test callback with missing platform parameter
     await page.goto(`${BASE_URL}/oauth/callback`, {
       waitUntil: 'domcontentloaded'
     });
-    
+
     // Should not redirect to error page immediately
     const url = page.url();
     console.log(`🔗 URL after callback: ${url}`);
-    
-    await page.screenshot({ 
+
+    await page.screenshot({
       path: 'test-results/callback-no-params.png',
-      fullPage: true 
+      fullPage: true
     });
+  });
+
+  test.describe('Per-Platform Post-Connect Validation', () => {
+    test.skip(!process.env.CI, 'Post-connect validation only runs in CI with real OAuth tokens');
+
+    for (const platform of PLATFORMS) {
+      test(`should verify ${platform} connection status after OAuth callback`, async ({ page }) => {
+        console.log(`\n🔐 Validating ${platform.toUpperCase()} post-connect state...`);
+
+        // This test assumes OAuth flow has completed and tokens are stored
+        // Navigate to Project Settings → Connections
+        await page.goto(`${BASE_URL}/dashboard`, {
+          waitUntil: 'networkidle'
+        });
+
+        // Navigate to Project Settings
+        await page.click('[data-testid="project-settings"]', { timeout: 5000 });
+
+        // Click on Connections tab
+        await page.click('button:has-text("Connections")', { timeout: 5000 });
+
+        // Wait for connections list to load
+        await page.waitForSelector('[data-testid="platform-connections"]', { timeout: 10000 });
+
+        // Check if platform shows as "Connected"
+        const platformCard = page.locator(`[data-testid="platform-${platform}"]`);
+        await expect(platformCard).toBeVisible({ timeout: 5000 });
+
+        // Verify "Connected" badge is present
+        const connectedBadge = platformCard.locator('text=/Connected/i');
+        const isConnected = await connectedBadge.isVisible();
+
+        if (isConnected) {
+          console.log(`✅ ${platform} shows as Connected in UI`);
+
+          // Verify username/handle is displayed
+          const usernameElement = platformCard.locator('[data-testid="platform-username"]');
+          const username = await usernameElement.textContent();
+          console.log(`📝 Username: ${username}`);
+          expect(username).toBeTruthy();
+
+          // Verify auto-post toggle is available
+          const autoPostToggle = platformCard.locator('[data-testid="auto-post-toggle"]');
+          await expect(autoPostToggle).toBeVisible();
+          console.log(`⚙️ Auto-post toggle is available`);
+
+          // Verify disconnect button is present
+          const disconnectButton = platformCard.locator('button:has-text("Disconnect")');
+          await expect(disconnectButton).toBeVisible();
+          console.log(`🔌 Disconnect button is available`);
+        } else {
+          console.warn(`⚠️ ${platform} is not connected - OAuth flow may not have completed`);
+
+          // Verify "Connect" button is available instead
+          const connectButton = platformCard.locator('button:has-text("Connect")');
+          await expect(connectButton).toBeVisible();
+        }
+
+        // Take screenshot for verification
+        await page.screenshot({
+          path: `test-results/post-connect-${platform}.png`,
+          fullPage: true
+        });
+      });
+    }
   });
 
 });

@@ -1416,15 +1416,21 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
     
     // Generate state for CSRF protection
     const state = `${userId}:${projectId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
-    
+
+    // Generate PKCE code_verifier for Twitter (required for OAuth 2.0)
+    const codeVerifier = platform === 'twitter'
+      ? `${Math.random().toString(36).substr(2)}${Math.random().toString(36).substr(2)}${Math.random().toString(36).substr(2)}`
+      : undefined;
+
     // Store state temporarily for verification
     await kv.set(`oauth:state:${state}`, {
       userId,
       projectId,
       platform,
+      codeVerifier, // Store code_verifier for PKCE flow
       createdAt: Date.now(),
     }, { expiresIn: 600 }); // 10 minute expiry
-    
+
     // Build authorization URL
     const params = new URLSearchParams({
       client_id: config.clientId,
@@ -1433,10 +1439,11 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
       scope: config.scope,
       state,
     });
-    
+
     // Platform-specific params
-    if (platform === 'twitter') {
-      params.set('code_challenge', 'challenge');
+    if (platform === 'twitter' && codeVerifier) {
+      // Twitter requires PKCE with plain method (code_challenge = code_verifier)
+      params.set('code_challenge', codeVerifier);
       params.set('code_challenge_method', 'plain');
     }
     
@@ -1480,12 +1487,17 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       client_id: config.clientId,
       client_secret: config.clientSecret,
     });
-    
+
+    // Twitter requires code_verifier for PKCE
+    if (platform === 'twitter' && stateData.codeVerifier) {
+      tokenParams.set('code_verifier', stateData.codeVerifier);
+    }
+
     // Some platforms need special handling
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
-    
+
     // Reddit requires Basic Auth
     if (platform === 'reddit') {
       const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);

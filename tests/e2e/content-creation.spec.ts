@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Content Creation Flow', () => {
+  // Gate interactive dashboard tests behind CI flag to avoid timeouts
+  test.skip(!process.env.CI, 'Interactive dashboard tests only run in CI environment');
+
   test.beforeEach(async ({ page }) => {
     // Assume user is signed in
     await page.goto('/dashboard');
