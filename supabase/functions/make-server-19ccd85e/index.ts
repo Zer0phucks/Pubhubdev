@@ -1574,10 +1574,12 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
     const encryptedRecord = await encryptTokenRecord(tokenRecord);
     await kv.set(`oauth:token:${platform}:${stateData.projectId}`, encryptedRecord);
     
-    // Update project connections
+    // Update project connections (upsert behavior)
     const connections = await kv.get(`project:${stateData.projectId}:connections`) || [];
+    let found = false;
     const updatedConnections = connections.map((conn: any) => {
       if (conn.platform === platform) {
+        found = true;
         return {
           ...conn,
           connected: true,
@@ -1588,7 +1590,17 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       }
       return conn;
     });
-    
+
+    if (!found) {
+      updatedConnections.push({
+        platform,
+        connected: true,
+        username: userInfo.username || userInfo.name || `Connected Account`,
+        accountId: userInfo.id,
+        connectedAt: new Date().toISOString(),
+      });
+    }
+
     await kv.set(`project:${stateData.projectId}:connections`, updatedConnections);
     
     // Clean up state
