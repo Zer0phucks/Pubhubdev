@@ -86,6 +86,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
           status: post.status as PostStatus,
           attachments: post.attachments,
           crossPostTo: post.platforms.slice(1) as Platform[], // Additional platforms
+          recurrence: post.recurrence,
         };
       });
 
@@ -287,6 +288,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
     date: Date;
     attachments: { name: string; size: number; type: string }[];
     crossPostTo?: Platform[];
+    recurrence?: { frequency: "none" | "daily" | "weekly" | "monthly" };
   }) => {
     try {
       setSaving(true);
@@ -325,6 +327,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
         status: 'scheduled',
         scheduledFor: scheduledDateTime.toISOString(),
         attachments: data.attachments,
+        recurrence: data.recurrence,
       });
 
       // Add to local state
@@ -337,6 +340,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
         status: "scheduled",
         attachments: data.attachments,
         crossPostTo: data.crossPostTo,
+        recurrence: data.recurrence,
       };
       
       setScheduledPosts([...scheduledPosts, newPost]);

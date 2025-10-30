@@ -8,6 +8,18 @@ export type InboxView = "all" | "unread" | "comments" | "messages";
 
 export type PostStatus = "scheduled" | "published" | "draft" | "failed";
 
+// Recurrence
+export type RecurrenceFrequency = "none" | "daily" | "weekly" | "monthly";
+
+export interface Recurrence {
+  frequency: RecurrenceFrequency;
+  // Optional future extensions: end conditions, interval, etc.
+  // interval?: number; // every N days/weeks/months
+  // endAfterOccurrences?: number;
+  // endByDate?: string; // ISO date string
+  // daysOfWeek?: number[]; // 0-6 for weekly
+}
+
 export interface ScheduledPost {
   id: string;
   date: Date;
@@ -18,6 +30,7 @@ export interface ScheduledPost {
   isAiGenerated?: boolean;
   attachments?: Attachment[];
   crossPostTo?: Platform[];
+  recurrence?: Recurrence; // Optional recurrence metadata
 }
 
 export interface Attachment {

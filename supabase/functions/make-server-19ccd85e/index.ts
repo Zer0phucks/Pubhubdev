@@ -1320,80 +1320,10 @@ app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
 
 // ============= OAUTH ROUTES =============
 
-// OAuth configuration
-const getOAuthConfig = (platform: string) => {
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
-  const redirectUri = `${frontendUrl}/oauth/callback`;
-  
-  const configs: Record<string, any> = {
-    twitter: {
-      authUrl: 'https://twitter.com/i/oauth2/authorize',
-      tokenUrl: 'https://api.twitter.com/2/oauth2/token',
-      clientId: Deno.env.get('TWITTER_CLIENT_ID'),
-      clientSecret: Deno.env.get('TWITTER_CLIENT_SECRET'),
-      scope: 'tweet.read tweet.write users.read offline.access',
-      redirectUri: `${frontendUrl}/oauth/callback?platform=twitter`,
-    },
-    instagram: {
-      authUrl: 'https://api.instagram.com/oauth/authorize',
-      tokenUrl: 'https://api.instagram.com/oauth/access_token',
-      clientId: Deno.env.get('INSTAGRAM_CLIENT_ID'),
-      clientSecret: Deno.env.get('INSTAGRAM_CLIENT_SECRET'),
-      scope: 'user_profile,user_media',
-      redirectUri: Deno.env.get('INSTAGRAM_REDIRECT_URI') || redirectUri,
-    },
-    linkedin: {
-      authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
-      tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
-      clientId: Deno.env.get('LINKEDIN_CLIENT_ID'),
-      clientSecret: Deno.env.get('LINKEDIN_CLIENT_SECRET'),
-      scope: 'w_member_social r_liteprofile',
-      redirectUri: Deno.env.get('LINKEDIN_REDIRECT_URI') || redirectUri,
-    },
-    facebook: {
-      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-      tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
-      clientId: Deno.env.get('FACEBOOK_APP_ID'),
-      clientSecret: Deno.env.get('FACEBOOK_APP_SECRET'),
-      scope: 'pages_manage_posts,pages_read_engagement',
-      redirectUri: Deno.env.get('FACEBOOK_REDIRECT_URI') || redirectUri,
-    },
-    youtube: {
-      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenUrl: 'https://oauth2.googleapis.com/token',
-      clientId: Deno.env.get('YOUTUBE_CLIENT_ID') || Deno.env.get('GOOGLE_CLIENT_ID'),
-      clientSecret: Deno.env.get('YOUTUBE_CLIENT_SECRET') || Deno.env.get('GOOGLE_CLIENT_SECRET'),
-      scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube',
-      redirectUri: Deno.env.get('YOUTUBE_REDIRECT_URI') || Deno.env.get('OAUTH_REDIRECT_URL') || redirectUri,
-    },
-    tiktok: {
-      authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
-      tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
-      clientId: Deno.env.get('TIKTOK_CLIENT_KEY'),
-      clientSecret: Deno.env.get('TIKTOK_CLIENT_SECRET'),
-      scope: 'user.info.basic,video.upload',
-      redirectUri: Deno.env.get('TIKTOK_REDIRECT_URI') || redirectUri,
-    },
-    pinterest: {
-      authUrl: 'https://www.pinterest.com/oauth/',
-      tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
-      clientId: Deno.env.get('PINTEREST_APP_ID'),
-      clientSecret: Deno.env.get('PINTEREST_APP_SECRET'),
-      scope: 'boards:read,pins:read,pins:write',
-      redirectUri: Deno.env.get('PINTEREST_REDIRECT_URI') || redirectUri,
-    },
-    reddit: {
-      authUrl: 'https://www.reddit.com/api/v1/authorize',
-      tokenUrl: 'https://www.reddit.com/api/v1/access_token',
-      clientId: Deno.env.get('REDDIT_CLIENT_ID'),
-      clientSecret: Deno.env.get('REDDIT_CLIENT_SECRET'),
-      scope: 'submit,identity',
-      redirectUri: Deno.env.get('REDDIT_REDIRECT_URI') || redirectUri,
-    },
-  };
-  
-  return configs[platform];
-};
+// Import centralized OAuth configuration and PKCE utilities
+import { getOAuthConfig, validateOAuthConfig } from "./oauth/oauth-config.ts";
+import { generatePKCEPair } from "./oauth/pkce.ts";
+import { encryptTokenRecord, decryptTokenRecord, decryptToken } from "./utils/encryption.ts";
 
 // Start OAuth flow - generates authorization URL
 app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c) => {
@@ -1407,44 +1337,54 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
     }
     
     const config = getOAuthConfig(platform);
+    const validation = validateOAuthConfig(config, platform);
     
-    if (!config || !config.clientId) {
+    if (!config || !validation.valid) {
       return c.json({ 
-        error: `OAuth not configured for ${platform}. Please add ${platform.toUpperCase()}_CLIENT_ID and ${platform.toUpperCase()}_CLIENT_SECRET environment variables.` 
+        error: `OAuth not configured for ${platform}. Missing: ${validation.missing?.join(', ')}` 
       }, 400);
     }
     
-    // Generate state for CSRF protection
-    const state = `${userId}:${projectId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
+    // Generate cryptographically secure state for CSRF protection
+    // Use crypto.randomUUID() instead of Math.random()
+    const stateBytes = crypto.getRandomValues(new Uint8Array(16));
+    const state = Array.from(stateBytes, b => b.toString(16).padStart(2, '0')).join('') + 
+                  `:${userId}:${projectId}:${Date.now()}`;
 
-    // Generate PKCE code_verifier for Twitter (required for OAuth 2.0)
-    const codeVerifier = platform === 'twitter'
-      ? `${Math.random().toString(36).substr(2)}${Math.random().toString(36).substr(2)}${Math.random().toString(36).substr(2)}`
-      : undefined;
+    // Generate PKCE verifier and challenge if required
+    let codeVerifier: string | undefined;
+    let codeChallenge: string | undefined;
+    let codeChallengeMethod: string | undefined;
+    
+    if (config.requiresPKCE) {
+      const pkce = await generatePKCEPair();
+      codeVerifier = pkce.verifier;
+      codeChallenge = pkce.challenge;
+      codeChallengeMethod = pkce.method; // S256 (SHA256)
+    }
 
-    // Store state temporarily for verification
+    // Store state temporarily for verification with proper TTL
     await kv.set(`oauth:state:${state}`, {
       userId,
       projectId,
       platform,
       codeVerifier, // Store code_verifier for PKCE flow
       createdAt: Date.now(),
-    }, { expiresIn: 600 }); // 10 minute expiry
+    }, { expiresIn: 600 }); // 10 minute expiry - NOW ACTUALLY WORKS
 
     // Build authorization URL
     const params = new URLSearchParams({
-      client_id: config.clientId,
+      client_id: config.clientId!,
       redirect_uri: config.redirectUri,
       response_type: 'code',
       scope: config.scope,
       state,
     });
 
-    // Platform-specific params
-    if (platform === 'twitter' && codeVerifier) {
-      // Twitter requires PKCE with plain method (code_challenge = code_verifier)
-      params.set('code_challenge', codeVerifier);
-      params.set('code_challenge_method', 'plain');
+    // Add PKCE params if required (Twitter requires this)
+    if (codeChallenge && codeChallengeMethod) {
+      params.set('code_challenge', codeChallenge);
+      params.set('code_challenge_method', codeChallengeMethod); // S256 instead of 'plain'
     }
     
     const authUrl = `${config.authUrl}?${params.toString()}`;
@@ -1484,26 +1424,27 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       grant_type: 'authorization_code',
       code,
       redirect_uri: config.redirectUri,
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
     });
 
-    // Twitter requires code_verifier for PKCE
-    if (platform === 'twitter' && stateData.codeVerifier) {
+    // Add PKCE code_verifier if platform requires it
+    if (config.requiresPKCE && stateData.codeVerifier) {
       tokenParams.set('code_verifier', stateData.codeVerifier);
     }
 
-    // Some platforms need special handling
+    // Add client credentials based on auth method
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
 
-    // Reddit requires Basic Auth
-    if (platform === 'reddit') {
+    if (config.authMethod === 'basic_auth') {
+      // Reddit requires Basic Auth (client_id:client_secret in Authorization header)
       const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
       headers['Authorization'] = `Basic ${basicAuth}`;
-      delete tokenParams['client_id'];
-      delete tokenParams['client_secret'];
+      // Don't include client_id/client_secret in body for Basic Auth
+    } else {
+      // Standard OAuth: include in body
+      tokenParams.set('client_id', config.clientId!);
+      tokenParams.set('client_secret', config.clientSecret!);
     }
     
     const tokenResponse = await fetch(config.tokenUrl, {
@@ -1602,7 +1543,7 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       // Continue anyway - we have the token
     }
     
-    // Store tokens securely
+    // Store tokens securely - ENCRYPT sensitive fields
     const tokenRecord = {
       platform,
       userId,
@@ -1614,7 +1555,9 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       connectedAt: new Date().toISOString(),
     };
     
-    await kv.set(`oauth:token:${platform}:${stateData.projectId}`, tokenRecord);
+    // Encrypt tokens before storing
+    const encryptedRecord = await encryptTokenRecord(tokenRecord);
+    await kv.set(`oauth:token:${platform}:${stateData.projectId}`, encryptedRecord);
     
     // Update project connections
     const connections = await kv.get(`project:${stateData.projectId}:connections`) || [];
@@ -1689,42 +1632,73 @@ app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
 });
 
 // Get OAuth token (for making API calls)
+// NOTE: This endpoint should ideally NOT return tokens to browser - consider proxying API calls server-side
 app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, async (c) => {
   try {
     const platform = c.req.param('platform');
     const projectId = c.req.param('projectId');
     const userId = c.get('userId');
     
-    const tokenRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
+    // Get encrypted token record
+    const encryptedRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
     
-    if (!tokenRecord || tokenRecord.userId !== userId) {
+    if (!encryptedRecord || encryptedRecord.userId !== userId) {
       return c.json({ error: 'Token not found' }, 404);
     }
     
+    // Decrypt token record
+    const tokenRecord = await decryptTokenRecord(encryptedRecord);
+    
+    if (!tokenRecord) {
+      return c.json({ error: 'Failed to decrypt token' }, 500);
+    }
+    
+    // Proactive refresh: refresh 5 minutes before expiry
+    const REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
+    const needsRefresh = tokenRecord.expiresAt && 
+                        (Date.now() > tokenRecord.expiresAt - REFRESH_BUFFER_MS) &&
+                        tokenRecord.refreshToken;
+    
     // Check if token expired and needs refresh
-    if (tokenRecord.expiresAt && Date.now() > tokenRecord.expiresAt && tokenRecord.refreshToken) {
+    if (needsRefresh) {
       // Refresh the token
       const config = getOAuthConfig(platform);
       
       if (config) {
         try {
+          // Decrypt refresh token if needed
+          const refreshToken = typeof tokenRecord.refreshToken === 'string' && 
+                             tokenRecord.refreshToken.includes('=') 
+                             ? await decryptToken(tokenRecord.refreshToken).catch(() => tokenRecord.refreshToken)
+                             : tokenRecord.refreshToken;
+          
           const refreshParams = new URLSearchParams({
             grant_type: 'refresh_token',
-            refresh_token: tokenRecord.refreshToken,
-            client_id: config.clientId,
-            client_secret: config.clientSecret,
+            refresh_token: refreshToken,
           });
+
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          };
+
+          if (config.authMethod === 'basic_auth') {
+            const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
+            headers['Authorization'] = `Basic ${basicAuth}`;
+          } else {
+            refreshParams.set('client_id', config.clientId!);
+            refreshParams.set('client_secret', config.clientSecret!);
+          }
           
           const refreshResponse = await fetch(config.tokenUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers,
             body: refreshParams.toString(),
           });
           
           if (refreshResponse.ok) {
             const newTokenData = await refreshResponse.json();
             
-            // Update stored token
+            // Encrypt and update stored token
             const updatedRecord = {
               ...tokenRecord,
               accessToken: newTokenData.access_token,
@@ -1732,17 +1706,43 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
               expiresAt: newTokenData.expires_in ? Date.now() + (newTokenData.expires_in * 1000) : null,
             };
             
-            await kv.set(`oauth:token:${platform}:${projectId}`, updatedRecord);
+            const encryptedUpdated = await encryptTokenRecord(updatedRecord);
+            await kv.set(`oauth:token:${platform}:${projectId}`, encryptedUpdated);
             
-            return c.json({ accessToken: newTokenData.access_token });
+            // Return decrypted access token (legacy behavior - should proxy instead)
+            return c.json({ 
+              accessToken: newTokenData.access_token,
+              status: 'refreshed',
+              expiresAt: updatedRecord.expiresAt 
+            });
+          } else {
+            const errorText = await refreshResponse.text();
+            console.error(`Token refresh failed for ${platform}:`, errorText);
           }
         } catch (error) {
           console.error('Token refresh failed:', error);
+          // Continue and return existing token even if refresh failed
         }
       }
     }
     
-    return c.json({ accessToken: tokenRecord.accessToken });
+    // Determine token status
+    let status = 'valid';
+    if (tokenRecord.expiresAt) {
+      const timeUntilExpiry = tokenRecord.expiresAt - Date.now();
+      if (timeUntilExpiry < 0) {
+        status = 'expired';
+      } else if (timeUntilExpiry < REFRESH_BUFFER_MS) {
+        status = 'expiring_soon';
+      }
+    }
+    
+    // Return decrypted access token (legacy behavior - SECURITY CONCERN: tokens should not be sent to browser)
+    return c.json({ 
+      accessToken: tokenRecord.accessToken,
+      status,
+      expiresAt: tokenRecord.expiresAt 
+    });
   } catch (error: any) {
     console.error('Get token error:', error);
     return c.json({ error: `Failed to get token: ${error.message}` }, 500);
@@ -1765,14 +1765,25 @@ app.post("/make-server-19ccd85e/posts/publish", requireAuth, async (c) => {
 
     for (const platform of platforms) {
       try {
-        // Get OAuth token for platform
-        const tokenRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
+        // Get and decrypt OAuth token for platform
+        const encryptedRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
 
-        if (!tokenRecord) {
+        if (!encryptedRecord || encryptedRecord.userId !== userId) {
           results.push({
             platform,
             success: false,
             error: 'Platform not connected'
+          });
+          continue;
+        }
+
+        // Decrypt token record
+        const tokenRecord = await decryptTokenRecord(encryptedRecord);
+        if (!tokenRecord || !tokenRecord.accessToken) {
+          results.push({
+            platform,
+            success: false,
+            error: 'Failed to decrypt token'
           });
           continue;
         }

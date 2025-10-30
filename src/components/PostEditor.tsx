@@ -29,6 +29,7 @@ interface PostEditorData {
   date?: Date;
   attachments?: Attachment[];
   crossPostTo?: Platform[];
+  recurrence?: { frequency: "none" | "daily" | "weekly" | "monthly" };
 }
 
 interface PostEditorProps {
@@ -46,6 +47,7 @@ interface PostEditorProps {
     date: Date;
     attachments: Attachment[];
     crossPostTo?: Platform[];
+    recurrence?: { frequency: "none" | "daily" | "weekly" | "monthly" };
   }) => void;
   onCancel?: () => void;
   showActions?: boolean;
@@ -95,6 +97,9 @@ export function PostEditor({
   const [date, setDate] = useState(_initialDate);
   const [attachments, setAttachments] = useState<Attachment[]>(_initialAttachments);
   const [crossPostTo, setCrossPostTo] = useState<Platform[]>(_initialCrossPostTo);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<"none" | "daily" | "weekly" | "monthly">(
+    (data.recurrence?.frequency as any) || "none"
+  );
 
   const platforms = [
     { value: "twitter", label: "Twitter" },
@@ -185,6 +190,7 @@ export function PostEditor({
         date,
         attachments,
         crossPostTo,
+        recurrence: { frequency: recurrenceFrequency },
       });
     }
   };
@@ -261,16 +267,32 @@ export function PostEditor({
             </div>
           </div>
 
-          <div>
-            <Label>Scheduled Time</Label>
-            <div className="mt-2 relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="pl-10"
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Scheduled Time</Label>
+              <div className="mt-2 relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Recurrence</Label>
+              <select
+                value={recurrenceFrequency}
+                onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
+                className="mt-2 w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+              >
+                <option value="none">Does not repeat</option>
+                <option value="daily">Repeats daily</option>
+                <option value="weekly">Repeats weekly</option>
+                <option value="monthly">Repeats monthly</option>
+              </select>
             </div>
           </div>
 

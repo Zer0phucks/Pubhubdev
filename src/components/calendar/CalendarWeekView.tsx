@@ -1,5 +1,5 @@
 import { PlatformIcon } from "../PlatformIcon";
-import { Sparkles, Paperclip, Link2 } from "lucide-react";
+import { Sparkles, Paperclip, Link2, RefreshCw } from "lucide-react";
 import type { ScheduledPost } from "../../types";
 
 interface CalendarWeekViewProps {
@@ -65,6 +65,9 @@ export function CalendarWeekView({
                   </div>
                   <div className="flex-1 min-w-0 flex items-center gap-1">
                     <p className="text-xs text-muted-foreground">{post.time}</p>
+                    {post.recurrence && post.recurrence.frequency && post.recurrence.frequency !== 'none' && (
+                      <RefreshCw className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    )}
                     {post.isAiGenerated && (
                       <Sparkles className="w-3 h-3 text-purple-400 flex-shrink-0" />
                     )}

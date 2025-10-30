@@ -1,6 +1,6 @@
 import { Badge } from "../ui/badge";
 import { PlatformIcon } from "../PlatformIcon";
-import { Sparkles, Paperclip } from "lucide-react";
+import { Sparkles, Paperclip, RefreshCw } from "lucide-react";
 import type { ScheduledPost } from "../../types";
 
 interface CalendarMonthViewProps {
@@ -89,6 +89,9 @@ export function CalendarMonthView({
                   </div>
                   <div className="flex-1 min-w-0 flex items-center gap-1">
                     <p className="text-xs truncate text-muted-foreground">{post.time}</p>
+                    {post.recurrence && post.recurrence.frequency && post.recurrence.frequency !== 'none' && (
+                      <RefreshCw className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />
+                    )}
                     {post.isAiGenerated && (
                       <Sparkles className="w-2.5 h-2.5 text-purple-400 flex-shrink-0" />
                     )}
