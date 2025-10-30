@@ -27,7 +27,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientSecret: Deno.env.get('TWITTER_CLIENT_SECRET'),
       scope: 'tweet.read tweet.write users.read offline.access',
       redirectUri: `${frontendUrl}/oauth/callback?platform=twitter`,
-      authMethod: 'standard',
+      authMethod: 'basic_auth',
       requiresPKCE: true, // Twitter requires PKCE for OAuth 2.0
     },
     instagram: {

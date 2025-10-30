@@ -93,7 +93,7 @@ export async function generatePKCEPair(): Promise<{ verifier: string; challenge:
   return {
     verifier,
     challenge,
-    method: 'S256' // Always use SHA256 (more secure than 'plain')
+    method: 's256' // Use lowercase per provider expectations
   };
 }
 
