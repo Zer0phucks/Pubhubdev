@@ -1437,14 +1437,29 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
     };
 
     if (config.authMethod === 'basic_auth') {
-      // Reddit requires Basic Auth (client_id:client_secret in Authorization header)
+      // Providers like Twitter/Reddit require Basic Auth for token exchange
+      if (!config.clientId || !config.clientSecret) {
+        return c.json(
+          { error: `OAuth not configured for ${platform}. Missing client credentials.` },
+          400,
+        );
+      }
       const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
       headers['Authorization'] = `Basic ${basicAuth}`;
-      // Don't include client_id/client_secret in body for Basic Auth
+      if (config.includeClientIdInTokenBody) {
+        tokenParams.set('client_id', config.clientId);
+      }
+      if (config.includeClientSecretInTokenBody) {
+        tokenParams.set('client_secret', config.clientSecret);
+      }
     } else {
-      // Standard OAuth: include in body
-      tokenParams.set('client_id', config.clientId!);
-      tokenParams.set('client_secret', config.clientSecret!);
+      // Standard OAuth: include credentials in request body
+      if (config.clientId) {
+        tokenParams.set('client_id', config.clientId);
+      }
+      if (config.clientSecret) {
+        tokenParams.set('client_secret', config.clientSecret);
+      }
     }
     
     const tokenResponse = await fetch(config.tokenUrl, {
@@ -1682,11 +1697,24 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
           };
 
           if (config.authMethod === 'basic_auth') {
+            if (!config.clientId || !config.clientSecret) {
+              throw new Error(`Missing client credentials for ${platform} refresh`);
+            }
             const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
             headers['Authorization'] = `Basic ${basicAuth}`;
+            if (config.includeClientIdInTokenBody) {
+              refreshParams.set('client_id', config.clientId);
+            }
+            if (config.includeClientSecretInTokenBody) {
+              refreshParams.set('client_secret', config.clientSecret);
+            }
           } else {
-            refreshParams.set('client_id', config.clientId!);
-            refreshParams.set('client_secret', config.clientSecret!);
+            if (config.clientId) {
+              refreshParams.set('client_id', config.clientId);
+            }
+            if (config.clientSecret) {
+              refreshParams.set('client_secret', config.clientSecret);
+            }
           }
           
           const refreshResponse = await fetch(config.tokenUrl, {

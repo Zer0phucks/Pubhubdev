@@ -10,15 +10,69 @@ export interface OAuthConfig {
   redirectUri: string;
   authMethod: 'standard' | 'pkce' | 'basic_auth'; // How to authenticate token exchange
   requiresPKCE: boolean; // Whether platform requires PKCE
+  includeClientIdInTokenBody?: boolean; // Some providers expect client_id even with Basic auth
+  includeClientSecretInTokenBody?: boolean; // Optional client_secret in token body for special cases
+}
+
+const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
+const baseRedirectUri =
+  (Deno.env.get('OAUTH_REDIRECT_URL') || `${frontendUrl}/oauth/callback`).trim();
+
+const PLATFORM_PLACEHOLDERS = [
+  '{platform}',
+  '{PLATFORM}',
+  ':platform',
+  ':PLATFORM',
+  '%platform%',
+  '%PLATFORM%',
+  '${platform}',
+  '${PLATFORM}',
+];
+
+function applyPlatformPlaceholder(template: string, platform: string): string {
+  let result = template;
+  for (const placeholder of PLATFORM_PLACEHOLDERS) {
+    if (result.includes(placeholder)) {
+      result = result.split(placeholder).join(platform);
+    }
+  }
+  return result;
+}
+
+function buildRedirectFromBase(platform: string): string {
+  if (!baseRedirectUri) {
+    return `${frontendUrl}/oauth/callback?platform=${platform}`;
+  }
+
+  if (PLATFORM_PLACEHOLDERS.some((placeholder) => baseRedirectUri.includes(placeholder))) {
+    return applyPlatformPlaceholder(baseRedirectUri, platform);
+  }
+
+  if (baseRedirectUri.toLowerCase().includes('platform=')) {
+    return baseRedirectUri;
+  }
+
+  const separator = baseRedirectUri.includes('?')
+    ? baseRedirectUri.endsWith('?') || baseRedirectUri.endsWith('&')
+      ? ''
+      : '&'
+    : '?';
+
+  return `${baseRedirectUri}${separator}platform=${platform}`;
+}
+
+function resolveRedirectUri(platform: string, envKey?: string): string {
+  const envValue = envKey ? Deno.env.get(envKey)?.trim() : undefined;
+  if (envValue) {
+    return applyPlatformPlaceholder(envValue, platform);
+  }
+  return buildRedirectFromBase(platform);
 }
 
 /**
  * Get OAuth configuration for a platform
  */
 export function getOAuthConfig(platform: string): OAuthConfig | null {
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
-  const redirectUri = `${frontendUrl}/oauth/callback`;
-  
   const configs: Record<string, OAuthConfig> = {
     twitter: {
       authUrl: 'https://twitter.com/i/oauth2/authorize',
@@ -26,9 +80,10 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('TWITTER_CLIENT_ID'),
       clientSecret: Deno.env.get('TWITTER_CLIENT_SECRET'),
       scope: 'tweet.read tweet.write users.read offline.access',
-      redirectUri: `${frontendUrl}/oauth/callback?platform=twitter`,
+      redirectUri: resolveRedirectUri('twitter', 'TWITTER_REDIRECT_URI'),
       authMethod: 'basic_auth',
       requiresPKCE: true, // Twitter requires PKCE for OAuth 2.0
+      includeClientIdInTokenBody: true,
     },
     instagram: {
       authUrl: 'https://api.instagram.com/oauth/authorize',
@@ -36,7 +91,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('INSTAGRAM_CLIENT_ID'),
       clientSecret: Deno.env.get('INSTAGRAM_CLIENT_SECRET'),
       scope: 'user_profile,user_media',
-      redirectUri: Deno.env.get('INSTAGRAM_REDIRECT_URI') || redirectUri,
+      redirectUri: resolveRedirectUri('instagram', 'INSTAGRAM_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
     },
@@ -46,7 +101,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('LINKEDIN_CLIENT_ID'),
       clientSecret: Deno.env.get('LINKEDIN_CLIENT_SECRET'),
       scope: 'w_member_social r_liteprofile',
-      redirectUri: Deno.env.get('LINKEDIN_REDIRECT_URI') || redirectUri,
+      redirectUri: resolveRedirectUri('linkedin', 'LINKEDIN_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
     },
@@ -56,7 +111,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('FACEBOOK_APP_ID'),
       clientSecret: Deno.env.get('FACEBOOK_APP_SECRET'),
       scope: 'pages_manage_posts,pages_read_engagement',
-      redirectUri: Deno.env.get('FACEBOOK_REDIRECT_URI') || redirectUri,
+      redirectUri: resolveRedirectUri('facebook', 'FACEBOOK_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
     },
@@ -64,9 +119,11 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
       tokenUrl: 'https://oauth2.googleapis.com/token',
       clientId: Deno.env.get('YOUTUBE_CLIENT_ID') || Deno.env.get('GOOGLE_CLIENT_ID'),
-      clientSecret: Deno.env.get('YOUTUBE_CLIENT_SECRET') || Deno.env.get('GOOGLE_CLIENT_SECRET'),
-      scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube',
-      redirectUri: Deno.env.get('YOUTUBE_REDIRECT_URI') || Deno.env.get('OAUTH_REDIRECT_URL') || redirectUri,
+      clientSecret:
+        Deno.env.get('YOUTUBE_CLIENT_SECRET') || Deno.env.get('GOOGLE_CLIENT_SECRET'),
+      scope:
+        'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube',
+      redirectUri: resolveRedirectUri('youtube', 'YOUTUBE_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
     },
@@ -76,7 +133,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('TIKTOK_CLIENT_KEY'),
       clientSecret: Deno.env.get('TIKTOK_CLIENT_SECRET'),
       scope: 'user.info.basic,video.upload',
-      redirectUri: Deno.env.get('TIKTOK_REDIRECT_URI') || redirectUri,
+      redirectUri: resolveRedirectUri('tiktok', 'TIKTOK_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
     },
@@ -86,7 +143,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('PINTEREST_APP_ID'),
       clientSecret: Deno.env.get('PINTEREST_APP_SECRET'),
       scope: 'boards:read,pins:read,pins:write',
-      redirectUri: Deno.env.get('PINTEREST_REDIRECT_URI') || redirectUri,
+      redirectUri: resolveRedirectUri('pinterest', 'PINTEREST_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
     },
@@ -96,33 +153,36 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientId: Deno.env.get('REDDIT_CLIENT_ID'),
       clientSecret: Deno.env.get('REDDIT_CLIENT_SECRET'),
       scope: 'submit,identity',
-      redirectUri: Deno.env.get('REDDIT_REDIRECT_URI') || redirectUri,
+      redirectUri: resolveRedirectUri('reddit', 'REDDIT_REDIRECT_URI'),
       authMethod: 'basic_auth', // Reddit requires Basic Auth header
       requiresPKCE: false,
     },
   };
-  
+
   return configs[platform] || null;
 }
 
 /**
  * Validate that a platform's OAuth configuration is complete
  */
-export function validateOAuthConfig(config: OAuthConfig | null, platform: string): { valid: boolean; missing?: string[] } {
+export function validateOAuthConfig(
+  config: OAuthConfig | null,
+  platform: string,
+): { valid: boolean; missing?: string[] } {
   if (!config) {
     return { valid: false, missing: ['Configuration not found'] };
   }
-  
+
   const missing: string[] = [];
-  
+
   if (!config.clientId) {
     missing.push(`CLIENT_ID for ${platform}`);
   }
-  
+
   if (!config.clientSecret && config.authMethod !== 'pkce') {
     missing.push(`CLIENT_SECRET for ${platform}`);
   }
-  
+
   return {
     valid: missing.length === 0,
     missing: missing.length > 0 ? missing : undefined,
