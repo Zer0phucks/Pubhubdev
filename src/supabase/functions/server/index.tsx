@@ -1504,9 +1504,18 @@ app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth
       'Content-Type': 'application/x-www-form-urlencoded',
     };
     
-    // Twitter OAuth 2.0 with PKCE requires code_verifier
-    if (platform === 'twitter' && stateData.codeVerifier) {
-      tokenParams.set('code_verifier', stateData.codeVerifier);
+    // Twitter OAuth 2.0 with PKCE requires Basic Auth and code_verifier
+    if (platform === 'twitter') {
+      // Twitter requires Basic Authentication header
+      const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
+      headers['Authorization'] = `Basic ${basicAuth}`;
+      // Remove client credentials from body when using Basic Auth
+      tokenParams.delete('client_id');
+      tokenParams.delete('client_secret');
+      // Add code_verifier for PKCE
+      if (stateData.codeVerifier) {
+        tokenParams.set('code_verifier', stateData.codeVerifier);
+      }
     }
     
     // Reddit requires Basic Auth
