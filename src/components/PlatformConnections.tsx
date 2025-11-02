@@ -115,6 +115,29 @@ export function PlatformConnections() {
     }
   }, [currentProject?.id]);
 
+  // Refresh when returning from OAuth callback
+  useEffect(() => {
+    const checkOAuthCompletion = () => {
+      const oauthJustCompleted = sessionStorage.getItem('oauth_just_completed');
+      if (oauthJustCompleted === 'true' && currentProject) {
+        console.log('OAuth just completed, refreshing connections...');
+        loadConnections();
+        sessionStorage.removeItem('oauth_just_completed');
+        sessionStorage.removeItem('oauth_completed_platform');
+      }
+    };
+
+    checkOAuthCompletion();
+
+    // Also check on window focus in case user comes back from OAuth
+    const handleFocus = () => {
+      checkOAuthCompletion();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [currentProject]);
+
   const loadConnections = async () => {
     if (!currentProject) return;
     

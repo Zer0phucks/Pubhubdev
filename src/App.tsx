@@ -315,6 +315,18 @@ function AppContent() {
     }
   };
 
+  // Check if OAuth just completed and navigate to connections tab
+  useEffect(() => {
+    const oauthJustCompleted = sessionStorage.getItem('oauth_just_completed');
+    if (oauthJustCompleted === 'true' && isAuthenticated && !loading) {
+      // Navigate to project settings with connections tab
+      setCurrentView('project-settings');
+      setProjectSettingsTab('connections');
+      setSettingsOpen(true);
+      // Don't remove the flag here - let components handle it when they refresh
+    }
+  }, [isAuthenticated, loading]);
+
   // Show loading state while checking auth
   if (loading) {
     return (

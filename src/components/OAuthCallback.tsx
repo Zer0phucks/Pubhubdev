@@ -80,8 +80,12 @@ export function OAuthCallback() {
       sessionStorage.removeItem('oauth_state');
       sessionStorage.removeItem('oauth_platform');
       sessionStorage.removeItem('oauth_project_id');
+      
+      // Set flag to trigger refresh in components
+      sessionStorage.setItem('oauth_just_completed', 'true');
+      sessionStorage.setItem('oauth_completed_platform', storedPlatform);
 
-      // Redirect to settings after 2 seconds
+      // Redirect to home after 2 seconds - components will check for the flag and refresh
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
@@ -99,6 +103,8 @@ export function OAuthCallback() {
   };
 
   const handleRetry = () => {
+    sessionStorage.removeItem('oauth_just_completed');
+    sessionStorage.removeItem('oauth_completed_platform');
     window.location.href = '/';
   };
 
