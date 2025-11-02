@@ -33,6 +33,7 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
     ...options.headers as Record<string, string>,
   };
 
+  // Ensure Authorization header is set (don't allow override)
   headers['Authorization'] = `Bearer ${token}`;
 
   const response = await fetch(`${API_URL}${endpoint}`, {
@@ -41,8 +42,22 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.error || error.message || errorMessage;
+    } catch {
+      // If JSON parsing fails, try text
+      try {
+        const errorText = await response.text();
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();

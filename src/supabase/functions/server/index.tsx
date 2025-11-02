@@ -1424,11 +1424,21 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", rateLimit(rateLimitCo
     // Generate state for CSRF protection
     const state = `${userId}:${projectId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
     
-    // Store state temporarily for verification
+    // Generate PKCE verifier for Twitter OAuth 2.0
+    let codeVerifier: string | undefined;
+    if (platform === 'twitter') {
+      // Generate a random code verifier (43-128 characters)
+      codeVerifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+    
+    // Store state temporarily for verification (including code_verifier for Twitter)
     await kv.set(`oauth:state:${state}`, {
       userId,
       projectId,
       platform,
+      codeVerifier,
       createdAt: Date.now(),
     }, { expiresIn: 600 }); // 10 minute expiry
     
@@ -1441,9 +1451,10 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", rateLimit(rateLimitCo
       state,
     });
     
-    // Platform-specific params
-    if (platform === 'twitter') {
-      params.set('code_challenge', 'challenge');
+    // Platform-specific params - Twitter requires PKCE
+    if (platform === 'twitter' && codeVerifier) {
+      // Use plain method: code_challenge = code_verifier
+      params.set('code_challenge', codeVerifier);
       params.set('code_challenge_method', 'plain');
     }
     
@@ -1493,12 +1504,18 @@ app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth
       'Content-Type': 'application/x-www-form-urlencoded',
     };
     
+    // Twitter OAuth 2.0 with PKCE requires code_verifier
+    if (platform === 'twitter' && stateData.codeVerifier) {
+      tokenParams.set('code_verifier', stateData.codeVerifier);
+    }
+    
     // Reddit requires Basic Auth
     if (platform === 'reddit') {
       const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
       headers['Authorization'] = `Basic ${basicAuth}`;
-      delete tokenParams['client_id'];
-      delete tokenParams['client_secret'];
+      // Remove from params since we're using Basic Auth
+      tokenParams.delete('client_id');
+      tokenParams.delete('client_secret');
     }
     
     const tokenResponse = await fetch(config.tokenUrl, {
