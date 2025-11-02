@@ -89,11 +89,11 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
 export async function generatePKCEPair(): Promise<{ verifier: string; challenge: string; method: string }> {
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
-  
+
   return {
     verifier,
     challenge,
-    method: 's256' // Use lowercase per provider expectations
+    method: 'S256' // RFC 7636 requires uppercase S256
   };
 }
 

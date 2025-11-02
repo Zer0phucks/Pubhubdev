@@ -1355,12 +1355,20 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
     let codeVerifier: string | undefined;
     let codeChallenge: string | undefined;
     let codeChallengeMethod: string | undefined;
-    
+
     if (config.requiresPKCE) {
       const pkce = await generatePKCEPair();
       codeVerifier = pkce.verifier;
       codeChallenge = pkce.challenge;
       codeChallengeMethod = pkce.method; // S256 (SHA256)
+
+      console.log('PKCE generated for authorization:', {
+        platform,
+        verifierLength: codeVerifier.length,
+        challengeLength: codeChallenge.length,
+        method: codeChallengeMethod,
+        verifierPreview: codeVerifier.substring(0, 20) + '...'
+      });
     }
 
     // Store state temporarily for verification with proper TTL
@@ -1371,6 +1379,11 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
       codeVerifier, // Store code_verifier for PKCE flow
       createdAt: Date.now(),
     }, { expiresIn: 600 }); // 10 minute expiry - NOW ACTUALLY WORKS
+
+    console.log('State stored:', {
+      stateKey: `oauth:state:${state.substring(0, 20)}...`,
+      hasCodeVerifier: !!codeVerifier
+    });
 
     // Build authorization URL
     const params = new URLSearchParams({
@@ -1444,7 +1457,18 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
 
     // Add PKCE code_verifier if platform requires it
     if (config.requiresPKCE && stateData.codeVerifier) {
+      console.log('Adding PKCE code_verifier to token exchange:', {
+        platform,
+        hasVerifier: !!stateData.codeVerifier,
+        verifierLength: stateData.codeVerifier?.length,
+        verifierPreview: stateData.codeVerifier?.substring(0, 20) + '...'
+      });
       tokenParams.set('code_verifier', stateData.codeVerifier);
+    } else if (config.requiresPKCE) {
+      console.error('PKCE required but no code_verifier in state data!', {
+        platform,
+        stateDataKeys: Object.keys(stateData)
+      });
     }
 
     // Add client credentials based on auth method
@@ -1478,6 +1502,14 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       }
     }
     
+    console.log('Sending token exchange request:', {
+      platform,
+      tokenUrl: config.tokenUrl,
+      paramsKeys: Array.from(tokenParams.keys()),
+      authMethod: config.authMethod,
+      hasAuthHeader: !!headers['Authorization']
+    });
+
     const tokenResponse = await fetch(config.tokenUrl, {
       method: 'POST',
       headers,
