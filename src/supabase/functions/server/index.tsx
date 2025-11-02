@@ -1611,10 +1611,32 @@ app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth
     
     await kv.set(`oauth:token:${platform}:${stateData.projectId}`, tokenRecord);
     
-    // Update project connections
-    const connections = await kv.get(`project:${stateData.projectId}:connections`) || [];
+    // Initialize default connections if none exist
+    const defaultConnections = [
+      { platform: 'twitter', connected: false },
+      { platform: 'instagram', connected: false },
+      { platform: 'linkedin', connected: false },
+      { platform: 'facebook', connected: false },
+      { platform: 'youtube', connected: false },
+      { platform: 'tiktok', connected: false },
+      { platform: 'pinterest', connected: false },
+      { platform: 'reddit', connected: false },
+      { platform: 'blog', connected: false },
+    ];
+    
+    // Get existing connections or use defaults
+    let connections = await kv.get(`project:${stateData.projectId}:connections`);
+    
+    // If no connections exist, initialize with defaults
+    if (!connections || connections.length === 0) {
+      connections = defaultConnections;
+    }
+    
+    // Update or add the platform connection
+    let found = false;
     const updatedConnections = connections.map((conn: any) => {
       if (conn.platform === platform) {
+        found = true;
         return {
           ...conn,
           connected: true,
@@ -1625,6 +1647,17 @@ app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth
       }
       return conn;
     });
+    
+    // If platform wasn't found in existing connections, add it
+    if (!found) {
+      updatedConnections.push({
+        platform,
+        connected: true,
+        username: userInfo.username || userInfo.name || `Connected Account`,
+        accountId: userInfo.id,
+        connectedAt: new Date().toISOString(),
+      });
+    }
     
     await kv.set(`project:${stateData.projectId}:connections`, updatedConnections);
     

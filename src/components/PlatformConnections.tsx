@@ -117,17 +117,27 @@ export function PlatformConnections() {
 
   // Refresh when returning from OAuth callback
   useEffect(() => {
-    const checkOAuthCompletion = () => {
+    if (!currentProject) return;
+
+    const checkOAuthCompletion = async () => {
       const oauthJustCompleted = sessionStorage.getItem('oauth_just_completed');
-      if (oauthJustCompleted === 'true' && currentProject) {
+      if (oauthJustCompleted === 'true') {
         console.log('OAuth just completed, refreshing connections...');
-        loadConnections();
-        sessionStorage.removeItem('oauth_just_completed');
-        sessionStorage.removeItem('oauth_completed_platform');
+        // Add a small delay to ensure backend has saved the data
+        setTimeout(() => {
+          loadConnections();
+          sessionStorage.removeItem('oauth_just_completed');
+          sessionStorage.removeItem('oauth_completed_platform');
+        }, 500);
       }
     };
 
     checkOAuthCompletion();
+
+    // Poll for OAuth completion (check every second for 10 seconds)
+    const intervalId = setInterval(() => {
+      checkOAuthCompletion();
+    }, 1000);
 
     // Also check on window focus in case user comes back from OAuth
     const handleFocus = () => {
@@ -135,7 +145,17 @@ export function PlatformConnections() {
     };
 
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    
+    // Clean up after 10 seconds to stop polling
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
   }, [currentProject]);
 
   const loadConnections = async () => {
