@@ -86,11 +86,14 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       includeClientIdInTokenBody: true,
     },
     instagram: {
-      authUrl: 'https://api.instagram.com/oauth/authorize',
-      tokenUrl: 'https://api.instagram.com/oauth/access_token',
-      clientId: Deno.env.get('INSTAGRAM_CLIENT_ID'),
-      clientSecret: Deno.env.get('INSTAGRAM_CLIENT_SECRET'),
-      scope: 'user_profile,user_media',
+      // Instagram now uses Facebook Graph API (Basic Display API deprecated Dec 2024)
+      // Uses Facebook Login - additional permissions need to be requested through App Review
+      // For now, using basic scopes to establish OAuth flow
+      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+      clientId: Deno.env.get('INSTAGRAM_APP_ID') || Deno.env.get('FACEBOOK_APP_ID'),
+      clientSecret: Deno.env.get('INSTAGRAM_APP_SECRET') || Deno.env.get('FACEBOOK_APP_SECRET'),
+      scope: 'email,public_profile',
       redirectUri: resolveRedirectUri('instagram', 'INSTAGRAM_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
@@ -106,11 +109,14 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       requiresPKCE: false,
     },
     facebook: {
+      // Using basic Facebook Login scopes that don't require App Review
+      // Pages permissions (pages_manage_posts, pages_read_engagement) require App Review
+      // For now, using basic scopes to establish OAuth flow
       authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
       tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
       clientId: Deno.env.get('FACEBOOK_APP_ID'),
       clientSecret: Deno.env.get('FACEBOOK_APP_SECRET'),
-      scope: 'pages_manage_posts,pages_read_engagement',
+      scope: 'email,public_profile',
       redirectUri: resolveRedirectUri('facebook', 'FACEBOOK_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
