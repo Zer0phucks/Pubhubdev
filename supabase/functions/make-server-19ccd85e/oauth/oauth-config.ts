@@ -99,11 +99,13 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       requiresPKCE: false,
     },
     linkedin: {
+      // Using modern LinkedIn API v2 scopes (r_liteprofile deprecated)
+      // Basic scopes that don't require LinkedIn verification
       authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
       tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
       clientId: Deno.env.get('LINKEDIN_CLIENT_ID'),
       clientSecret: Deno.env.get('LINKEDIN_CLIENT_SECRET'),
-      scope: 'w_member_social r_liteprofile',
+      scope: 'openid profile email',
       redirectUri: resolveRedirectUri('linkedin', 'LINKEDIN_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
