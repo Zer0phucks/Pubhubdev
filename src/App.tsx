@@ -340,12 +340,15 @@ function AppContent() {
   }
 
   // Check if this is an OAuth callback
-  if (window.location.pathname === '/oauth/callback') {
+  const isOAuthCallback = window.location.pathname === '/oauth/callback' ||
+                         window.location.pathname.startsWith('/api/oauth/callback/');
+  if (isOAuthCallback) {
     const url = new URL(window.location.href);
     const hasPlatformParam = !!url.searchParams.get('platform');
     const hasStoredOAuthState = !!sessionStorage.getItem('oauth_state');
+    const isPlatformCallback = window.location.pathname.startsWith('/api/oauth/callback/');
     // If it's a platform integration callback, render OAuthCallback; otherwise handle Supabase auth callback
-    return (hasPlatformParam || hasStoredOAuthState) ? <OAuthCallback /> : <AuthCallback />;
+    return (hasPlatformParam || hasStoredOAuthState || isPlatformCallback) ? <OAuthCallback /> : <AuthCallback />;
   }
 
   // Show landing page or auth page if not authenticated

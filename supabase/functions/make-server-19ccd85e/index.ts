@@ -1401,15 +1401,31 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
   try {
     const { code, state, platform } = await c.req.json();
     const userId = c.get('userId');
-    
+
+    console.log('OAuth callback received:', {
+      hasCode: !!code,
+      hasState: !!state,
+      platform,
+      userId
+    });
+
     if (!code || !state || !platform) {
+      console.error('Missing OAuth parameters:', { code: !!code, state: !!state, platform });
       return c.json({ error: 'Missing required parameters' }, 400);
     }
-    
+
     // Verify state
     const stateData = await kv.get(`oauth:state:${state}`);
-    
+
+    console.log('State validation:', {
+      stateFound: !!stateData,
+      stateUserId: stateData?.userId,
+      currentUserId: userId,
+      stateKey: `oauth:state:${state.substring(0, 20)}...`
+    });
+
     if (!stateData || stateData.userId !== userId) {
+      console.error('Invalid state:', { stateData, expectedUserId: userId });
       return c.json({ error: 'Invalid or expired state' }, 400);
     }
     

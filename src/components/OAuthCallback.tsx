@@ -22,11 +22,17 @@ export function OAuthCallback() {
       const state = params.get('state');
       const error = params.get('error');
       const errorDescription = params.get('error_description');
-      const platform = params.get('platform'); // Get platform from URL
-      
+
+      // Get platform from URL query param or path (/api/oauth/callback/:platform)
+      let platform = params.get('platform');
+      if (!platform) {
+        const pathMatch = window.location.pathname.match(/\/api\/oauth\/callback\/([^/]+)/);
+        platform = pathMatch ? pathMatch[1] : null;
+      }
+
       // Get stored OAuth data
       const storedState = sessionStorage.getItem('oauth_state');
-      const storedPlatform = sessionStorage.getItem('oauth_platform') || platform; // Fallback to URL param
+      const storedPlatform = sessionStorage.getItem('oauth_platform') || platform; // Fallback to URL param/path
       const storedProjectId = sessionStorage.getItem('oauth_project_id');
 
       console.log('OAuth Callback Debug:', {
