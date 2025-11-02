@@ -18,19 +18,11 @@ const client = () => createClient(
 );
 
 // Set stores a key-value pair in the database.
-// Options can include expiresIn (seconds) for TTL support
-export const set = async (key: string, value: any, options?: { expiresIn?: number }): Promise<void> => {
+export const set = async (key: string, value: any): Promise<void> => {
   const supabase = client()
-  
-  // If expiresIn is provided, calculate expiration timestamp and store it in value
-  const storeValue: any = { ...value };
-  if (options?.expiresIn) {
-    storeValue._expiresAt = Date.now() + (options.expiresIn * 1000);
-  }
-  
   const { error } = await supabase.from("kv_store_19ccd85e").upsert({
     key,
-    value: storeValue
+    value
   });
   if (error) {
     throw new Error(error.message);
@@ -38,28 +30,13 @@ export const set = async (key: string, value: any, options?: { expiresIn?: numbe
 };
 
 // Get retrieves a key-value pair from the database.
-// Automatically checks expiration and returns null if expired
 export const get = async (key: string): Promise<any> => {
   const supabase = client()
   const { data, error } = await supabase.from("kv_store_19ccd85e").select("value").eq("key", key).maybeSingle();
   if (error) {
     throw new Error(error.message);
   }
-  
-  if (!data?.value) {
-    return null;
-  }
-  
-  // Check if value has expired
-  if (data.value._expiresAt && Date.now() > data.value._expiresAt) {
-    // Auto-delete expired entry
-    await del(key);
-    return null;
-  }
-  
-  // Remove internal expiration field before returning
-  const { _expiresAt, ...value } = data.value;
-  return value;
+  return data?.value;
 };
 
 // Delete deletes a key-value pair from the database.
