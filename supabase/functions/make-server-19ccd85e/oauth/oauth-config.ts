@@ -12,6 +12,7 @@ export interface OAuthConfig {
   requiresPKCE: boolean; // Whether platform requires PKCE
   includeClientIdInTokenBody?: boolean; // Some providers expect client_id even with Basic auth
   includeClientSecretInTokenBody?: boolean; // Optional client_secret in token body for special cases
+  clientIdParamName?: string; // Override parameter name (e.g., TikTok uses 'client_key' instead of 'client_id')
 }
 
 const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
@@ -144,6 +145,7 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       redirectUri: resolveRedirectUri('tiktok', 'TIKTOK_REDIRECT_URI'),
       authMethod: 'standard',
       requiresPKCE: false,
+      clientIdParamName: 'client_key', // TikTok uses non-standard 'client_key' instead of 'client_id'
     },
     pinterest: {
       authUrl: 'https://www.pinterest.com/oauth/',

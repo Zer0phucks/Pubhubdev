@@ -1386,8 +1386,9 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
     });
 
     // Build authorization URL
+    const clientIdParam = config.clientIdParamName || 'client_id';
     const params = new URLSearchParams({
-      client_id: config.clientId!,
+      [clientIdParam]: config.clientId!,
       redirect_uri: config.redirectUri,
       response_type: 'code',
       scope: config.scope,
@@ -1486,16 +1487,18 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       }
       const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
       headers['Authorization'] = `Basic ${basicAuth}`;
+      const clientIdParam = config.clientIdParamName || 'client_id';
       if (config.includeClientIdInTokenBody) {
-        tokenParams.set('client_id', config.clientId);
+        tokenParams.set(clientIdParam, config.clientId);
       }
       if (config.includeClientSecretInTokenBody) {
         tokenParams.set('client_secret', config.clientSecret);
       }
     } else {
       // Standard OAuth: include credentials in request body
+      const clientIdParam = config.clientIdParamName || 'client_id';
       if (config.clientId) {
-        tokenParams.set('client_id', config.clientId);
+        tokenParams.set(clientIdParam, config.clientId);
       }
       if (config.clientSecret) {
         tokenParams.set('client_secret', config.clientSecret);
@@ -1762,15 +1765,17 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
             }
             const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
             headers['Authorization'] = `Basic ${basicAuth}`;
+            const clientIdParam = config.clientIdParamName || 'client_id';
             if (config.includeClientIdInTokenBody) {
-              refreshParams.set('client_id', config.clientId);
+              refreshParams.set(clientIdParam, config.clientId);
             }
             if (config.includeClientSecretInTokenBody) {
               refreshParams.set('client_secret', config.clientSecret);
             }
           } else {
+            const clientIdParam = config.clientIdParamName || 'client_id';
             if (config.clientId) {
-              refreshParams.set('client_id', config.clientId);
+              refreshParams.set(clientIdParam, config.clientId);
             }
             if (config.clientSecret) {
               refreshParams.set('client_secret', config.clientSecret);
