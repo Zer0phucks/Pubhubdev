@@ -149,7 +149,7 @@ export function AppHeader({
   };
 
   const handleConnectPlatformClick = () => {
-    onNavigate("settings", "connections");
+    onNavigate("project-settings", "connections");
   };
 
   // Only show platform tabs on views where filtering by platform makes sense
