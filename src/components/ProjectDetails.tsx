@@ -176,11 +176,6 @@ export function ProjectDetails() {
                   </li>
                 </ul>
               </div>
-              <Alert className="border-amber-500/30 bg-amber-500/10 mt-3">
-                <AlertDescription className="text-amber-200 text-xs">
-                  If no logo is uploaded, the PubHub logo will be displayed as the default.
-                </AlertDescription>
-              </Alert>
             </div>
           </div>
         </div>

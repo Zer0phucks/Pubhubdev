@@ -34,14 +34,36 @@ export function useConnectedPlatforms() {
     }
   }, [currentProject?.id]);
 
-  // Refresh when returning from OAuth callback
+  // Refresh when returning from OAuth callback or WordPress connection
   useEffect(() => {
     if (!currentProject) return;
 
-    const checkOAuthCompletion = async () => {
+    const checkConnectionCompletion = async () => {
       const oauthJustCompleted = sessionStorage.getItem('oauth_just_completed');
+      const wordpressJustConnected = sessionStorage.getItem('wordpress_just_connected');
+      const platformDisconnected = sessionStorage.getItem('platform_disconnected');
+      
       if (oauthJustCompleted === 'true') {
         console.log('OAuth just completed, refreshing connected platforms...');
+        sessionStorage.removeItem('oauth_just_completed');
+        // Add a small delay to ensure backend has saved the data
+        setTimeout(() => {
+          loadConnectedPlatforms();
+        }, 500);
+      }
+      
+      if (wordpressJustConnected === 'true') {
+        console.log('WordPress just connected, refreshing connected platforms...');
+        sessionStorage.removeItem('wordpress_just_connected');
+        // Add a small delay to ensure backend has saved the data
+        setTimeout(() => {
+          loadConnectedPlatforms();
+        }, 500);
+      }
+      
+      if (platformDisconnected === 'true') {
+        console.log('Platform disconnected, refreshing connected platforms...');
+        sessionStorage.removeItem('platform_disconnected');
         // Add a small delay to ensure backend has saved the data
         setTimeout(() => {
           loadConnectedPlatforms();
@@ -49,16 +71,16 @@ export function useConnectedPlatforms() {
       }
     };
 
-    checkOAuthCompletion();
+    checkConnectionCompletion();
 
-    // Also check on window focus in case user comes back from OAuth
+    // Also check on window focus in case user comes back from OAuth/WordPress
     const handleFocus = () => {
-      checkOAuthCompletion();
+      checkConnectionCompletion();
     };
 
-    // Poll for OAuth completion (check every second for 10 seconds)
+    // Poll for connection completion (check every second for 10 seconds)
     const intervalId = setInterval(() => {
-      checkOAuthCompletion();
+      checkConnectionCompletion();
     }, 1000);
 
     window.addEventListener('focus', handleFocus);

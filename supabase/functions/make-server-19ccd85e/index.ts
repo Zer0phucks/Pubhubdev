@@ -1890,12 +1890,14 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
 
     console.log('WordPress API response status:', testResponse.status, testResponse.statusText);
 
+    // Read response body as text first (can only read once)
+    const responseText = await testResponse.text();
+
     if (!testResponse.ok) {
-      const errorText = await testResponse.text();
       console.error('WordPress API error response:', {
         status: testResponse.status,
         statusText: testResponse.statusText,
-        body: errorText.substring(0, 500)
+        body: responseText.substring(0, 500)
       });
       return c.json({
         error: `WordPress API error (${testResponse.status}): Please check your credentials and ensure Application Passwords are enabled.`
@@ -1905,10 +1907,9 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
     // Parse JSON response with error handling
     let wpUser;
     try {
-      wpUser = await testResponse.json();
+      wpUser = JSON.parse(responseText);
       console.log('WordPress user authenticated:', { id: wpUser.id, name: wpUser.name });
     } catch (parseError: any) {
-      const responseText = await testResponse.text();
       console.error('WordPress returned non-JSON response:', {
         parseError: parseError.message,
         responsePreview: responseText.substring(0, 500)
@@ -1934,8 +1935,10 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
 
     // Update project connections
     const connections = await kv.get(`project:${projectId}:connections`) || [];
+    let found = false;
     const updatedConnections = connections.map((conn: any) => {
       if (conn.platform === 'blog') {
+        found = true;
         return {
           ...conn,
           connected: true,
@@ -1946,6 +1949,17 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
       }
       return conn;
     });
+
+    // If blog entry doesn't exist, add it
+    if (!found) {
+      updatedConnections.push({
+        platform: 'blog',
+        connected: true,
+        username: wpUser.name || username,
+        siteUrl,
+        connectedAt: new Date().toISOString(),
+      });
+    }
 
     await kv.set(`project:${projectId}:connections`, updatedConnections);
 

@@ -230,6 +230,9 @@ export function PlatformConnections() {
 
         const platformName = connections.find(c => c.platform === platformToDisconnect)?.name;
         toast.success(`${platformName} disconnected successfully`);
+        
+        // Set flag to trigger header refresh (similar to connection completion)
+        sessionStorage.setItem('platform_disconnected', 'true');
       } catch (error: any) {
         console.error('Disconnect error:', error);
         toast.error(error.message || 'Failed to disconnect platform');
@@ -337,6 +340,9 @@ export function PlatformConnections() {
 
       toast.success('WordPress connected successfully!');
 
+      // Set flag to trigger header refresh (similar to OAuth completion)
+      sessionStorage.setItem('wordpress_just_connected', 'true');
+      
       // Refresh connections to show the new connection
       await loadConnections();
     } catch (error: any) {
@@ -448,7 +454,7 @@ export function PlatformConnections() {
           <h3>Connected ({connectedCount})</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="platform-connections">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="platform-connections">
           {connections.filter(c => c.connected).map((connection) => (
             <Card key={connection.platform} className="p-6" data-testid={`platform-${connection.platform}`}>
               <div className="flex items-start justify-between mb-4">
@@ -556,7 +562,7 @@ export function PlatformConnections() {
           <h3>Available Platforms</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           {connections.filter(c => !c.connected).map((connection) => (
             <Card key={connection.platform} className="p-6 hover:border-emerald-500/30 transition-all cursor-pointer group">
               <div className="flex flex-col items-center text-center space-y-4">
