@@ -1866,15 +1866,23 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
 // Connect WordPress blog
 app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
   try {
+    console.log('WordPress connect endpoint called');
     const userId = c.get('userId');
-    const { projectId, siteUrl, username, applicationPassword } = await c.req.json();
+    const body = await c.req.json();
+    console.log('Request body received:', { projectId: body.projectId, siteUrl: body.siteUrl, username: body.username });
+
+    const { projectId, siteUrl, username, applicationPassword } = body;
 
     if (!projectId || !siteUrl || !username || !applicationPassword) {
+      console.error('Missing parameters:', { projectId: !!projectId, siteUrl: !!siteUrl, username: !!username, applicationPassword: !!applicationPassword });
       return c.json({ error: 'Missing required parameters' }, 400);
     }
 
     // Validate WordPress credentials by testing API connection
     const testUrl = `${siteUrl}/wp-json/wp/v2/users/me`;
+    console.log('Testing WordPress connection to:', testUrl);
+
+    // Create Basic Auth header (same as OAuth endpoints)
     const authHeader = btoa(`${username}:${applicationPassword}`);
 
     const testResponse = await fetch(testUrl, {
