@@ -154,8 +154,9 @@ export function getOAuthConfig(platform: string): OAuthConfig | null {
       clientSecret: Deno.env.get('PINTEREST_APP_SECRET'),
       scope: 'boards:read,pins:read,pins:write',
       redirectUri: resolveRedirectUri('pinterest', 'PINTEREST_REDIRECT_URI'),
-      authMethod: 'standard',
+      authMethod: 'basic_auth', // Pinterest v5 API requires Basic Authentication header ONLY
       requiresPKCE: false,
+      // Per official docs: only grant_type, code, redirect_uri in body - NO client credentials
     },
     reddit: {
       authUrl: 'https://www.reddit.com/api/v1/authorize',

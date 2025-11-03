@@ -1505,6 +1505,19 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       }
     }
     
+    // Enhanced logging for Pinterest debugging
+    if (platform === 'pinterest') {
+      console.log('Pinterest token exchange details:', {
+        clientId: config.clientId,
+        clientSecretLength: config.clientSecret?.length,
+        clientSecretPrefix: config.clientSecret?.substring(0, 10),
+        basicAuthHeader: headers['Authorization']?.substring(0, 20),
+        tokenUrl: config.tokenUrl,
+        redirectUri: config.redirectUri,
+        tokenParams: Object.fromEntries(tokenParams.entries())
+      });
+    }
+
     console.log('Sending token exchange request:', {
       platform,
       tokenUrl: config.tokenUrl,
@@ -1674,14 +1687,19 @@ app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
   try {
     const { platform, projectId } = await c.req.json();
     const userId = c.get('userId');
-    
+
     if (!platform || !projectId) {
       return c.json({ error: 'Missing required parameters' }, 400);
     }
-    
-    // Delete OAuth tokens
-    await kv.del(`oauth:token:${platform}:${projectId}`);
-    
+
+    // For blog platform, use WordPress disconnect
+    if (platform === 'blog') {
+      await kv.del(`wordpress:credentials:${projectId}`);
+    } else {
+      // Delete OAuth tokens for other platforms
+      await kv.del(`oauth:token:${platform}:${projectId}`);
+    }
+
     // Update project connections
     const connections = await kv.get(`project:${projectId}:connections`) || [];
     const updatedConnections = connections.map((conn: any) => {
@@ -1691,16 +1709,17 @@ app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
           connected: false,
           username: undefined,
           accountId: undefined,
+          siteUrl: undefined,
           connectedAt: undefined,
         };
       }
       return conn;
     });
-    
+
     await kv.set(`project:${projectId}:connections`, updatedConnections);
-    
-    return c.json({ 
-      success: true, 
+
+    return c.json({
+      success: true,
       connections: updatedConnections,
     });
   } catch (error: any) {
@@ -1839,6 +1858,297 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
   } catch (error: any) {
     console.error('Get token error:', error);
     return c.json({ error: `Failed to get token: ${error.message}` }, 500);
+  }
+});
+
+// ============= WORDPRESS INTEGRATION ROUTES =============
+
+// Connect WordPress blog
+app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { projectId, siteUrl, username, applicationPassword } = await c.req.json();
+
+    if (!projectId || !siteUrl || !username || !applicationPassword) {
+      return c.json({ error: 'Missing required parameters' }, 400);
+    }
+
+    // Validate WordPress credentials by testing API connection
+    const testUrl = `${siteUrl}/wp-json/wp/v2/users/me`;
+    const authHeader = btoa(`${username}:${applicationPassword}`);
+
+    const testResponse = await fetch(testUrl, {
+      headers: {
+        'Authorization': `Basic ${authHeader}`
+      }
+    });
+
+    if (!testResponse.ok) {
+      const errorText = await testResponse.text();
+      console.error('WordPress validation failed:', errorText);
+      return c.json({
+        error: 'Invalid WordPress credentials or site URL. Please check your credentials and ensure Application Passwords are enabled.'
+      }, 401);
+    }
+
+    const wpUser = await testResponse.json();
+
+    // Encrypt and store WordPress credentials
+    const credentials = {
+      siteUrl,
+      username,
+      applicationPassword,
+      userId,
+      connectedAt: new Date().toISOString(),
+      wpUserId: wpUser.id,
+      wpUserName: wpUser.name || username,
+    };
+
+    const encryptedRecord = await encryptTokenRecord(credentials);
+    await kv.set(`wordpress:credentials:${projectId}`, encryptedRecord);
+
+    // Update project connections
+    const connections = await kv.get(`project:${projectId}:connections`) || [];
+    const updatedConnections = connections.map((conn: any) => {
+      if (conn.platform === 'blog') {
+        return {
+          ...conn,
+          connected: true,
+          username: wpUser.name || username,
+          siteUrl,
+          connectedAt: new Date().toISOString(),
+        };
+      }
+      return conn;
+    });
+
+    await kv.set(`project:${projectId}:connections`, updatedConnections);
+
+    return c.json({
+      success: true,
+      username: wpUser.name || username,
+      siteUrl,
+      connections: updatedConnections,
+    });
+  } catch (error: any) {
+    console.error('WordPress connection error:', error);
+    return c.json({ error: `Failed to connect WordPress: ${error.message}` }, 500);
+  }
+});
+
+// Disconnect WordPress blog
+app.post("/make-server-19ccd85e/wordpress/disconnect", requireAuth, async (c) => {
+  try {
+    const { projectId } = await c.req.json();
+    const userId = c.get('userId');
+
+    if (!projectId) {
+      return c.json({ error: 'Missing projectId parameter' }, 400);
+    }
+
+    // Delete WordPress credentials
+    await kv.del(`wordpress:credentials:${projectId}`);
+
+    // Update project connections
+    const connections = await kv.get(`project:${projectId}:connections`) || [];
+    const updatedConnections = connections.map((conn: any) => {
+      if (conn.platform === 'blog') {
+        return {
+          ...conn,
+          connected: false,
+          username: undefined,
+          siteUrl: undefined,
+          connectedAt: undefined,
+        };
+      }
+      return conn;
+    });
+
+    await kv.set(`project:${projectId}:connections`, updatedConnections);
+
+    return c.json({
+      success: true,
+      connections: updatedConnections,
+    });
+  } catch (error: any) {
+    console.error('WordPress disconnect error:', error);
+    return c.json({ error: `Failed to disconnect WordPress: ${error.message}` }, 500);
+  }
+});
+
+// Get WordPress posts
+app.get("/make-server-19ccd85e/wordpress/posts", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const projectId = c.req.query('projectId');
+    const status = c.req.query('status') || 'any'; // any, publish, draft, pending
+    const perPage = c.req.query('perPage') || '10';
+
+    if (!projectId) {
+      return c.json({ error: 'Missing projectId parameter' }, 400);
+    }
+
+    // Get encrypted credentials
+    const encryptedRecord = await kv.get(`wordpress:credentials:${projectId}`);
+
+    if (!encryptedRecord || encryptedRecord.userId !== userId) {
+      return c.json({ error: 'WordPress not connected' }, 404);
+    }
+
+    // Decrypt credentials
+    const credentials = await decryptTokenRecord(encryptedRecord);
+
+    if (!credentials) {
+      return c.json({ error: 'Failed to decrypt credentials' }, 500);
+    }
+
+    // Fetch posts from WordPress
+    const authHeader = btoa(`${credentials.username}:${credentials.applicationPassword}`);
+    const postsUrl = `${credentials.siteUrl}/wp-json/wp/v2/posts?status=${status}&per_page=${perPage}&_embed`;
+
+    const response = await fetch(postsUrl, {
+      headers: {
+        'Authorization': `Basic ${authHeader}`
+      }
+    });
+
+    if (!response.ok) {
+      return c.json({ error: 'Failed to fetch WordPress posts' }, response.status);
+    }
+
+    const posts = await response.json();
+
+    return c.json({ posts });
+  } catch (error: any) {
+    console.error('WordPress get posts error:', error);
+    return c.json({ error: `Failed to get posts: ${error.message}` }, 500);
+  }
+});
+
+// Create or update WordPress post
+app.post("/make-server-19ccd85e/wordpress/posts", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { projectId, title, content, status, postId } = await c.req.json();
+
+    if (!projectId || !title || !content) {
+      return c.json({ error: 'Missing required parameters' }, 400);
+    }
+
+    // Get encrypted credentials
+    const encryptedRecord = await kv.get(`wordpress:credentials:${projectId}`);
+
+    if (!encryptedRecord || encryptedRecord.userId !== userId) {
+      return c.json({ error: 'WordPress not connected' }, 404);
+    }
+
+    // Decrypt credentials
+    const credentials = await decryptTokenRecord(encryptedRecord);
+
+    if (!credentials) {
+      return c.json({ error: 'Failed to decrypt credentials' }, 500);
+    }
+
+    // Create or update post in WordPress
+    const authHeader = btoa(`${credentials.username}:${credentials.applicationPassword}`);
+    const postData = {
+      title,
+      content,
+      status: status || 'draft', // draft, publish, pending, private
+    };
+
+    const method = postId ? 'POST' : 'POST';
+    const url = postId
+      ? `${credentials.siteUrl}/wp-json/wp/v2/posts/${postId}`
+      : `${credentials.siteUrl}/wp-json/wp/v2/posts`;
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Basic ${authHeader}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(postData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('WordPress post creation/update failed:', errorText);
+      return c.json({ error: 'Failed to create/update WordPress post' }, response.status);
+    }
+
+    const post = await response.json();
+
+    return c.json({
+      success: true,
+      post: {
+        id: post.id,
+        title: post.title.rendered,
+        link: post.link,
+        status: post.status,
+      }
+    });
+  } catch (error: any) {
+    console.error('WordPress create/update post error:', error);
+    return c.json({ error: `Failed to create/update post: ${error.message}` }, 500);
+  }
+});
+
+// Publish WordPress draft
+app.post("/make-server-19ccd85e/wordpress/posts/:id/publish", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const postId = c.req.param('id');
+    const { projectId } = await c.req.json();
+
+    if (!projectId || !postId) {
+      return c.json({ error: 'Missing required parameters' }, 400);
+    }
+
+    // Get encrypted credentials
+    const encryptedRecord = await kv.get(`wordpress:credentials:${projectId}`);
+
+    if (!encryptedRecord || encryptedRecord.userId !== userId) {
+      return c.json({ error: 'WordPress not connected' }, 404);
+    }
+
+    // Decrypt credentials
+    const credentials = await decryptTokenRecord(encryptedRecord);
+
+    if (!credentials) {
+      return c.json({ error: 'Failed to decrypt credentials' }, 500);
+    }
+
+    // Update post status to publish
+    const authHeader = btoa(`${credentials.username}:${credentials.applicationPassword}`);
+
+    const response = await fetch(`${credentials.siteUrl}/wp-json/wp/v2/posts/${postId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${authHeader}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'publish' }),
+    });
+
+    if (!response.ok) {
+      return c.json({ error: 'Failed to publish WordPress post' }, response.status);
+    }
+
+    const post = await response.json();
+
+    return c.json({
+      success: true,
+      post: {
+        id: post.id,
+        title: post.title.rendered,
+        link: post.link,
+        status: post.status,
+      }
+    });
+  } catch (error: any) {
+    console.error('WordPress publish post error:', error);
+    return c.json({ error: `Failed to publish post: ${error.message}` }, 500);
   }
 });
 

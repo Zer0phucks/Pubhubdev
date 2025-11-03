@@ -28,6 +28,7 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { WordPressConnectionDialog, WordPressCredentials } from "./WordPressConnectionDialog";
 import { toast } from "sonner";
 
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
@@ -106,6 +107,7 @@ export function PlatformConnections() {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
   const [platformToDisconnect, setPlatformToDisconnect] = useState<Platform | null>(null);
+  const [wordpressDialogOpen, setWordpressDialogOpen] = useState(false);
   const { currentProject } = useProject();
 
   // Load connections from backend when project changes
@@ -242,8 +244,13 @@ export function PlatformConnections() {
       // If disconnecting, show confirmation
       handleDisconnectClick(platform);
     } else {
-      // Start OAuth flow
-      await startOAuthFlow(platform);
+      // For blog platform, show WordPress dialog instead of OAuth
+      if (platform === "blog") {
+        setWordpressDialogOpen(true);
+      } else {
+        // Start OAuth flow for other platforms
+        await startOAuthFlow(platform);
+      }
     }
   };
 
@@ -284,13 +291,58 @@ export function PlatformConnections() {
   };
 
   const toggleAutoPost = async (platform: Platform) => {
-    const updatedConnections = connections.map(conn => 
-      conn.platform === platform 
+    const updatedConnections = connections.map(conn =>
+      conn.platform === platform
         ? { ...conn, autoPost: !conn.autoPost }
         : conn
     );
     setConnections(updatedConnections);
     await saveConnections(updatedConnections);
+  };
+
+  const handleWordPressConnect = async (credentials: WordPressCredentials) => {
+    if (!currentProject) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Get current user session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error('You must be signed in to connect WordPress');
+      }
+
+      // Update auth token for API calls
+      setAuthToken(session.access_token);
+
+      // Call backend to connect WordPress
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/make-server-19ccd85e/wordpress/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          projectId: currentProject.id,
+          ...credentials
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to connect WordPress');
+      }
+
+      const data = await response.json();
+
+      toast.success('WordPress connected successfully!');
+
+      // Refresh connections to show the new connection
+      await loadConnections();
+    } catch (error: any) {
+      console.error('WordPress connection error:', error);
+      throw error;
+    }
   };
 
   const connectedCount = connections.filter(c => c.connected).length;
@@ -557,6 +609,13 @@ export function PlatformConnections() {
         confirmText="Disconnect"
         onConfirm={confirmDisconnect}
         variant="destructive"
+      />
+
+      {/* WordPress Connection Dialog */}
+      <WordPressConnectionDialog
+        open={wordpressDialogOpen}
+        onOpenChange={setWordpressDialogOpen}
+        onConnect={handleWordPressConnect}
       />
     </div>
   );
