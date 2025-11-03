@@ -1876,6 +1876,7 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
 
     // Validate WordPress credentials by testing API connection
     const testUrl = `${siteUrl}/wp-json/wp/v2/users/me`;
+    console.log('WordPress connection attempt:', { siteUrl, username, testUrl });
 
     // Create Basic Auth header using same encoding as other OAuth endpoints
     const credentials = `${username}:${applicationPassword}`;
@@ -1887,13 +1888,35 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
       }
     });
 
+    console.log('WordPress API response status:', testResponse.status, testResponse.statusText);
+
     if (!testResponse.ok) {
+      const errorText = await testResponse.text();
+      console.error('WordPress API error response:', {
+        status: testResponse.status,
+        statusText: testResponse.statusText,
+        body: errorText.substring(0, 500)
+      });
       return c.json({
-        error: 'Invalid WordPress credentials or site URL. Please check your credentials and ensure Application Passwords are enabled.'
+        error: `WordPress API error (${testResponse.status}): Please check your credentials and ensure Application Passwords are enabled.`
       }, 401);
     }
 
-    const wpUser = await testResponse.json();
+    // Parse JSON response with error handling
+    let wpUser;
+    try {
+      wpUser = await testResponse.json();
+      console.log('WordPress user authenticated:', { id: wpUser.id, name: wpUser.name });
+    } catch (parseError: any) {
+      const responseText = await testResponse.text();
+      console.error('WordPress returned non-JSON response:', {
+        parseError: parseError.message,
+        responsePreview: responseText.substring(0, 500)
+      });
+      return c.json({
+        error: 'WordPress site returned invalid response. Please ensure REST API is enabled and accessible.'
+      }, 500);
+    }
 
     // Encrypt and store WordPress credentials
     const credentialsData = {
@@ -1933,7 +1956,11 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
       connections: updatedConnections,
     });
   } catch (error: any) {
-    console.error('WordPress connection error:', error);
+    console.error('WordPress connection error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return c.json({ error: `Failed to connect WordPress: ${error.message}` }, 500);
   }
 });
