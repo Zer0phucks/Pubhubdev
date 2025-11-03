@@ -1866,24 +1866,20 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
 // Connect WordPress blog
 app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
   try {
-    console.log('WordPress connect endpoint called');
     const userId = c.get('userId');
     const body = await c.req.json();
-    console.log('Request body received:', { projectId: body.projectId, siteUrl: body.siteUrl, username: body.username });
-
     const { projectId, siteUrl, username, applicationPassword } = body;
 
     if (!projectId || !siteUrl || !username || !applicationPassword) {
-      console.error('Missing parameters:', { projectId: !!projectId, siteUrl: !!siteUrl, username: !!username, applicationPassword: !!applicationPassword });
       return c.json({ error: 'Missing required parameters' }, 400);
     }
 
     // Validate WordPress credentials by testing API connection
     const testUrl = `${siteUrl}/wp-json/wp/v2/users/me`;
-    console.log('Testing WordPress connection to:', testUrl);
 
-    // Create Basic Auth header (same as OAuth endpoints)
-    const authHeader = btoa(`${username}:${applicationPassword}`);
+    // Create Basic Auth header using same encoding as other OAuth endpoints
+    const credentials = `${username}:${applicationPassword}`;
+    const authHeader = btoa(credentials);
 
     const testResponse = await fetch(testUrl, {
       headers: {
@@ -1892,8 +1888,6 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
     });
 
     if (!testResponse.ok) {
-      const errorText = await testResponse.text();
-      console.error('WordPress validation failed:', errorText);
       return c.json({
         error: 'Invalid WordPress credentials or site URL. Please check your credentials and ensure Application Passwords are enabled.'
       }, 401);
@@ -1902,7 +1896,7 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
     const wpUser = await testResponse.json();
 
     // Encrypt and store WordPress credentials
-    const credentials = {
+    const credentialsData = {
       siteUrl,
       username,
       applicationPassword,
@@ -1912,7 +1906,7 @@ app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
       wpUserName: wpUser.name || username,
     };
 
-    const encryptedRecord = await encryptTokenRecord(credentials);
+    const encryptedRecord = await encryptTokenRecord(credentialsData);
     await kv.set(`wordpress:credentials:${projectId}`, encryptedRecord);
 
     // Update project connections
