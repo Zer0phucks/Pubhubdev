@@ -2228,4 +2228,429 @@ async function publishToReddit(accessToken: string, content: any, media: any) {
   }
 }
 
+// ============================================
+// AI CHAT ASSISTANT WITH FUNCTION CALLING
+// ============================================
+
+/**
+ * AI Chat Assistant - Context-aware with action capabilities
+ * Supports function calling for:
+ * - Querying user data (posts, analytics, connections)
+ * - Creating and scheduling posts
+ * - Managing content across platforms
+ */
+app.post("/make-server-19ccd85e/ai/chat", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { messages, projectId } = await c.req.json();
+
+    // Define available tools for the AI
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "get_user_posts",
+          description: "Get the user's posts, optionally filtered by project, platform, or status",
+          parameters: {
+            type: "object",
+            properties: {
+              projectId: { type: "string", description: "Project ID to filter posts" },
+              platform: {
+                type: "string",
+                enum: ["twitter", "instagram", "linkedin", "facebook", "youtube", "tiktok", "pinterest", "reddit", "blog"],
+                description: "Platform to filter posts"
+              },
+              status: {
+                type: "string",
+                enum: ["draft", "scheduled", "published", "failed"],
+                description: "Status to filter posts"
+              },
+              limit: { type: "number", description: "Maximum number of posts to return", default: 10 }
+            }
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_platform_connections",
+          description: "Get the user's connected platforms for a project",
+          parameters: {
+            type: "object",
+            properties: {
+              projectId: { type: "string", description: "Project ID to get connections for" }
+            },
+            required: ["projectId"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_post",
+          description: "Create and optionally schedule a new post across one or more platforms",
+          parameters: {
+            type: "object",
+            properties: {
+              projectId: { type: "string", description: "Project ID for the post" },
+              content: { type: "string", description: "The post content/caption" },
+              platforms: {
+                type: "array",
+                items: {
+                  type: "string",
+                  enum: ["twitter", "instagram", "linkedin", "facebook", "youtube", "tiktok", "pinterest", "reddit", "blog"]
+                },
+                description: "Platforms to post to"
+              },
+              scheduledTime: {
+                type: "string",
+                description: "ISO 8601 datetime string for when to publish (e.g., '2025-01-15T08:00:00Z'). If not provided, post is saved as draft."
+              },
+              mediaUrls: {
+                type: "array",
+                items: { type: "string" },
+                description: "URLs of media attachments"
+              }
+            },
+            required: ["projectId", "content", "platforms"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_projects",
+          description: "Get all projects for the user",
+          parameters: {
+            type: "object",
+            properties: {}
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "parse_datetime",
+          description: "Parse natural language datetime expressions into ISO 8601 format (e.g., 'Tuesday at 8am', 'tomorrow 3pm', 'next Friday 2:30pm')",
+          parameters: {
+            type: "object",
+            properties: {
+              expression: { type: "string", description: "Natural language datetime expression" },
+              timezone: { type: "string", description: "User's timezone (e.g., 'America/New_York')", default: "UTC" }
+            },
+            required: ["expression"]
+          }
+        }
+      }
+    ];
+
+    // Build system message with user context
+    const systemMessage = {
+      role: "system",
+      content: `You are PubHub AI, an intelligent assistant for content creators. You help users manage their social media content across multiple platforms.
+
+You have access to the following capabilities:
+- View and analyze user's posts and content
+- Check connected social media platforms
+- Create and schedule posts across multiple platforms
+- Parse natural language date/time expressions
+
+When users ask you to create or schedule posts:
+1. First use parse_datetime to convert any natural language time expressions to ISO format
+2. Then use create_post with the proper ISO datetime in scheduledTime
+3. Always confirm what you're about to do before executing actions
+4. Be conversational and helpful
+
+Current context:
+- User ID: ${userId}
+- Active Project ID: ${projectId || 'No project selected'}
+
+Guidelines:
+- Be concise but friendly
+- When creating posts, confirm the details before proceeding
+- If scheduling, always confirm the date and time with the user
+- If multiple platforms are requested, create posts for all of them
+- Provide helpful suggestions for content optimization`
+    };
+
+    // Call Azure OpenAI with function calling
+    const response = await fetch(
+      `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+        },
+        body: JSON.stringify({
+          messages: [systemMessage, ...messages],
+          tools,
+          tool_choice: "auto",
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Azure OpenAI API error: ${error}`);
+    }
+
+    const data = await response.json();
+    const assistantMessage = data.choices[0].message;
+
+    // Handle function calls
+    if (assistantMessage.tool_calls) {
+      const toolResults = [];
+
+      for (const toolCall of assistantMessage.tool_calls) {
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+
+        let result;
+
+        try {
+          switch (functionName) {
+            case "get_user_posts":
+              result = await executeGetUserPosts(userId, functionArgs);
+              break;
+            case "get_platform_connections":
+              result = await executeGetPlatformConnections(userId, functionArgs.projectId);
+              break;
+            case "create_post":
+              result = await executeCreatePost(userId, functionArgs);
+              break;
+            case "get_projects":
+              result = await executeGetProjects(userId);
+              break;
+            case "parse_datetime":
+              result = await executeParseDatetime(functionArgs);
+              break;
+            default:
+              result = { error: `Unknown function: ${functionName}` };
+          }
+        } catch (error: any) {
+          result = { error: error.message };
+        }
+
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: "tool",
+          name: functionName,
+          content: JSON.stringify(result)
+        });
+      }
+
+      // Call AI again with function results
+      const followUpResponse = await fetch(
+        `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+          },
+          body: JSON.stringify({
+            messages: [
+              systemMessage,
+              ...messages,
+              assistantMessage,
+              ...toolResults
+            ],
+            temperature: 0.7,
+            max_tokens: 1000,
+          }),
+        }
+      );
+
+      const followUpData = await followUpResponse.json();
+      return c.json({
+        success: true,
+        message: followUpData.choices[0].message.content,
+        functionsCalled: assistantMessage.tool_calls.map((tc: any) => tc.function.name)
+      });
+    }
+
+    // No function calls, return response directly
+    return c.json({
+      success: true,
+      message: assistantMessage.content
+    });
+
+  } catch (error: any) {
+    console.error('AI chat error:', error);
+    return c.json({
+      success: false,
+      error: error.message
+    }, 500);
+  }
+});
+
+// Tool execution functions
+async function executeGetUserPosts(userId: string, args: any) {
+  const { projectId, platform, status, limit = 10 } = args;
+
+  let postIds;
+  if (projectId) {
+    postIds = await kv.get(`project:${projectId}:posts`) || [];
+  } else {
+    postIds = await kv.get(`user:${userId}:posts`) || [];
+  }
+
+  const posts = await Promise.all(
+    postIds.slice(0, limit).map(async (id: string) => await kv.get(`post:${id}`))
+  );
+
+  let filtered = posts.filter(Boolean);
+
+  if (platform) {
+    filtered = filtered.filter((post: any) =>
+      post.platforms?.includes(platform) || post.platform === platform
+    );
+  }
+
+  if (status) {
+    filtered = filtered.filter((post: any) => post.status === status);
+  }
+
+  return {
+    posts: filtered.map((post: any) => ({
+      id: post.id,
+      content: post.content,
+      platforms: post.platforms || [post.platform],
+      status: post.status,
+      scheduledTime: post.scheduledTime,
+      createdAt: post.createdAt
+    })),
+    total: filtered.length
+  };
+}
+
+async function executeGetPlatformConnections(userId: string, projectId: string) {
+  const projectConnections = await kv.get(`project:${projectId}:connections`) || {};
+
+  const connections = [];
+  for (const [platform, tokenData] of Object.entries(projectConnections)) {
+    if (tokenData && typeof tokenData === 'object' && (tokenData as any).access_token) {
+      connections.push({
+        platform,
+        connected: true,
+        username: (tokenData as any).username || 'Unknown'
+      });
+    }
+  }
+
+  return { connections, total: connections.length };
+}
+
+async function executeCreatePost(userId: string, args: any) {
+  const { projectId, content, platforms, scheduledTime, mediaUrls = [] } = args;
+
+  const postId = `post-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const post = {
+    id: postId,
+    projectId,
+    userId,
+    content,
+    platforms,
+    status: scheduledTime ? 'scheduled' : 'draft',
+    scheduledTime,
+    mediaUrls,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await kv.set(`post:${postId}`, post);
+
+  // Add to project posts
+  const projectPostIds = await kv.get(`project:${projectId}:posts`) || [];
+  projectPostIds.push(postId);
+  await kv.set(`project:${projectId}:posts`, projectPostIds);
+
+  return {
+    success: true,
+    postId,
+    status: post.status,
+    scheduledTime,
+    platforms
+  };
+}
+
+async function executeGetProjects(userId: string) {
+  const projectIds = await kv.get(`user:${userId}:projects`) || [];
+  const projects = await Promise.all(
+    projectIds.map(async (id: string) => await kv.get(`project:${id}`))
+  );
+
+  return {
+    projects: projects.filter(Boolean).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description
+    })),
+    total: projects.length
+  };
+}
+
+async function executeParseDatetime(args: any) {
+  const { expression, timezone = "UTC" } = args;
+
+  // Simple date parsing logic
+  // This is a basic implementation - you might want to use a library like chrono-node for production
+  const now = new Date();
+  let targetDate = new Date(now);
+
+  // Convert expression to lowercase for easier matching
+  const expr = expression.toLowerCase();
+
+  // Handle "tuesday", "wednesday", etc.
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayMatch = days.findIndex(day => expr.includes(day));
+
+  if (dayMatch !== -1) {
+    const currentDay = now.getDay();
+    let daysToAdd = dayMatch - currentDay;
+    if (daysToAdd <= 0) daysToAdd += 7; // Next week
+    targetDate.setDate(now.getDate() + daysToAdd);
+  }
+
+  // Handle "tomorrow"
+  if (expr.includes('tomorrow')) {
+    targetDate.setDate(now.getDate() + 1);
+  }
+
+  // Handle "next week"
+  if (expr.includes('next week')) {
+    targetDate.setDate(now.getDate() + 7);
+  }
+
+  // Handle time like "8am", "3pm", "14:30"
+  const timeMatch = expr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1]);
+    const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    const meridiem = timeMatch[3];
+
+    if (meridiem === 'pm' && hours < 12) hours += 12;
+    if (meridiem === 'am' && hours === 12) hours = 0;
+
+    targetDate.setHours(hours, minutes, 0, 0);
+  }
+
+  return {
+    originalExpression: expression,
+    parsedDate: targetDate.toISOString(),
+    humanReadable: targetDate.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timezone
+    })
+  };
+}
+
 Deno.serve(app.fetch);

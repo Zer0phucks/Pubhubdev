@@ -9,9 +9,12 @@ import {
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
-import { Sparkles, Send, X, Loader2 } from "lucide-react";
+import { Sparkles, Send, X, Loader2, CheckCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { cn } from "./ui/utils";
+import { aiAPI } from "../utils/api";
+import { useProject } from "./ProjectContext";
+import { toast } from "sonner";
 
 type View = "dashboard" | "compose" | "inbox" | "calendar" | "ai" | "connections";
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
@@ -21,6 +24,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  functionsCalled?: string[];
 }
 
 interface AIChatDialogProps {
@@ -45,6 +49,7 @@ export function AIChatDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { currentProject } = useProject();
 
   // Initialize with welcome message
   useEffect(() => {
@@ -52,7 +57,14 @@ export function AIChatDialog({
       const welcomeMessage: Message = {
         id: "welcome",
         role: "assistant",
-        content: `Hi! I'm PubHub AI. I can help you with questions about your content, analytics, scheduling, and more. What would you like to know?`,
+        content: `Hi! I'm PubHub AI, your intelligent content assistant. I can help you:
+
+• View and analyze your posts across all platforms
+• Create and schedule new posts for multiple platforms
+• Check which platforms you're connected to
+• Parse natural language date/time (e.g., "Tuesday at 8am")
+
+Try asking me to create a post or show you your recent content!`,
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
@@ -83,20 +95,49 @@ export function AIChatDialog({
       setInput("");
       setIsLoading(true);
 
-      // Simulate AI response
-      setTimeout(() => {
-        const aiResponse = generateAIResponse(initialQuery, currentView, selectedPlatform);
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: aiResponse,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setIsLoading(false);
-      }, 1000 + Math.random() * 1000);
+      // Call AI API
+      (async () => {
+        try {
+          const conversationMessages = [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content
+          }));
+
+          const response = await aiAPI.chat(conversationMessages, currentProject?.id);
+
+          if (response.success) {
+            const assistantMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: response.message,
+              timestamp: new Date(),
+              functionsCalled: response.functionsCalled
+            };
+            setMessages((prev) => [...prev, assistantMessage]);
+
+            if (response.functionsCalled && response.functionsCalled.length > 0) {
+              toast.success(`Actions completed: ${response.functionsCalled.join(', ')}`);
+            }
+          } else {
+            throw new Error(response.error || 'Failed to get AI response');
+          }
+        } catch (error: any) {
+          console.error('AI chat error:', error);
+          toast.error('Failed to get AI response: ' + error.message);
+
+          const errorMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "I'm sorry, I encountered an error processing your request. Please try again.",
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMessage]);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
     }
-  }, [open, autoSubmit, initialQuery, messages.length, hasAutoSubmitted, isLoading, currentView, selectedPlatform]);
+  }, [open, autoSubmit, initialQuery, messages.length, hasAutoSubmitted, isLoading, currentProject]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -120,18 +161,47 @@ export function AIChatDialog({
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response (in production, this would call your AI backend)
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(userMessage.content, currentView, selectedPlatform);
-      const assistantMessage: Message = {
+    try {
+      // Call AI API with conversation history
+      const conversationMessages = [...messages, userMessage].map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      const response = await aiAPI.chat(conversationMessages, currentProject?.id);
+
+      if (response.success) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: response.message,
+          timestamp: new Date(),
+          functionsCalled: response.functionsCalled
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // Show toast if functions were called
+        if (response.functionsCalled && response.functionsCalled.length > 0) {
+          toast.success(`Actions completed: ${response.functionsCalled.join(', ')}`);
+        }
+      } else {
+        throw new Error(response.error || 'Failed to get AI response');
+      }
+    } catch (error: any) {
+      console.error('AI chat error:', error);
+      toast.error('Failed to get AI response: ' + error.message);
+
+      // Add error message to chat
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: aiResponse,
+        content: "I'm sorry, I encountered an error processing your request. Please try again.",
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000 + Math.random() * 1000);
+    }
   };
 
   const handleClear = () => {
@@ -144,10 +214,10 @@ export function AIChatDialog({
   };
 
   const exampleQueries = [
-    "What's my engagement rate this week?",
-    "When should I post on Instagram?",
-    "Show me my best performing content",
-    "Help me come up with content ideas",
+    "Show me all my recent posts",
+    "Create a post about our new product launch and schedule it for Tuesday at 8am on Twitter, LinkedIn, and Facebook",
+    "What platforms am I connected to?",
+    "Show me my drafts and scheduled posts",
   ];
 
   return (
@@ -226,6 +296,19 @@ export function AIChatDialog({
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
                     {message.content}
                   </p>
+                  {message.functionsCalled && message.functionsCalled.length > 0 && (
+                    <div className="flex gap-1 mt-2 flex-wrap">
+                      {message.functionsCalled.map((fn, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs"
+                        >
+                          <CheckCircle className="w-3 h-3" />
+                          {fn.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p
                     className={cn(
                       "text-xs mt-1",
@@ -289,45 +372,4 @@ export function AIChatDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-// Simulated AI response generator (replace with real API call)
-function generateAIResponse(query: string, currentView: View, platform: Platform): string {
-  const lowercaseQuery = query.toLowerCase();
-
-  // Context-aware responses based on current view
-  if (lowercaseQuery.includes("post") && lowercaseQuery.includes("composting")) {
-    return `Based on your content history, your last post about composting was 12 days ago on Instagram. It received 342 likes and 28 comments. Would you like me to help you create a new composting-related post?`;
-  }
-
-  if (lowercaseQuery.includes("engagement") || lowercaseQuery.includes("analytics")) {
-    return `Your average engagement rate across all platforms this month is 4.8%, which is 0.7% higher than last month. Twitter is performing best at 6.2%, followed by Instagram at 5.1%. Would you like a detailed breakdown by platform?`;
-  }
-
-  if (lowercaseQuery.includes("schedule") || lowercaseQuery.includes("when")) {
-    return `Based on your audience analytics, the best times to post this week are:\n\n• Twitter: 9 AM and 5 PM EST\n• Instagram: 11 AM and 7 PM EST\n• LinkedIn: 8 AM and 12 PM EST\n\nWould you like me to schedule a post for one of these optimal times?`;
-  }
-
-  if (lowercaseQuery.includes("idea") || lowercaseQuery.includes("content") || lowercaseQuery.includes("suggestion")) {
-    return `Here are some content suggestions tailored to your audience:\n\n📝 **Trending Topics:**\n1. "Top 5 Productivity Tips for 2025" - How-to format (high engagement potential)\n2. "Behind-the-Scenes: A Day in the Life" - Authentic storytelling (builds connection)\n3. "Ask Me Anything" - Interactive Q&A session (boosts engagement by 60%)\n\n🎯 **Platform-Specific Ideas:**\n• Twitter: Thread on industry insights or personal journey\n• Instagram: Carousel post with actionable tips + eye-catching visuals\n• LinkedIn: Professional case study or thought leadership piece\n• TikTok/Reels: Quick tutorial or trending challenge\n\n💡 **Based on Your Best Performing Content:**\nYour tutorial-style posts get 45% more engagement. Consider creating educational content with step-by-step breakdowns.\n\nWould you like me to help you develop any of these ideas further?`;
-  }
-
-  if (lowercaseQuery.includes("hashtag")) {
-    return `For ${platform} posts about sustainability, I recommend:\n\n#SustainableLiving #EcoFriendly #ZeroWaste #GreenLiving #Composting\n\nThese hashtags have generated 35% more reach in your previous posts. Want me to add them to your next post?`;
-  }
-
-  if (currentView === "compose") {
-    return `I see you're working on creating content. I can help you with:\n\n• Generating post ideas\n• Suggesting optimal posting times\n• Creating engaging captions\n• Recommending hashtags\n• Checking content performance predictions\n\nWhat would you like help with?`;
-  }
-
-  if (currentView === "calendar") {
-    return `Your content calendar shows you have 8 posts scheduled for this week. You're posting most frequently on Monday and Wednesday. I notice a gap on Friday - would you like me to suggest content to fill that slot?`;
-  }
-
-  if (currentView === "inbox") {
-    return `You have 15 unread messages across all platforms. 3 of them mention potential collaboration opportunities. Would you like me to help you draft responses or prioritize which ones to respond to first?`;
-  }
-
-  // Default helpful response
-  return `I'm here to help! I can assist you with:\n\n• Finding specific posts and content\n• Analyzing your performance metrics\n• Suggesting content ideas and hashtags\n• Scheduling posts at optimal times\n• Answering questions about your audience\n• Drafting engaging captions\n\nWhat would you like to know more about?`;
 }

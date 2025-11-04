@@ -290,3 +290,13 @@ export const inboxAPI = {
     body: JSON.stringify({ messageId, projectId }),
   }),
 };
+
+// AI Assistant API
+export const aiAPI = {
+  chat: async (messages: Array<{role: string; content: string}>, projectId?: string) => {
+    return apiCall('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages, projectId }),
+    });
+  },
+};
