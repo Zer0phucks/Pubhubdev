@@ -12,16 +12,14 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { postsAPI } from "../utils/api";
 import { toast } from "sonner";
 import { useProject } from "./ProjectContext";
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Plus,
   CalendarDays,
   CalendarRange,
-  Sparkles,
-  Trash2,
   Loader2,
   RefreshCw,
   AlertCircle,
@@ -113,56 +111,6 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
     { value: "blog", label: "Blog" },
   ];
 
-  const generateAiPosts = () => {
-    const platformsToUse: Platform[] = ["twitter", "instagram", "linkedin", "youtube", "tiktok", "blog"];
-    
-    const contentIdeas = {
-      twitter: ["Tech Tips thread: 10 productivity hacks", "Quick update on industry trends", "Behind the scenes of our workflow"],
-      instagram: ["Carousel: 5 design principles", "Reel: Day in the life", "Story highlights compilation"],
-      linkedin: ["Article: Future of remote work", "Industry insights and analysis", "Professional development tips"],
-      youtube: ["Tutorial: Complete beginner's guide", "How-to video: Advanced techniques", "Q&A session recording"],
-      tiktok: ["Quick tip: 30-second productivity hack", "Trending challenge participation", "Educational short clip"],
-      blog: ["Long-form: Comprehensive guide to content strategy", "In-depth analysis of market trends", "Step-by-step tutorial series"]
-    };
-
-    const times = ["9:00 AM", "11:00 AM", "2:00 PM", "4:00 PM", "6:00 PM"];
-    
-    const newPosts: ScheduledPost[] = [];
-    let idCounter = scheduledPosts.length + 1;
-
-    // Generate posts for the next 10 days
-    for (let dayOffset = 1; dayOffset <= 10; dayOffset++) {
-      const date = new Date();
-      date.setDate(date.getDate() + dayOffset);
-      
-      // Pick 2-3 random platforms for each day
-      const numPosts = Math.floor(Math.random() * 2) + 2;
-      const shuffledPlatforms = [...platformsToUse].sort(() => Math.random() - 0.5);
-      
-      for (let i = 0; i < numPosts; i++) {
-        const platform = shuffledPlatforms[i];
-        const contentOptions = contentIdeas[platform] || ["AI-generated content"];
-        const content = contentOptions[Math.floor(Math.random() * contentOptions.length)];
-        const time = times[Math.floor(Math.random() * times.length)];
-        
-        newPosts.push({
-          id: `ai-${idCounter++}`,
-          date: new Date(date),
-          time,
-          platform,
-          content,
-          status: "scheduled",
-          isAiGenerated: true
-        });
-      }
-    }
-
-    setScheduledPosts([...scheduledPosts, ...newPosts]);
-  };
-
-  const removeAiPosts = () => {
-    setScheduledPosts(scheduledPosts.filter(post => !post.isAiGenerated));
-  };
 
   const togglePlatform = (platform: Platform) => {
     setSelectedPlatforms(prev => 
@@ -477,7 +425,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button 
+          <Button
             onClick={loadPosts}
             variant="outline"
             size="sm"
@@ -486,24 +434,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button 
-            onClick={generateAiPosts}
-            size="sm"
-            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg shadow-purple-500/20"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            AI Enhancement
-          </Button>
-          <Button 
-            onClick={removeAiPosts}
-            variant="outline"
-            size="sm"
-            className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Clear AI
-          </Button>
-          <Button 
+          <Button
             onClick={() => setIsCreateDialogOpen(true)}
             className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/20"
           >

@@ -22,7 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Badge } from "./ui/badge";
 import { useAuth } from "./AuthContext";
 import { useConnectedPlatforms } from "./useConnectedPlatforms";
 
@@ -232,12 +231,6 @@ export function AppHeader({
                     {profilePicture && <AvatarImage src={profilePicture} alt="Profile" />}
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    3
-                  </Badge>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -257,12 +250,6 @@ export function AppHeader({
                 <DropdownMenuItem onClick={() => onOpenAccountSettings("notifications")}>
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
-                  <Badge 
-                    variant="destructive" 
-                    className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    3
-                  </Badge>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onOpenAccountSettings("preferences")}>
                   <Palette className="w-4 h-4 mr-2" />
@@ -309,12 +296,6 @@ export function AppHeader({
                     {profilePicture && <AvatarImage src={profilePicture} alt="Profile" />}
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    3
-                  </Badge>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -334,12 +315,6 @@ export function AppHeader({
                 <DropdownMenuItem onClick={() => onOpenAccountSettings("notifications")}>
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
-                  <Badge 
-                    variant="destructive" 
-                    className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    3
-                  </Badge>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onOpenAccountSettings("preferences")}>
                   <Palette className="w-4 h-4 mr-2" />
