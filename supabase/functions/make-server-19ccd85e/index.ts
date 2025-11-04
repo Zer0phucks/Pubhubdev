@@ -3,6 +3,7 @@ import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
+import { rateLimit, rateLimitConfigs } from "./rate-limit.tsx";
 
 const app = new Hono();
 
@@ -13,13 +14,17 @@ app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
-    origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    origin: Deno.env.get('FRONTEND_URL') || "https://pubhub.dev",
+    allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    exposeHeaders: ["Content-Length"],
+    exposeHeaders: ["Content-Length", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     maxAge: 600,
+    credentials: true,
   }),
 );
+
+// Apply rate limiting to all routes
+app.use('*', rateLimit(rateLimitConfigs.api));
 
 // Supabase admin client for database access and auth verification
 const supabaseAdmin = createClient(
@@ -81,7 +86,7 @@ app.get("/make-server-19ccd85e/health", (c) => {
 // ============= STORAGE/UPLOAD ROUTES =============
 
 // Upload profile picture
-app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/profile-picture", rateLimit(rateLimitConfigs.upload), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const formData = await c.req.formData();
@@ -142,7 +147,7 @@ app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) 
 });
 
 // Upload project logo
-app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/project-logo/:projectId", rateLimit(rateLimitConfigs.upload), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const projectId = c.req.param('projectId');
@@ -215,7 +220,7 @@ app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, as
 // ============= AUTH ROUTES =============
 
 // Initialize user on first login (called automatically after sign up/in)
-app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/auth/initialize", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const user = c.get('user');
@@ -294,7 +299,7 @@ app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
 });
 
 // Get user profile
-app.get("/make-server-19ccd85e/auth/profile", requireAuth, async (c) => {
+app.get("/make-server-19ccd85e/auth/profile", rateLimit(rateLimitConfigs.api), requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     
@@ -1320,13 +1325,85 @@ app.post("/make-server-19ccd85e/ebooks/export", requireAuth, async (c) => {
 
 // ============= OAUTH ROUTES =============
 
-// Import centralized OAuth configuration and PKCE utilities
-import { getOAuthConfig, validateOAuthConfig } from "./oauth/oauth-config.ts";
-import { generatePKCEPair } from "./oauth/pkce.ts";
-import { encryptTokenRecord, decryptTokenRecord, decryptToken } from "./utils/encryption.ts";
+// OAuth configuration
+const getOAuthConfig = (platform: string) => {
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://pubhub.dev';
+  // Default redirect URI - check environment variables first, otherwise use /oauth/callback with platform query
+  const baseRedirectUri = Deno.env.get('OAUTH_REDIRECT_URL') || `${frontendUrl}/oauth/callback`;
+  const redirectUri = `${baseRedirectUri}?platform=${platform}`;
+  
+  const configs: Record<string, any> = {
+    twitter: {
+      authUrl: 'https://twitter.com/i/oauth2/authorize',
+      tokenUrl: 'https://api.twitter.com/2/oauth2/token',
+      clientId: Deno.env.get('TWITTER_CLIENT_ID'),
+      clientSecret: Deno.env.get('TWITTER_CLIENT_SECRET'),
+      scope: 'tweet.read tweet.write users.read offline.access',
+      redirectUri: Deno.env.get('TWITTER_REDIRECT_URI') || redirectUri,
+    },
+    instagram: {
+      authUrl: 'https://api.instagram.com/oauth/authorize',
+      tokenUrl: 'https://api.instagram.com/oauth/access_token',
+      clientId: Deno.env.get('INSTAGRAM_CLIENT_ID'),
+      clientSecret: Deno.env.get('INSTAGRAM_CLIENT_SECRET'),
+      scope: 'user_profile,user_media',
+      redirectUri: Deno.env.get('INSTAGRAM_REDIRECT_URI') || redirectUri,
+    },
+    linkedin: {
+      authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+      tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+      clientId: Deno.env.get('LINKEDIN_CLIENT_ID'),
+      clientSecret: Deno.env.get('LINKEDIN_CLIENT_SECRET'),
+      scope: 'w_member_social r_liteprofile',
+      redirectUri: Deno.env.get('LINKEDIN_REDIRECT_URI') || redirectUri,
+    },
+    facebook: {
+      authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+      tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+      clientId: Deno.env.get('FACEBOOK_APP_ID'),
+      clientSecret: Deno.env.get('FACEBOOK_APP_SECRET'),
+      scope: 'pages_manage_posts,pages_read_engagement',
+      redirectUri: Deno.env.get('FACEBOOK_REDIRECT_URI') || redirectUri,
+    },
+    youtube: {
+      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      clientId: Deno.env.get('YOUTUBE_CLIENT_ID') || Deno.env.get('GOOGLE_CLIENT_ID'),
+      clientSecret: Deno.env.get('YOUTUBE_CLIENT_SECRET') || Deno.env.get('GOOGLE_CLIENT_SECRET'),
+      scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube',
+      redirectUri: Deno.env.get('YOUTUBE_REDIRECT_URI') || Deno.env.get('OAUTH_REDIRECT_URL') || redirectUri,
+    },
+    tiktok: {
+      authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
+      tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
+      clientId: Deno.env.get('TIKTOK_CLIENT_KEY'),
+      clientSecret: Deno.env.get('TIKTOK_CLIENT_SECRET'),
+      scope: 'user.info.basic,video.upload',
+      redirectUri: Deno.env.get('TIKTOK_REDIRECT_URI') || redirectUri,
+    },
+    pinterest: {
+      authUrl: 'https://www.pinterest.com/oauth/',
+      tokenUrl: 'https://api.pinterest.com/v5/oauth/token',
+      clientId: Deno.env.get('PINTEREST_APP_ID'),
+      clientSecret: Deno.env.get('PINTEREST_APP_SECRET'),
+      scope: 'boards:read,pins:read,pins:write',
+      redirectUri: Deno.env.get('PINTEREST_REDIRECT_URI') || redirectUri,
+    },
+    reddit: {
+      authUrl: 'https://www.reddit.com/api/v1/authorize',
+      tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+      clientId: Deno.env.get('REDDIT_CLIENT_ID'),
+      clientSecret: Deno.env.get('REDDIT_CLIENT_SECRET'),
+      scope: 'submit,identity',
+      redirectUri: Deno.env.get('REDDIT_REDIRECT_URI') || redirectUri,
+    },
+  };
+  
+  return configs[platform];
+};
 
 // Start OAuth flow - generates authorization URL
-app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c) => {
+app.get("/make-server-19ccd85e/oauth/authorize/:platform", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
   try {
     const platform = c.req.param('platform');
     const userId = c.get('userId');
@@ -1337,68 +1414,48 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
     }
     
     const config = getOAuthConfig(platform);
-    const validation = validateOAuthConfig(config, platform);
     
-    if (!config || !validation.valid) {
+    if (!config || !config.clientId) {
       return c.json({ 
-        error: `OAuth not configured for ${platform}. Missing: ${validation.missing?.join(', ')}` 
+        error: `OAuth not configured for ${platform}. Please add ${platform.toUpperCase()}_CLIENT_ID and ${platform.toUpperCase()}_CLIENT_SECRET environment variables.` 
       }, 400);
     }
     
-    // Generate cryptographically secure state for CSRF protection
-    // Use crypto.randomUUID() instead of Math.random()
-    const stateBytes = crypto.getRandomValues(new Uint8Array(16));
-    const state = Array.from(stateBytes, b => b.toString(16).padStart(2, '0')).join('') + 
-                  `:${userId}:${projectId}:${Date.now()}`;
-
-    // Generate PKCE verifier and challenge if required
+    // Generate state for CSRF protection
+    const state = `${userId}:${projectId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Generate PKCE verifier for Twitter OAuth 2.0
     let codeVerifier: string | undefined;
-    let codeChallenge: string | undefined;
-    let codeChallengeMethod: string | undefined;
-
-    if (config.requiresPKCE) {
-      const pkce = await generatePKCEPair();
-      codeVerifier = pkce.verifier;
-      codeChallenge = pkce.challenge;
-      codeChallengeMethod = pkce.method; // S256 (SHA256)
-
-      console.log('PKCE generated for authorization:', {
-        platform,
-        verifierLength: codeVerifier.length,
-        challengeLength: codeChallenge.length,
-        method: codeChallengeMethod,
-        verifierPreview: codeVerifier.substring(0, 20) + '...'
-      });
+    if (platform === 'twitter') {
+      // Generate a random code verifier (43-128 characters)
+      codeVerifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
     }
-
-    // Store state temporarily for verification with proper TTL
+    
+    // Store state temporarily for verification (including code_verifier for Twitter)
     await kv.set(`oauth:state:${state}`, {
       userId,
       projectId,
       platform,
-      codeVerifier, // Store code_verifier for PKCE flow
+      codeVerifier,
       createdAt: Date.now(),
-    }, { expiresIn: 600 }); // 10 minute expiry - NOW ACTUALLY WORKS
-
-    console.log('State stored:', {
-      stateKey: `oauth:state:${state.substring(0, 20)}...`,
-      hasCodeVerifier: !!codeVerifier
-    });
-
+    }, { expiresIn: 600 }); // 10 minute expiry
+    
     // Build authorization URL
-    const clientIdParam = config.clientIdParamName || 'client_id';
     const params = new URLSearchParams({
-      [clientIdParam]: config.clientId!,
+      client_id: config.clientId,
       redirect_uri: config.redirectUri,
       response_type: 'code',
       scope: config.scope,
       state,
     });
-
-    // Add PKCE params if required (Twitter requires this)
-    if (codeChallenge && codeChallengeMethod) {
-      params.set('code_challenge', codeChallenge);
-      params.set('code_challenge_method', codeChallengeMethod); // S256 instead of 'plain'
+    
+    // Platform-specific params - Twitter requires PKCE
+    if (platform === 'twitter' && codeVerifier) {
+      // Use plain method: code_challenge = code_verifier
+      params.set('code_challenge', codeVerifier);
+      params.set('code_challenge_method', 'plain');
     }
     
     const authUrl = `${config.authUrl}?${params.toString()}`;
@@ -1411,35 +1468,19 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c
 });
 
 // Handle OAuth callback - exchange code for token
-app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
   try {
     const { code, state, platform } = await c.req.json();
     const userId = c.get('userId');
-
-    console.log('OAuth callback received:', {
-      hasCode: !!code,
-      hasState: !!state,
-      platform,
-      userId
-    });
-
+    
     if (!code || !state || !platform) {
-      console.error('Missing OAuth parameters:', { code: !!code, state: !!state, platform });
       return c.json({ error: 'Missing required parameters' }, 400);
     }
-
+    
     // Verify state
     const stateData = await kv.get(`oauth:state:${state}`);
-
-    console.log('State validation:', {
-      stateFound: !!stateData,
-      stateUserId: stateData?.userId,
-      currentUserId: userId,
-      stateKey: `oauth:state:${state.substring(0, 20)}...`
-    });
-
+    
     if (!stateData || stateData.userId !== userId) {
-      console.error('Invalid state:', { stateData, expectedUserId: userId });
       return c.json({ error: 'Invalid or expired state' }, 400);
     }
     
@@ -1454,78 +1495,38 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       grant_type: 'authorization_code',
       code,
       redirect_uri: config.redirectUri,
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
     });
-
-    // Add PKCE code_verifier if platform requires it
-    if (config.requiresPKCE && stateData.codeVerifier) {
-      console.log('Adding PKCE code_verifier to token exchange:', {
-        platform,
-        hasVerifier: !!stateData.codeVerifier,
-        verifierLength: stateData.codeVerifier?.length,
-        verifierPreview: stateData.codeVerifier?.substring(0, 20) + '...'
-      });
-      tokenParams.set('code_verifier', stateData.codeVerifier);
-    } else if (config.requiresPKCE) {
-      console.error('PKCE required but no code_verifier in state data!', {
-        platform,
-        stateDataKeys: Object.keys(stateData)
-      });
-    }
-
-    // Add client credentials based on auth method
+    
+    // Some platforms need special handling
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
-
-    if (config.authMethod === 'basic_auth') {
-      // Providers like Twitter/Reddit require Basic Auth for token exchange
-      if (!config.clientId || !config.clientSecret) {
-        return c.json(
-          { error: `OAuth not configured for ${platform}. Missing client credentials.` },
-          400,
-        );
-      }
+    
+    // Twitter OAuth 2.0 with PKCE requires Basic Auth and code_verifier
+    if (platform === 'twitter') {
+      // Twitter requires Basic Authentication header
       const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
       headers['Authorization'] = `Basic ${basicAuth}`;
-      const clientIdParam = config.clientIdParamName || 'client_id';
-      if (config.includeClientIdInTokenBody) {
-        tokenParams.set(clientIdParam, config.clientId);
-      }
-      if (config.includeClientSecretInTokenBody) {
-        tokenParams.set('client_secret', config.clientSecret);
-      }
-    } else {
-      // Standard OAuth: include credentials in request body
-      const clientIdParam = config.clientIdParamName || 'client_id';
-      if (config.clientId) {
-        tokenParams.set(clientIdParam, config.clientId);
-      }
-      if (config.clientSecret) {
-        tokenParams.set('client_secret', config.clientSecret);
+      // Remove client credentials from body when using Basic Auth
+      tokenParams.delete('client_id');
+      tokenParams.delete('client_secret');
+      // Add code_verifier for PKCE
+      if (stateData.codeVerifier) {
+        tokenParams.set('code_verifier', stateData.codeVerifier);
       }
     }
     
-    // Enhanced logging for Pinterest debugging
-    if (platform === 'pinterest') {
-      console.log('Pinterest token exchange details:', {
-        clientId: config.clientId,
-        clientSecretLength: config.clientSecret?.length,
-        clientSecretPrefix: config.clientSecret?.substring(0, 10),
-        basicAuthHeader: headers['Authorization']?.substring(0, 20),
-        tokenUrl: config.tokenUrl,
-        redirectUri: config.redirectUri,
-        tokenParams: Object.fromEntries(tokenParams.entries())
-      });
+    // Reddit requires Basic Auth
+    if (platform === 'reddit') {
+      const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
+      headers['Authorization'] = `Basic ${basicAuth}`;
+      // Remove from params since we're using Basic Auth
+      tokenParams.delete('client_id');
+      tokenParams.delete('client_secret');
     }
-
-    console.log('Sending token exchange request:', {
-      platform,
-      tokenUrl: config.tokenUrl,
-      paramsKeys: Array.from(tokenParams.keys()),
-      authMethod: config.authMethod,
-      hasAuthHeader: !!headers['Authorization']
-    });
-
+    
     const tokenResponse = await fetch(config.tokenUrl, {
       method: 'POST',
       headers,
@@ -1622,7 +1623,7 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       // Continue anyway - we have the token
     }
     
-    // Store tokens securely - ENCRYPT sensitive fields
+    // Store tokens securely
     const tokenRecord = {
       platform,
       userId,
@@ -1634,12 +1635,30 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       connectedAt: new Date().toISOString(),
     };
     
-    // Encrypt tokens before storing
-    const encryptedRecord = await encryptTokenRecord(tokenRecord);
-    await kv.set(`oauth:token:${platform}:${stateData.projectId}`, encryptedRecord);
+    await kv.set(`oauth:token:${platform}:${stateData.projectId}`, tokenRecord);
     
-    // Update project connections (upsert behavior)
-    const connections = await kv.get(`project:${stateData.projectId}:connections`) || [];
+    // Initialize default connections if none exist
+    const defaultConnections = [
+      { platform: 'twitter', connected: false },
+      { platform: 'instagram', connected: false },
+      { platform: 'linkedin', connected: false },
+      { platform: 'facebook', connected: false },
+      { platform: 'youtube', connected: false },
+      { platform: 'tiktok', connected: false },
+      { platform: 'pinterest', connected: false },
+      { platform: 'reddit', connected: false },
+      { platform: 'blog', connected: false },
+    ];
+    
+    // Get existing connections or use defaults
+    let connections = await kv.get(`project:${stateData.projectId}:connections`);
+    
+    // If no connections exist, initialize with defaults
+    if (!connections || connections.length === 0) {
+      connections = defaultConnections;
+    }
+    
+    // Update or add the platform connection
     let found = false;
     const updatedConnections = connections.map((conn: any) => {
       if (conn.platform === platform) {
@@ -1654,7 +1673,8 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
       }
       return conn;
     });
-
+    
+    // If platform wasn't found in existing connections, add it
     if (!found) {
       updatedConnections.push({
         platform,
@@ -1664,7 +1684,7 @@ app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
         connectedAt: new Date().toISOString(),
       });
     }
-
+    
     await kv.set(`project:${stateData.projectId}:connections`, updatedConnections);
     
     // Clean up state
@@ -1687,19 +1707,14 @@ app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
   try {
     const { platform, projectId } = await c.req.json();
     const userId = c.get('userId');
-
+    
     if (!platform || !projectId) {
       return c.json({ error: 'Missing required parameters' }, 400);
     }
-
-    // For blog platform, use WordPress disconnect
-    if (platform === 'blog') {
-      await kv.del(`wordpress:credentials:${projectId}`);
-    } else {
-      // Delete OAuth tokens for other platforms
-      await kv.del(`oauth:token:${platform}:${projectId}`);
-    }
-
+    
+    // Delete OAuth tokens
+    await kv.del(`oauth:token:${platform}:${projectId}`);
+    
     // Update project connections
     const connections = await kv.get(`project:${projectId}:connections`) || [];
     const updatedConnections = connections.map((conn: any) => {
@@ -1709,17 +1724,16 @@ app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
           connected: false,
           username: undefined,
           accountId: undefined,
-          siteUrl: undefined,
           connectedAt: undefined,
         };
       }
       return conn;
     });
-
+    
     await kv.set(`project:${projectId}:connections`, updatedConnections);
-
-    return c.json({
-      success: true,
+    
+    return c.json({ 
+      success: true, 
       connections: updatedConnections,
     });
   } catch (error: any) {
@@ -1729,88 +1743,42 @@ app.post("/make-server-19ccd85e/oauth/disconnect", requireAuth, async (c) => {
 });
 
 // Get OAuth token (for making API calls)
-// NOTE: This endpoint should ideally NOT return tokens to browser - consider proxying API calls server-side
 app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, async (c) => {
   try {
     const platform = c.req.param('platform');
     const projectId = c.req.param('projectId');
     const userId = c.get('userId');
     
-    // Get encrypted token record
-    const encryptedRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
+    const tokenRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
     
-    if (!encryptedRecord || encryptedRecord.userId !== userId) {
+    if (!tokenRecord || tokenRecord.userId !== userId) {
       return c.json({ error: 'Token not found' }, 404);
     }
     
-    // Decrypt token record
-    const tokenRecord = await decryptTokenRecord(encryptedRecord);
-    
-    if (!tokenRecord) {
-      return c.json({ error: 'Failed to decrypt token' }, 500);
-    }
-    
-    // Proactive refresh: refresh 5 minutes before expiry
-    const REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
-    const needsRefresh = tokenRecord.expiresAt && 
-                        (Date.now() > tokenRecord.expiresAt - REFRESH_BUFFER_MS) &&
-                        tokenRecord.refreshToken;
-    
     // Check if token expired and needs refresh
-    if (needsRefresh) {
+    if (tokenRecord.expiresAt && Date.now() > tokenRecord.expiresAt && tokenRecord.refreshToken) {
       // Refresh the token
       const config = getOAuthConfig(platform);
       
       if (config) {
         try {
-          // Decrypt refresh token if needed
-          const refreshToken = typeof tokenRecord.refreshToken === 'string' && 
-                             tokenRecord.refreshToken.includes('=') 
-                             ? await decryptToken(tokenRecord.refreshToken).catch(() => tokenRecord.refreshToken)
-                             : tokenRecord.refreshToken;
-          
           const refreshParams = new URLSearchParams({
             grant_type: 'refresh_token',
-            refresh_token: refreshToken,
+            refresh_token: tokenRecord.refreshToken,
+            client_id: config.clientId,
+            client_secret: config.clientSecret,
           });
-
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          };
-
-          if (config.authMethod === 'basic_auth') {
-            if (!config.clientId || !config.clientSecret) {
-              throw new Error(`Missing client credentials for ${platform} refresh`);
-            }
-            const basicAuth = btoa(`${config.clientId}:${config.clientSecret}`);
-            headers['Authorization'] = `Basic ${basicAuth}`;
-            const clientIdParam = config.clientIdParamName || 'client_id';
-            if (config.includeClientIdInTokenBody) {
-              refreshParams.set(clientIdParam, config.clientId);
-            }
-            if (config.includeClientSecretInTokenBody) {
-              refreshParams.set('client_secret', config.clientSecret);
-            }
-          } else {
-            const clientIdParam = config.clientIdParamName || 'client_id';
-            if (config.clientId) {
-              refreshParams.set(clientIdParam, config.clientId);
-            }
-            if (config.clientSecret) {
-              refreshParams.set('client_secret', config.clientSecret);
-            }
-          }
           
           const refreshResponse = await fetch(config.tokenUrl, {
             method: 'POST',
-            headers,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: refreshParams.toString(),
           });
           
           if (refreshResponse.ok) {
             const newTokenData = await refreshResponse.json();
             
-            // Encrypt and update stored token
+            // Update stored token
             const updatedRecord = {
               ...tokenRecord,
               accessToken: newTokenData.access_token,
@@ -1818,380 +1786,20 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
               expiresAt: newTokenData.expires_in ? Date.now() + (newTokenData.expires_in * 1000) : null,
             };
             
-            const encryptedUpdated = await encryptTokenRecord(updatedRecord);
-            await kv.set(`oauth:token:${platform}:${projectId}`, encryptedUpdated);
+            await kv.set(`oauth:token:${platform}:${projectId}`, updatedRecord);
             
-            // Return decrypted access token (legacy behavior - should proxy instead)
-            return c.json({ 
-              accessToken: newTokenData.access_token,
-              status: 'refreshed',
-              expiresAt: updatedRecord.expiresAt 
-            });
-          } else {
-            const errorText = await refreshResponse.text();
-            console.error(`Token refresh failed for ${platform}:`, errorText);
+            return c.json({ accessToken: newTokenData.access_token });
           }
         } catch (error) {
           console.error('Token refresh failed:', error);
-          // Continue and return existing token even if refresh failed
         }
       }
     }
     
-    // Determine token status
-    let status = 'valid';
-    if (tokenRecord.expiresAt) {
-      const timeUntilExpiry = tokenRecord.expiresAt - Date.now();
-      if (timeUntilExpiry < 0) {
-        status = 'expired';
-      } else if (timeUntilExpiry < REFRESH_BUFFER_MS) {
-        status = 'expiring_soon';
-      }
-    }
-    
-    // Return decrypted access token (legacy behavior - SECURITY CONCERN: tokens should not be sent to browser)
-    return c.json({ 
-      accessToken: tokenRecord.accessToken,
-      status,
-      expiresAt: tokenRecord.expiresAt 
-    });
+    return c.json({ accessToken: tokenRecord.accessToken });
   } catch (error: any) {
     console.error('Get token error:', error);
     return c.json({ error: `Failed to get token: ${error.message}` }, 500);
-  }
-});
-
-// ============= WORDPRESS INTEGRATION ROUTES =============
-
-// Connect WordPress blog
-app.post("/make-server-19ccd85e/wordpress/connect", requireAuth, async (c) => {
-  try {
-    const userId = c.get('userId');
-    const body = await c.req.json();
-    const { projectId, siteUrl, username, applicationPassword } = body;
-
-    if (!projectId || !siteUrl || !username || !applicationPassword) {
-      return c.json({ error: 'Missing required parameters' }, 400);
-    }
-
-    // Validate WordPress credentials by testing API connection
-    const testUrl = `${siteUrl}/wp-json/wp/v2/users/me`;
-    console.log('WordPress connection attempt:', { siteUrl, username, testUrl });
-
-    // Create Basic Auth header using same encoding as other OAuth endpoints
-    const credentials = `${username}:${applicationPassword}`;
-    const authHeader = btoa(credentials);
-
-    const testResponse = await fetch(testUrl, {
-      headers: {
-        'Authorization': `Basic ${authHeader}`
-      }
-    });
-
-    console.log('WordPress API response status:', testResponse.status, testResponse.statusText);
-
-    // Read response body as text first (can only read once)
-    const responseText = await testResponse.text();
-
-    if (!testResponse.ok) {
-      console.error('WordPress API error response:', {
-        status: testResponse.status,
-        statusText: testResponse.statusText,
-        body: responseText.substring(0, 500)
-      });
-      return c.json({
-        error: `WordPress API error (${testResponse.status}): Please check your credentials and ensure Application Passwords are enabled.`
-      }, 401);
-    }
-
-    // Parse JSON response with error handling
-    let wpUser;
-    try {
-      wpUser = JSON.parse(responseText);
-      console.log('WordPress user authenticated:', { id: wpUser.id, name: wpUser.name });
-    } catch (parseError: any) {
-      console.error('WordPress returned non-JSON response:', {
-        parseError: parseError.message,
-        responsePreview: responseText.substring(0, 500)
-      });
-      return c.json({
-        error: 'WordPress site returned invalid response. Please ensure REST API is enabled and accessible.'
-      }, 500);
-    }
-
-    // Encrypt and store WordPress credentials
-    const credentialsData = {
-      siteUrl,
-      username,
-      applicationPassword,
-      userId,
-      connectedAt: new Date().toISOString(),
-      wpUserId: wpUser.id,
-      wpUserName: wpUser.name || username,
-    };
-
-    const encryptedRecord = await encryptTokenRecord(credentialsData);
-    await kv.set(`wordpress:credentials:${projectId}`, encryptedRecord);
-
-    // Update project connections
-    const connections = await kv.get(`project:${projectId}:connections`) || [];
-    let found = false;
-    const updatedConnections = connections.map((conn: any) => {
-      if (conn.platform === 'blog') {
-        found = true;
-        return {
-          ...conn,
-          connected: true,
-          username: wpUser.name || username,
-          siteUrl,
-          connectedAt: new Date().toISOString(),
-        };
-      }
-      return conn;
-    });
-
-    // If blog entry doesn't exist, add it
-    if (!found) {
-      updatedConnections.push({
-        platform: 'blog',
-        connected: true,
-        username: wpUser.name || username,
-        siteUrl,
-        connectedAt: new Date().toISOString(),
-      });
-    }
-
-    await kv.set(`project:${projectId}:connections`, updatedConnections);
-
-    return c.json({
-      success: true,
-      username: wpUser.name || username,
-      siteUrl,
-      connections: updatedConnections,
-    });
-  } catch (error: any) {
-    console.error('WordPress connection error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    return c.json({ error: `Failed to connect WordPress: ${error.message}` }, 500);
-  }
-});
-
-// Disconnect WordPress blog
-app.post("/make-server-19ccd85e/wordpress/disconnect", requireAuth, async (c) => {
-  try {
-    const { projectId } = await c.req.json();
-    const userId = c.get('userId');
-
-    if (!projectId) {
-      return c.json({ error: 'Missing projectId parameter' }, 400);
-    }
-
-    // Delete WordPress credentials
-    await kv.del(`wordpress:credentials:${projectId}`);
-
-    // Update project connections
-    const connections = await kv.get(`project:${projectId}:connections`) || [];
-    const updatedConnections = connections.map((conn: any) => {
-      if (conn.platform === 'blog') {
-        return {
-          ...conn,
-          connected: false,
-          username: undefined,
-          siteUrl: undefined,
-          connectedAt: undefined,
-        };
-      }
-      return conn;
-    });
-
-    await kv.set(`project:${projectId}:connections`, updatedConnections);
-
-    return c.json({
-      success: true,
-      connections: updatedConnections,
-    });
-  } catch (error: any) {
-    console.error('WordPress disconnect error:', error);
-    return c.json({ error: `Failed to disconnect WordPress: ${error.message}` }, 500);
-  }
-});
-
-// Get WordPress posts
-app.get("/make-server-19ccd85e/wordpress/posts", requireAuth, async (c) => {
-  try {
-    const userId = c.get('userId');
-    const projectId = c.req.query('projectId');
-    const status = c.req.query('status') || 'any'; // any, publish, draft, pending
-    const perPage = c.req.query('perPage') || '10';
-
-    if (!projectId) {
-      return c.json({ error: 'Missing projectId parameter' }, 400);
-    }
-
-    // Get encrypted credentials
-    const encryptedRecord = await kv.get(`wordpress:credentials:${projectId}`);
-
-    if (!encryptedRecord || encryptedRecord.userId !== userId) {
-      return c.json({ error: 'WordPress not connected' }, 404);
-    }
-
-    // Decrypt credentials
-    const credentials = await decryptTokenRecord(encryptedRecord);
-
-    if (!credentials) {
-      return c.json({ error: 'Failed to decrypt credentials' }, 500);
-    }
-
-    // Fetch posts from WordPress
-    const authHeader = btoa(`${credentials.username}:${credentials.applicationPassword}`);
-    const postsUrl = `${credentials.siteUrl}/wp-json/wp/v2/posts?status=${status}&per_page=${perPage}&_embed`;
-
-    const response = await fetch(postsUrl, {
-      headers: {
-        'Authorization': `Basic ${authHeader}`
-      }
-    });
-
-    if (!response.ok) {
-      return c.json({ error: 'Failed to fetch WordPress posts' }, response.status);
-    }
-
-    const posts = await response.json();
-
-    return c.json({ posts });
-  } catch (error: any) {
-    console.error('WordPress get posts error:', error);
-    return c.json({ error: `Failed to get posts: ${error.message}` }, 500);
-  }
-});
-
-// Create or update WordPress post
-app.post("/make-server-19ccd85e/wordpress/posts", requireAuth, async (c) => {
-  try {
-    const userId = c.get('userId');
-    const { projectId, title, content, status, postId } = await c.req.json();
-
-    if (!projectId || !title || !content) {
-      return c.json({ error: 'Missing required parameters' }, 400);
-    }
-
-    // Get encrypted credentials
-    const encryptedRecord = await kv.get(`wordpress:credentials:${projectId}`);
-
-    if (!encryptedRecord || encryptedRecord.userId !== userId) {
-      return c.json({ error: 'WordPress not connected' }, 404);
-    }
-
-    // Decrypt credentials
-    const credentials = await decryptTokenRecord(encryptedRecord);
-
-    if (!credentials) {
-      return c.json({ error: 'Failed to decrypt credentials' }, 500);
-    }
-
-    // Create or update post in WordPress
-    const authHeader = btoa(`${credentials.username}:${credentials.applicationPassword}`);
-    const postData = {
-      title,
-      content,
-      status: status || 'draft', // draft, publish, pending, private
-    };
-
-    const method = postId ? 'POST' : 'POST';
-    const url = postId
-      ? `${credentials.siteUrl}/wp-json/wp/v2/posts/${postId}`
-      : `${credentials.siteUrl}/wp-json/wp/v2/posts`;
-
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Authorization': `Basic ${authHeader}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(postData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('WordPress post creation/update failed:', errorText);
-      return c.json({ error: 'Failed to create/update WordPress post' }, response.status);
-    }
-
-    const post = await response.json();
-
-    return c.json({
-      success: true,
-      post: {
-        id: post.id,
-        title: post.title.rendered,
-        link: post.link,
-        status: post.status,
-      }
-    });
-  } catch (error: any) {
-    console.error('WordPress create/update post error:', error);
-    return c.json({ error: `Failed to create/update post: ${error.message}` }, 500);
-  }
-});
-
-// Publish WordPress draft
-app.post("/make-server-19ccd85e/wordpress/posts/:id/publish", requireAuth, async (c) => {
-  try {
-    const userId = c.get('userId');
-    const postId = c.req.param('id');
-    const { projectId } = await c.req.json();
-
-    if (!projectId || !postId) {
-      return c.json({ error: 'Missing required parameters' }, 400);
-    }
-
-    // Get encrypted credentials
-    const encryptedRecord = await kv.get(`wordpress:credentials:${projectId}`);
-
-    if (!encryptedRecord || encryptedRecord.userId !== userId) {
-      return c.json({ error: 'WordPress not connected' }, 404);
-    }
-
-    // Decrypt credentials
-    const credentials = await decryptTokenRecord(encryptedRecord);
-
-    if (!credentials) {
-      return c.json({ error: 'Failed to decrypt credentials' }, 500);
-    }
-
-    // Update post status to publish
-    const authHeader = btoa(`${credentials.username}:${credentials.applicationPassword}`);
-
-    const response = await fetch(`${credentials.siteUrl}/wp-json/wp/v2/posts/${postId}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${authHeader}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status: 'publish' }),
-    });
-
-    if (!response.ok) {
-      return c.json({ error: 'Failed to publish WordPress post' }, response.status);
-    }
-
-    const post = await response.json();
-
-    return c.json({
-      success: true,
-      post: {
-        id: post.id,
-        title: post.title.rendered,
-        link: post.link,
-        status: post.status,
-      }
-    });
-  } catch (error: any) {
-    console.error('WordPress publish post error:', error);
-    return c.json({ error: `Failed to publish post: ${error.message}` }, 500);
   }
 });
 
@@ -2211,25 +1819,14 @@ app.post("/make-server-19ccd85e/posts/publish", requireAuth, async (c) => {
 
     for (const platform of platforms) {
       try {
-        // Get and decrypt OAuth token for platform
-        const encryptedRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
+        // Get OAuth token for platform
+        const tokenRecord = await kv.get(`oauth:token:${platform}:${projectId}`);
 
-        if (!encryptedRecord || encryptedRecord.userId !== userId) {
+        if (!tokenRecord) {
           results.push({
             platform,
             success: false,
             error: 'Platform not connected'
-          });
-          continue;
-        }
-
-        // Decrypt token record
-        const tokenRecord = await decryptTokenRecord(encryptedRecord);
-        if (!tokenRecord || !tokenRecord.accessToken) {
-          results.push({
-            platform,
-            success: false,
-            error: 'Failed to decrypt token'
           });
           continue;
         }
@@ -2629,6 +2226,431 @@ async function publishToReddit(accessToken: string, content: any, media: any) {
   } catch (error: any) {
     return { success: false, error: error.message };
   }
+}
+
+// ============================================
+// AI CHAT ASSISTANT WITH FUNCTION CALLING
+// ============================================
+
+/**
+ * AI Chat Assistant - Context-aware with action capabilities
+ * Supports function calling for:
+ * - Querying user data (posts, analytics, connections)
+ * - Creating and scheduling posts
+ * - Managing content across platforms
+ */
+app.post("/make-server-19ccd85e/ai/chat", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { messages, projectId } = await c.req.json();
+
+    // Define available tools for the AI
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "get_user_posts",
+          description: "Get the user's posts, optionally filtered by project, platform, or status",
+          parameters: {
+            type: "object",
+            properties: {
+              projectId: { type: "string", description: "Project ID to filter posts" },
+              platform: {
+                type: "string",
+                enum: ["twitter", "instagram", "linkedin", "facebook", "youtube", "tiktok", "pinterest", "reddit", "blog"],
+                description: "Platform to filter posts"
+              },
+              status: {
+                type: "string",
+                enum: ["draft", "scheduled", "published", "failed"],
+                description: "Status to filter posts"
+              },
+              limit: { type: "number", description: "Maximum number of posts to return", default: 10 }
+            }
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_platform_connections",
+          description: "Get the user's connected platforms for a project",
+          parameters: {
+            type: "object",
+            properties: {
+              projectId: { type: "string", description: "Project ID to get connections for" }
+            },
+            required: ["projectId"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_post",
+          description: "Create and optionally schedule a new post across one or more platforms",
+          parameters: {
+            type: "object",
+            properties: {
+              projectId: { type: "string", description: "Project ID for the post" },
+              content: { type: "string", description: "The post content/caption" },
+              platforms: {
+                type: "array",
+                items: {
+                  type: "string",
+                  enum: ["twitter", "instagram", "linkedin", "facebook", "youtube", "tiktok", "pinterest", "reddit", "blog"]
+                },
+                description: "Platforms to post to"
+              },
+              scheduledTime: {
+                type: "string",
+                description: "ISO 8601 datetime string for when to publish (e.g., '2025-01-15T08:00:00Z'). If not provided, post is saved as draft."
+              },
+              mediaUrls: {
+                type: "array",
+                items: { type: "string" },
+                description: "URLs of media attachments"
+              }
+            },
+            required: ["projectId", "content", "platforms"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_projects",
+          description: "Get all projects for the user",
+          parameters: {
+            type: "object",
+            properties: {}
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "parse_datetime",
+          description: "Parse natural language datetime expressions into ISO 8601 format (e.g., 'Tuesday at 8am', 'tomorrow 3pm', 'next Friday 2:30pm')",
+          parameters: {
+            type: "object",
+            properties: {
+              expression: { type: "string", description: "Natural language datetime expression" },
+              timezone: { type: "string", description: "User's timezone (e.g., 'America/New_York')", default: "UTC" }
+            },
+            required: ["expression"]
+          }
+        }
+      }
+    ];
+
+    // Build system message with user context
+    const systemMessage = {
+      role: "system",
+      content: `You are PubHub AI, an intelligent assistant for content creators. You help users manage their social media content across multiple platforms.
+
+You have access to the following capabilities:
+- View and analyze user's posts and content
+- Check connected social media platforms
+- Create and schedule posts across multiple platforms
+- Parse natural language date/time expressions
+
+When users ask you to create or schedule posts:
+1. First use parse_datetime to convert any natural language time expressions to ISO format
+2. Then use create_post with the proper ISO datetime in scheduledTime
+3. Always confirm what you're about to do before executing actions
+4. Be conversational and helpful
+
+Current context:
+- User ID: ${userId}
+- Active Project ID: ${projectId || 'No project selected'}
+
+Guidelines:
+- Be concise but friendly
+- When creating posts, confirm the details before proceeding
+- If scheduling, always confirm the date and time with the user
+- If multiple platforms are requested, create posts for all of them
+- Provide helpful suggestions for content optimization`
+    };
+
+    // Call Azure OpenAI with function calling
+    const response = await fetch(
+      `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+        },
+        body: JSON.stringify({
+          messages: [systemMessage, ...messages],
+          tools,
+          tool_choice: "auto",
+          temperature: 0.7,
+          max_tokens: 1000,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Azure OpenAI API error: ${error}`);
+    }
+
+    const data = await response.json();
+    const assistantMessage = data.choices[0].message;
+
+    // Handle function calls
+    if (assistantMessage.tool_calls) {
+      const toolResults = [];
+
+      for (const toolCall of assistantMessage.tool_calls) {
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+
+        let result;
+
+        try {
+          switch (functionName) {
+            case "get_user_posts":
+              result = await executeGetUserPosts(userId, functionArgs);
+              break;
+            case "get_platform_connections":
+              result = await executeGetPlatformConnections(userId, functionArgs.projectId);
+              break;
+            case "create_post":
+              result = await executeCreatePost(userId, functionArgs);
+              break;
+            case "get_projects":
+              result = await executeGetProjects(userId);
+              break;
+            case "parse_datetime":
+              result = await executeParseDatetime(functionArgs);
+              break;
+            default:
+              result = { error: `Unknown function: ${functionName}` };
+          }
+        } catch (error: any) {
+          result = { error: error.message };
+        }
+
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: "tool",
+          name: functionName,
+          content: JSON.stringify(result)
+        });
+      }
+
+      // Call AI again with function results
+      const followUpResponse = await fetch(
+        `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+          },
+          body: JSON.stringify({
+            messages: [
+              systemMessage,
+              ...messages,
+              assistantMessage,
+              ...toolResults
+            ],
+            temperature: 0.7,
+            max_tokens: 1000,
+          }),
+        }
+      );
+
+      const followUpData = await followUpResponse.json();
+      return c.json({
+        success: true,
+        message: followUpData.choices[0].message.content,
+        functionsCalled: assistantMessage.tool_calls.map((tc: any) => tc.function.name)
+      });
+    }
+
+    // No function calls, return response directly
+    return c.json({
+      success: true,
+      message: assistantMessage.content
+    });
+
+  } catch (error: any) {
+    console.error('AI chat error:', error);
+    return c.json({
+      success: false,
+      error: error.message
+    }, 500);
+  }
+});
+
+// Tool execution functions
+async function executeGetUserPosts(userId: string, args: any) {
+  const { projectId, platform, status, limit = 10 } = args;
+
+  let postIds;
+  if (projectId) {
+    postIds = await kv.get(`project:${projectId}:posts`) || [];
+  } else {
+    postIds = await kv.get(`user:${userId}:posts`) || [];
+  }
+
+  const posts = await Promise.all(
+    postIds.slice(0, limit).map(async (id: string) => await kv.get(`post:${id}`))
+  );
+
+  let filtered = posts.filter(Boolean);
+
+  if (platform) {
+    filtered = filtered.filter((post: any) =>
+      post.platforms?.includes(platform) || post.platform === platform
+    );
+  }
+
+  if (status) {
+    filtered = filtered.filter((post: any) => post.status === status);
+  }
+
+  return {
+    posts: filtered.map((post: any) => ({
+      id: post.id,
+      content: post.content,
+      platforms: post.platforms || [post.platform],
+      status: post.status,
+      scheduledTime: post.scheduledTime,
+      createdAt: post.createdAt
+    })),
+    total: filtered.length
+  };
+}
+
+async function executeGetPlatformConnections(userId: string, projectId: string) {
+  const projectConnections = await kv.get(`project:${projectId}:connections`) || {};
+
+  const connections = [];
+  for (const [platform, tokenData] of Object.entries(projectConnections)) {
+    if (tokenData && typeof tokenData === 'object' && (tokenData as any).access_token) {
+      connections.push({
+        platform,
+        connected: true,
+        username: (tokenData as any).username || 'Unknown'
+      });
+    }
+  }
+
+  return { connections, total: connections.length };
+}
+
+async function executeCreatePost(userId: string, args: any) {
+  const { projectId, content, platforms, scheduledTime, mediaUrls = [] } = args;
+
+  const postId = `post-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const post = {
+    id: postId,
+    projectId,
+    userId,
+    content,
+    platforms,
+    status: scheduledTime ? 'scheduled' : 'draft',
+    scheduledTime,
+    mediaUrls,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await kv.set(`post:${postId}`, post);
+
+  // Add to project posts
+  const projectPostIds = await kv.get(`project:${projectId}:posts`) || [];
+  projectPostIds.push(postId);
+  await kv.set(`project:${projectId}:posts`, projectPostIds);
+
+  return {
+    success: true,
+    postId,
+    status: post.status,
+    scheduledTime,
+    platforms
+  };
+}
+
+async function executeGetProjects(userId: string) {
+  const projectIds = await kv.get(`user:${userId}:projects`) || [];
+  const projects = await Promise.all(
+    projectIds.map(async (id: string) => await kv.get(`project:${id}`))
+  );
+
+  return {
+    projects: projects.filter(Boolean).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description
+    })),
+    total: projects.length
+  };
+}
+
+async function executeParseDatetime(args: any) {
+  const { expression, timezone = "UTC" } = args;
+
+  // Simple date parsing logic
+  // This is a basic implementation - you might want to use a library like chrono-node for production
+  const now = new Date();
+  let targetDate = new Date(now);
+
+  // Convert expression to lowercase for easier matching
+  const expr = expression.toLowerCase();
+
+  // Handle "tuesday", "wednesday", etc.
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayMatch = days.findIndex(day => expr.includes(day));
+
+  if (dayMatch !== -1) {
+    const currentDay = now.getDay();
+    let daysToAdd = dayMatch - currentDay;
+    if (daysToAdd <= 0) daysToAdd += 7; // Next week
+    targetDate.setDate(now.getDate() + daysToAdd);
+  }
+
+  // Handle "tomorrow"
+  if (expr.includes('tomorrow')) {
+    targetDate.setDate(now.getDate() + 1);
+  }
+
+  // Handle "next week"
+  if (expr.includes('next week')) {
+    targetDate.setDate(now.getDate() + 7);
+  }
+
+  // Handle time like "8am", "3pm", "14:30"
+  const timeMatch = expr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1]);
+    const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    const meridiem = timeMatch[3];
+
+    if (meridiem === 'pm' && hours < 12) hours += 12;
+    if (meridiem === 'am' && hours === 12) hours = 0;
+
+    targetDate.setHours(hours, minutes, 0, 0);
+  }
+
+  return {
+    originalExpression: expression,
+    parsedDate: targetDate.toISOString(),
+    humanReadable: targetDate.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timezone
+    })
+  };
 }
 
 Deno.serve(app.fetch);
