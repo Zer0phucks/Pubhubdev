@@ -2,8 +2,8 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import * as kv from "./kv_store.tsx";
-import { rateLimit, rateLimitConfigs } from "./rate-limit.tsx";
+import * as kv from "./kv_store.ts";
+import { rateLimit, rateLimitConfigs } from "./rate-limit.ts";
 
 const app = new Hono();
 
