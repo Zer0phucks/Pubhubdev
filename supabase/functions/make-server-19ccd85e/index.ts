@@ -3,7 +3,7 @@ import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
-import { rateLimit, rateLimitConfigs } from "./rate-limit.tsx";
+// import { rateLimit, rateLimitConfigs } from "./rate-limit.tsx"; // TODO: Implement Hono-compatible rate limiting
 
 const app = new Hono();
 
@@ -23,8 +23,8 @@ app.use(
   }),
 );
 
-// Apply rate limiting to all routes
-app.use('*', rateLimit(rateLimitConfigs.api));
+// TODO: Implement Hono-compatible rate limiting
+// app.use('*');
 
 // Supabase admin client for database access and auth verification
 const supabaseAdmin = createClient(
@@ -86,7 +86,7 @@ app.get("/make-server-19ccd85e/health", (c) => {
 // ============= STORAGE/UPLOAD ROUTES =============
 
 // Upload profile picture
-app.post("/make-server-19ccd85e/upload/profile-picture", rateLimit(rateLimitConfigs.upload), requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const formData = await c.req.formData();
@@ -147,7 +147,7 @@ app.post("/make-server-19ccd85e/upload/profile-picture", rateLimit(rateLimitConf
 });
 
 // Upload project logo
-app.post("/make-server-19ccd85e/upload/project-logo/:projectId", rateLimit(rateLimitConfigs.upload), requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const projectId = c.req.param('projectId');
@@ -220,7 +220,7 @@ app.post("/make-server-19ccd85e/upload/project-logo/:projectId", rateLimit(rateL
 // ============= AUTH ROUTES =============
 
 // Initialize user on first login (called automatically after sign up/in)
-app.post("/make-server-19ccd85e/auth/initialize", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const user = c.get('user');
@@ -299,7 +299,7 @@ app.post("/make-server-19ccd85e/auth/initialize", rateLimit(rateLimitConfigs.aut
 });
 
 // Get user profile
-app.get("/make-server-19ccd85e/auth/profile", rateLimit(rateLimitConfigs.api), requireAuth, async (c) => {
+app.get("/make-server-19ccd85e/auth/profile", requireAuth, async (c) => {
   try {
     const userId = c.get('userId');
     
@@ -1070,8 +1070,7 @@ Return ONLY valid JSON without any markdown formatting or explanation.`;
             { role: 'system', content: 'You are a helpful assistant that provides ebook writing suggestions. Always respond with valid JSON only.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
-          max_tokens: 500,
+          max_completion_tokens: 500,
         }),
       }
     );
@@ -1156,8 +1155,7 @@ Return ONLY valid JSON without any markdown formatting or explanation.`;
             { role: 'system', content: 'You are an expert book editor and writing coach. Always respond with valid JSON only.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
-          max_tokens: 2000,
+          max_completion_tokens: 2000,
         }),
       }
     );
@@ -1231,8 +1229,7 @@ Return ONLY the chapter content as plain text, without any JSON formatting or ma
             { role: 'system', content: 'You are an expert author who writes engaging and professional book content.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.8,
-          max_tokens: 4000,
+          max_completion_tokens: 4000,
         }),
       }
     );
@@ -1403,7 +1400,7 @@ const getOAuthConfig = (platform: string) => {
 };
 
 // Start OAuth flow - generates authorization URL
-app.get("/make-server-19ccd85e/oauth/authorize/:platform", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
+app.get("/make-server-19ccd85e/oauth/authorize/:platform", requireAuth, async (c) => {
   try {
     const platform = c.req.param('platform');
     const userId = c.get('userId');
@@ -1468,7 +1465,7 @@ app.get("/make-server-19ccd85e/oauth/authorize/:platform", rateLimit(rateLimitCo
 });
 
 // Handle OAuth callback - exchange code for token
-app.post("/make-server-19ccd85e/oauth/callback", rateLimit(rateLimitConfigs.auth), requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/oauth/callback", requireAuth, async (c) => {
   try {
     const { code, state, platform } = await c.req.json();
     const userId = c.get('userId');
@@ -2386,8 +2383,7 @@ Guidelines:
           messages: [systemMessage, ...messages],
           tools,
           tool_choice: "auto",
-          temperature: 0.7,
-          max_tokens: 1000,
+          max_completion_tokens: 1000,
         }),
       }
     );
@@ -2458,8 +2454,7 @@ Guidelines:
               assistantMessage,
               ...toolResults
             ],
-            temperature: 0.7,
-            max_tokens: 1000,
+            max_completion_tokens: 1000,
           }),
         }
       );
