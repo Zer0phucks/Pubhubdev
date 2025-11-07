@@ -9,6 +9,8 @@ import {
 } from "./ui/popover";
 import { Sparkles, Loader2, Wand2, Copy, Check, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { projectId } from "../utils/supabase/info";
+import { getAuthToken } from "../utils/api";
 
 interface AITextGeneratorProps {
   onGenerate: (text: string) => void;
@@ -71,12 +73,33 @@ export function AITextGenerator({
     setGeneratedText("");
 
     try {
-      // TODO: Replace with actual AI API call
-      // Example: const response = await fetch('/api/generate-text', { method: 'POST', body: JSON.stringify({ prompt: effectivePrompt, context: getContextPrompt() }) });
-      // const { text } = await response.json();
-      // setGeneratedText(text);
+      // Call AI text generation API
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/ai/generate-text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({
+          prompt: effectivePrompt,
+          contextType,
+          context: context || getContextPrompt(),
+        }),
+      });
 
-      throw new Error("AI text generation not yet implemented. Please connect an AI service.");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate text');
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate text');
+      }
+
+      setGeneratedText(data.text);
+      toast.success("Text generated!");
     } catch (error) {
       console.error("AI generation error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate text. Please try again.");

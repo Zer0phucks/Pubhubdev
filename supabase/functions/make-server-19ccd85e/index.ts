@@ -2226,6 +2226,80 @@ async function publishToReddit(accessToken: string, content: any, media: any) {
 }
 
 // ============================================
+// AI TEXT GENERATION
+// ============================================
+
+/**
+ * AI Text Generator - Context-aware text generation
+ * Used for inline text generation across the app (replies, posts, comments, templates)
+ */
+app.post("/make-server-19ccd85e/ai/generate-text", requireAuth, async (c) => {
+  try {
+    const { prompt, contextType = 'general', context = '' } = await c.req.json();
+
+    if (!prompt || !prompt.trim()) {
+      return c.json({ error: 'Prompt is required' }, 400);
+    }
+
+    // Define system prompts based on context type
+    const systemPrompts: Record<string, string> = {
+      reply: `You are a helpful social media assistant writing replies. Generate professional, friendly, and engaging responses that maintain a conversational tone. Keep replies concise and relevant to the context.`,
+      post: `You are a creative social media content creator. Generate engaging, platform-appropriate posts with hooks, value, and calls-to-action. Use emojis strategically and keep content concise yet impactful.`,
+      comment: `You are a thoughtful community member writing comments. Generate engaging, value-adding comments that contribute to the discussion. Be genuine, helpful, and conversational.`,
+      template: `You are a content template creator. Generate versatile, professional templates that are easy to customize. Include placeholders in [brackets] for user customization.`,
+      general: `You are a helpful writing assistant. Generate clear, professional, and relevant text based on the user's requirements.`,
+    };
+
+    const systemPrompt = systemPrompts[contextType] || systemPrompts.general;
+
+    // Build the user message with context
+    let userMessage = prompt;
+    if (context) {
+      userMessage = `Context: ${context}\n\nRequest: ${prompt}`;
+    }
+
+    // Call Azure OpenAI
+    const response = await fetch(
+      `${Deno.env.get('AZURE_OPENAI_ENDPOINT')}/openai/deployments/${Deno.env.get('AZURE_OPENAI_DEPLOYMENT_NAME')}/chat/completions?api-version=${Deno.env.get('AZURE_OPENAI_API_VERSION')}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': Deno.env.get('AZURE_OPENAI_API_KEY') ?? '',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          max_completion_tokens: contextType === 'template' ? 800 : 400,
+          temperature: contextType === 'post' ? 0.8 : 0.7, // More creative for posts
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Azure OpenAI API error: ${error}`);
+    }
+
+    const data = await response.json();
+    const generatedText = data.choices[0].message.content.trim();
+
+    return c.json({
+      success: true,
+      text: generatedText
+    });
+  } catch (error: any) {
+    console.error('AI text generation error:', error);
+    return c.json({
+      success: false,
+      error: `Failed to generate text: ${error.message}`
+    }, 500);
+  }
+});
+
+// ============================================
 // AI CHAT ASSISTANT WITH FUNCTION CALLING
 // ============================================
 
