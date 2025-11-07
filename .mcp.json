@@ -2,8 +2,8 @@
   "mcpServers": {
     "perplexity": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "perplexity-mcp"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "perplexity-mcp"],
       "env": {
         "PERPLEXITY_API_KEY": "pplx-fLYPT3BGQEyPWYostFTWR7EAXBGG75MoqbKQ60BlJkKjYJI"
       }

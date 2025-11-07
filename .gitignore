@@ -11,5 +11,21 @@ node_modules
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/.playwright-mcp/
 
-playwright/.auth
+# Build artifacts
+build/
+dist/
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*.bak
+*.old
+%USERPROFILE%/
+
+# OS files
+.DS_Store
+Thumbs.db
