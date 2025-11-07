@@ -71,49 +71,15 @@ export function AITextGenerator({
     setGeneratedText("");
 
     try {
-      // Simulate AI generation - replace with actual AI API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // TODO: Replace with actual AI API call
+      // Example: const response = await fetch('/api/generate-text', { method: 'POST', body: JSON.stringify({ prompt: effectivePrompt, context: getContextPrompt() }) });
+      // const { text } = await response.json();
+      // setGeneratedText(text);
 
-      // Mock generated text based on context type
-      const mockGenerations: Record<string, string[]> = {
-        reply: [
-          "Thank you so much for reaching out! I'd be happy to help. Let me share some insights that might be useful for you.",
-          "I really appreciate your message! That's a great question. Here's what I recommend...",
-          "Thanks for your interest! I'm glad this resonated with you. Let me elaborate on that point.",
-        ],
-        post: [
-          "🚀 Exciting news! We're thrilled to share something amazing with our community. Stay tuned for more updates!",
-          "✨ Here's a quick tip that changed everything for me. Hope it helps you too! What's your experience with this?",
-          "💡 Just learned something incredible and had to share it with you all. Let's discuss in the comments!",
-        ],
-        comment: [
-          "This is spot on! I've experienced the same thing. Thanks for sharing your perspective!",
-          "Great point! I'd love to add that this also works well when combined with...",
-          "Absolutely agree! This is such an important topic. Would love to hear more about your approach.",
-        ],
-        template: [
-          "🎯 [Template Name]\n\n📌 Key Point 1\n💡 Key Point 2\n✨ Key Point 3\n\nWhat are your thoughts? Let's discuss! 👇",
-          "Hey everyone! 👋\n\nJust wanted to share [topic] with you all.\n\n[Main content here]\n\nLet me know what you think!",
-        ],
-        general: [
-          "Here's a well-crafted response based on your requirements. Feel free to customize it further!",
-        ],
-      };
-
-      const options = mockGenerations[contextType] || mockGenerations.general;
-      const generated = options[Math.floor(Math.random() * options.length)];
-
-      // Add context-aware customization
-      let finalText = generated;
-      if (effectivePrompt.toLowerCase().includes("professional")) {
-        finalText = finalText.replace(/!/g, ".").replace(/✨|🚀|💡|🎯|📌|👇|👋/g, "");
-      }
-
-      setGeneratedText(finalText);
-      toast.success("Text generated!");
+      throw new Error("AI text generation not yet implemented. Please connect an AI service.");
     } catch (error) {
       console.error("AI generation error:", error);
-      toast.error("Failed to generate text. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to generate text. Please try again.");
     } finally {
       setLoading(false);
     }

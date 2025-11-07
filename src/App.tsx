@@ -592,8 +592,11 @@ function AppContent() {
             onOpenAccountSettings={handleOpenAccountSettings}
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onOpenAIChat={(query) => {
+              if (query) {
+                setAIInitialQuery(query);
+                setAIAutoSubmit(true);
+              }
               setAIChatOpen(true);
-              // You can pass the query to the AI chat dialog if needed
             }}
           />
 
