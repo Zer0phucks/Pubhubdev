@@ -13,8 +13,8 @@ import { Separator } from "./ui/separator";
 interface SettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  theme: "light" | "dark";
-  onThemeChange: (theme: "light" | "dark") => void;
+  theme: "light" | "dark" | "system";
+  onThemeChange: (theme: "light" | "dark" | "system") => void;
 }
 
 export function SettingsPanel({ open, onOpenChange, theme, onThemeChange }: SettingsPanelProps) {
@@ -32,7 +32,7 @@ export function SettingsPanel({ open, onOpenChange, theme, onThemeChange }: Sett
           {/* Appearance */}
           <div className="space-y-3">
             <Label>Appearance</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Button
                 variant="outline"
                 onClick={() => onThemeChange("light")}
@@ -56,6 +56,18 @@ export function SettingsPanel({ open, onOpenChange, theme, onThemeChange }: Sett
               >
                 <Moon className="w-5 h-5" />
                 <span className="text-sm">Dark</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => onThemeChange("system")}
+                className={`h-auto flex-col gap-2 p-4 ${
+                  theme === "system"
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                    : ""
+                }`}
+              >
+                <Monitor className="w-5 h-5" />
+                <span className="text-sm">System</span>
               </Button>
             </div>
           </div>

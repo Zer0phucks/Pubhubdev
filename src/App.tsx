@@ -93,7 +93,10 @@ function AppContent() {
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
+    const savedTheme = localStorage.getItem('theme') as "light" | "dark" | "system" | null;
+    return savedTheme || "system";
+  });
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [aiChatOpen, setAIChatOpen] = useState(false);
@@ -106,21 +109,47 @@ function AppContent() {
 
   // Apply theme and set document title
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add('dark');
+    const applyTheme = (isDark: boolean) => {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    if (theme === "system") {
+      // Use system preference
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(systemPrefersDark);
+
+      // Listen for system theme changes
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      mediaQuery.addEventListener('change', handleChange);
+
+      return () => mediaQuery.removeEventListener('change', handleChange);
     } else {
-      document.documentElement.classList.remove('dark');
+      // Use explicit theme setting
+      applyTheme(theme === "dark");
     }
-    
+  }, [theme]);
+
+  // Persist theme to localStorage
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Set document title and favicon
+  useEffect(() => {
     document.title = 'PubHub - Creator Platform';
-    
+
     // Add favicon
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/svg+xml';
     link.rel = 'icon';
     link.href = '/public/favicon.svg';
     document.head.appendChild(link);
-  }, [theme]);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
