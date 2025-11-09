@@ -3,10 +3,18 @@
     "perplexity": {
       "type": "stdio",
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "perplexity-mcp"],
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "perplexity-mcp"
+      ],
       "env": {
         "PERPLEXITY_API_KEY": "pplx-fLYPT3BGQEyPWYostFTWR7EAXBGG75MoqbKQ60BlJkKjYJI"
       }
+    },
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp/devconsul/sentry-pubhub"
     }
   }
 }
