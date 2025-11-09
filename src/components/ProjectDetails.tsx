@@ -49,9 +49,10 @@ export function ProjectDetails() {
       await uploadAPI.uploadProjectLogo(currentProject.id, file);
       await refreshProjects();
       toast.success('Project logo updated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Project logo upload error:', error);
-      toast.error(error.message || 'Failed to upload project logo');
+      toast.error(err.message || 'Failed to upload project logo');
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) {
@@ -76,9 +77,10 @@ export function ProjectDetails() {
       });
       await refreshProjects();
       toast.success('Project details updated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Project update error:', error);
-      toast.error(error.message || 'Failed to update project details');
+      toast.error(err.message || 'Failed to update project details');
     } finally {
       setSavingDetails(false);
     }

@@ -103,7 +103,7 @@ export function useAnalytics(
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to fetch analytics', error, { projectId });
       setData((prev) => ({
         ...prev,

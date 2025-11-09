@@ -118,12 +118,13 @@ export function OAuthDebugPanel() {
           details: `Status: ${healthResponse.status}`,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       info.push({
         section: 'Backend',
         status: 'error',
         message: 'Cannot reach backend',
-        details: error.message,
+        details: err.message,
       });
     }
 

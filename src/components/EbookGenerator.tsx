@@ -178,7 +178,7 @@ export function EbookGenerator() {
   const [isGettingSuggestions, setIsGettingSuggestions] = useState(false);
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
   const [previewChapterId, setPreviewChapterId] = useState<string | null>(null);
-  const [previousBooks, setPreviousBooks] = useState<any[]>([]);
+  const [previousBooks, setPreviousBooks] = useState<{id: string; title: string; createdAt: string}[]>([]);
 
   useEffect(() => {
     // Load previous books from KV store
@@ -277,7 +277,7 @@ export function EbookGenerator() {
       setOutline(generatedOutline);
       
       // Initialize chapters with empty content
-      const initialChapters: Chapter[] = generatedOutline.chapters.map((ch: any) => ({
+      const initialChapters: Chapter[] = generatedOutline.chapters.map((ch: { id: string; title: string; content?: string }) => ({
         ...ch,
         content: "",
         isGenerated: false,

@@ -265,7 +265,7 @@ export function CreateAutomationDialog({ open, onOpenChange, onSave, editRule }:
                     <span className="text-xs text-muted-foreground">Target platforms:</span>
                     <div className="flex items-center gap-1">
                       {selectedTransformation.platforms.map((platform) => (
-                        <PlatformIcon key={platform} platform={platform as any} className="w-4 h-4" />
+                        <PlatformIcon key={platform} platform={platform} className="w-4 h-4" />
                       ))}
                     </div>
                   </div>

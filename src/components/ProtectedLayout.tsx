@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import type { AppView, InboxView, ProjectSettingsTab } from '@/types';
 import {
   SidebarProvider,
   Sidebar,
@@ -226,7 +227,7 @@ export function ProtectedLayout() {
     { path: '/settings', label: 'Project Settings', icon: SettingsIcon, collapsible: true },
   ];
 
-  const getCurrentView = () => {
+  const getCurrentView = (): AppView => {
     const path = location.pathname;
     if (path.startsWith('/dashboard')) return 'project-overview';
     if (path.startsWith('/compose')) return 'compose';
@@ -427,7 +428,7 @@ export function ProtectedLayout() {
 
         <main className="flex-1 flex flex-col min-w-0">
           <AppHeader
-            currentView={getCurrentView() as any}
+            currentView={getCurrentView()}
             selectedPlatform={selectedPlatform}
             onPlatformChange={setSelectedPlatform}
             onNavigate={(view, subView) => {
@@ -476,7 +477,7 @@ export function ProtectedLayout() {
                   setAIAutoSubmit(false);
                 }
               }}
-              currentView={getCurrentView() as any}
+              currentView={getCurrentView()}
               selectedPlatform={selectedPlatform}
               initialQuery={aiInitialQuery}
               autoSubmit={aiAutoSubmit}

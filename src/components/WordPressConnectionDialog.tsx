@@ -75,9 +75,10 @@ export function WordPressConnectionDialog({
       setUsername("");
       setApplicationPassword("");
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('WordPress connection error:', error);
-      toast.error(error.message || "Failed to connect to WordPress");
+      toast.error(err.message || "Failed to connect to WordPress");
     } finally {
       setLoading(false);
     }

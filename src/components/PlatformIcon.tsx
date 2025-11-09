@@ -1,8 +1,9 @@
+import type { Platform } from "@/types";
 import { memo } from "react";
 import { Twitter, Instagram, Linkedin, Youtube, Music, Pin, FileText, Facebook } from "lucide-react";
 
 interface PlatformIconProps {
-  platform: string;
+  platform: Platform;
   className?: string;
   size?: number;
 }

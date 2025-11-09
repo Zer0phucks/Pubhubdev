@@ -9,7 +9,7 @@
 
     // Type Checking - Strict Mode
     "strict": true,
-    "noImplicitAny": false,  // Set to false initially, enable after cleanup
+    "noImplicitAny": true,  // Set to false initially, enable after cleanup
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,

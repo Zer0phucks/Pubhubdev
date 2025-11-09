@@ -156,7 +156,7 @@ export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibrary
                 className="pl-9"
               />
             </div>
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as "recent" | "views" | "engagement")}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue />
               </SelectTrigger>

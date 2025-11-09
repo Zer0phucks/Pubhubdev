@@ -46,8 +46,9 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
       setName("");
       setDescription("");
       onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create project");
+    } catch (error: unknown) {
+      const err = toAppError(error);
+      toast.error(err.message || "Failed to create project");
     } finally {
       setLoading(false);
     }

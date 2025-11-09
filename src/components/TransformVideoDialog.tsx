@@ -259,7 +259,7 @@ export function TransformVideoDialog({ open, onOpenChange, video, onTransform }:
                               {option.platforms.slice(0, 4).map((platform) => (
                                 <PlatformIcon
                                   key={platform}
-                                  platform={platform as any}
+                                  platform={platform}
                                   className="w-4 h-4"
                                 />
                               ))}

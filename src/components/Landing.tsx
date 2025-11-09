@@ -162,7 +162,7 @@ export function Landing({ onGetStarted, onSignUp }: LandingProps) {
               <span className="text-muted-foreground mr-2">Supported Platforms:</span>
               {platforms.map((platform) => (
                 <div key={platform.id} className="flex items-center gap-2">
-                  <PlatformIcon platform={platform.id as any} size="md" />
+                  <PlatformIcon platform={platform.id} size="md" />
                 </div>
               ))}
             </div>

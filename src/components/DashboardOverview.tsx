@@ -65,8 +65,8 @@ interface DashboardOverviewProps {
 
 export const DashboardOverview = memo(function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }: DashboardOverviewProps) {
   const [loading, setLoading] = useState(true);
-  const [postsData, setPostsData] = useState<any[]>([]);
-  const [connectionsData, setConnectionsData] = useState<any[]>([]);
+  const [postsData, setPostsData] = useState<BackendPost[]>([]);
+  const [connectionsData, setConnectionsData] = useState<ConnectionPayload[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const { currentProject } = useProject();
 

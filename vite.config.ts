@@ -25,6 +25,10 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'build',
+
+    // Performance budgets
+    reportCompressedSize: true,
+
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -51,6 +55,12 @@ export default defineConfig({
             if (id.includes('class-variance-authority') || id.includes('clsx') || id.includes('tailwind-merge') || id.includes('cmdk')) {
               return 'vendor-utils';
             }
+            if (id.includes('@sentry')) {
+              return 'vendor-sentry';
+            }
+            if (id.includes('web-vitals')) {
+              return 'vendor-performance';
+            }
             // Other vendor libraries
             return 'vendor-other';
           }
@@ -74,10 +84,35 @@ export default defineConfig({
           if (id.includes('/components/EbookGenerator') || id.includes('/components/Notifications')) {
             return 'route-features';
           }
-        }
-      }
+        },
+
+        // Optimize chunk file naming for better caching
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `assets/[name]-[hash].js`;
+        },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name?.split('.');
+          const ext = info?.[info.length - 1] || '';
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `assets/images/[name]-[hash][extname]`;
+          } else if (/woff2?|ttf|otf|eot/i.test(ext)) {
+            return `assets/fonts/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        },
+      },
     },
-    chunkSizeWarningLimit: 600
+
+    // Performance budgets - warn if chunks exceed these sizes
+    chunkSizeWarningLimit: 600, // 600 KB limit for any single chunk
+
+    // Minification and compression
+    minify: 'esbuild',
+    cssMinify: true,
+
+    // Source maps for production debugging (disable for smaller bundles)
+    sourcemap: true,
   },
   server: {
     port: 3000,

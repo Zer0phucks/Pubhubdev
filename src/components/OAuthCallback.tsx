@@ -106,10 +106,11 @@ export function OAuthCallback() {
         window.location.href = '/';
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('OAuth callback error:', error);
       setStatus('error');
-      setMessage(error.message || 'Failed to connect platform');
+      setMessage(err.message || 'Failed to connect platform');
 
       // Clean up session storage even on error
       sessionStorage.removeItem('oauth_state');

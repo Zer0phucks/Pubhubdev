@@ -110,7 +110,7 @@ export function Templates() {
                 <span className="text-xs text-muted-foreground">Platforms:</span>
                 {template.platforms.map((platform) => (
                   <Badge key={platform} variant="secondary" className="gap-1">
-                    <PlatformIcon platform={platform as any} className="w-3 h-3" />
+                    <PlatformIcon platform={platform} className="w-3 h-3" />
                     {platform}
                   </Badge>
                 ))}

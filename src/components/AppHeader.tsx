@@ -25,18 +25,13 @@ import {
 import { useAuth } from "./AuthContext";
 import { useConnectedPlatforms } from "../hooks/useConnectedPlatforms";
 import { logger } from '../utils/logger';
-
-type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "competition" | "project-settings";
-type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
-type InboxView = "all" | "unread" | "comments" | "messages";
-type AccountSettingsTab = "profile" | "shortcuts" | "notifications" | "preferences";
-type ProjectSettingsTab = "details" | "connections" | "automation" | "templates";
+import type { AppView, Platform, InboxView, AccountSettingsTab, ProjectSettingsTab } from "@/types";
 
 interface AppHeaderProps {
-  currentView: View;
+  currentView: AppView;
   selectedPlatform: Platform;
   onPlatformChange: (platform: Platform) => void;
-  onNavigate: (view: View, subView?: InboxView | ProjectSettingsTab) => void;
+  onNavigate: (view: AppView, subView?: InboxView | ProjectSettingsTab) => void;
   onOpenAccountSettings: (tab?: AccountSettingsTab) => void;
   onOpenCommandPalette: () => void;
   onOpenAIChat: (query?: string) => void;
@@ -98,13 +93,13 @@ export function AppHeader({
   const platforms = [
     { id: "all" as Platform, label: "ALL" },
     ...allPlatforms
-      .filter(p => p.id !== "all" && connectedPlatforms.includes(p.id as any))
+      .filter(p => p.id !== "all" && connectedPlatforms.includes(p.id))
       .map(p => ({ id: p.id, label: p.label }))
   ];
 
   // Auto-reset to "all" if the selected platform is no longer connected
   useEffect(() => {
-    if (selectedPlatform !== "all" && !connectedPlatforms.includes(selectedPlatform as any)) {
+    if (selectedPlatform !== "all" && !connectedPlatforms.includes(selectedPlatform)) {
       onPlatformChange("all");
     }
   }, [connectedPlatforms, selectedPlatform, onPlatformChange]);

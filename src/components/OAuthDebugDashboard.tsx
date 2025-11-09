@@ -40,7 +40,7 @@ interface PlatformDebugInfo {
   apiEndpoint?: string;
   requiredScopes?: string;
   errors: string[];
-  debugInfo?: any;
+  debugInfo?: unknown;
 }
 
 export function OAuthDebugDashboard() {
@@ -207,9 +207,10 @@ export function OAuthDebugDashboard() {
             config.status = 'connected';
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = toAppError(error);
         config.status = 'error';
-        config.errors.push(`Failed to check configuration: ${error.message}`);
+        config.errors.push(`Failed to check configuration: ${err.message}`);
       }
 
       updatedPlatforms.push(config);
@@ -232,7 +233,7 @@ export function OAuthDebugDashboard() {
 
       if (response.ok) {
         const data = await response.json();
-        const connection = data.connections?.find((c: any) => c.platform === platform);
+        const connection = data.connections?.find((c: ConnectionPayload) => c.platform === platform);
         return connection || null;
       }
     } catch (error) {
@@ -276,9 +277,10 @@ export function OAuthDebugDashboard() {
           description: data.error || 'Unknown error'
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       toast.error(`Test failed for ${platform}`, {
-        description: error.message
+        description: err.message
       });
     } finally {
       setTesting(null);

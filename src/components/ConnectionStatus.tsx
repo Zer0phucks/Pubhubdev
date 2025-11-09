@@ -14,7 +14,7 @@ interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ platform, showLabel = true, compact = false }: ConnectionStatusProps) {
-  const [connections, setConnections] = useState<any[]>([]);
+  const [connections, setConnections] = useState<ConnectionPayload[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentProject } = useProject();
 

@@ -54,7 +54,7 @@ export function usePlatformConnection(
 
     try {
       const { connections } = await connectionsAPI.getAll(projectId);
-      const connection = connections?.find((c: any) => c.platform === platform);
+      const connection = connections?.find((c: ConnectionPayload) => c.platform === platform);
 
       setState({
         isConnected: connection?.connected || false,
@@ -64,7 +64,7 @@ export function usePlatformConnection(
         accountId: connection?.accountId,
         metadata: connection?.metadata,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to refresh platform connection', error, { platform });
       setState((prev) => ({
         ...prev,
@@ -106,9 +106,10 @@ export function usePlatformConnection(
 
       // Redirect to OAuth provider
       window.location.href = data.authUrl;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('OAuth flow error', error, { platform });
-      toast.error(error.message || 'Failed to connect platform');
+      toast.error(err.message || 'Failed to connect platform');
 
       setState((prev) => ({
         ...prev,
@@ -152,9 +153,10 @@ export function usePlatformConnection(
 
       // Set flag to trigger refresh in other components
       sessionStorage.setItem('platform_disconnected', 'true');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Disconnect error', error, { platform });
-      toast.error(error.message || 'Failed to disconnect platform');
+      toast.error(err.message || 'Failed to disconnect platform');
 
       setState((prev) => ({
         ...prev,

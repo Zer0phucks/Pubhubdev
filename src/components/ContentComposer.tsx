@@ -456,7 +456,7 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-2 right-2">
-                    <PlatformIcon platform={currentRemixContent.platform as any} className="w-6 h-6" />
+                    <PlatformIcon platform={currentRemixContent.platform} className="w-6 h-6" />
                   </div>
                 </div>
                 <div>
@@ -491,7 +491,7 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
                     <span className="font-medium">Content transformed from video</span>
                   </div>
                   <div className="text-sm flex items-center gap-2">
-                    <PlatformIcon platform={currentTransformation.sourceVideo.platform as any} className="w-4 h-4" />
+                    <PlatformIcon platform={currentTransformation.sourceVideo.platform} className="w-4 h-4" />
                     <span className="truncate">{currentTransformation.sourceVideo.title}</span>
                   </div>
                   <Button

@@ -171,7 +171,7 @@ export function PlatformConnections() {
       // Merge saved connections with default structure
       if (savedConnections && savedConnections.length > 0) {
         const merged = defaultConnections.map(defaultConn => {
-          const saved = savedConnections.find((s: any) => s.platform === defaultConn.platform);
+          const saved = savedConnections.find((s: ConnectionPayload) => s.platform === defaultConn.platform);
           return saved ? { ...defaultConn, ...saved } : defaultConn;
         });
         setConnections(merged);
@@ -190,10 +190,11 @@ export function PlatformConnections() {
     try {
       setSaving(true);
       await connectionsAPI.update(updatedConnections, currentProject.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Failed to save connections', error);
       // Show specific error message if provided
-      toast.error(error.message || 'Failed to save connections');
+      toast.error(err.message || 'Failed to save connections');
       throw error;
     } finally {
       setSaving(false);
@@ -223,7 +224,7 @@ export function PlatformConnections() {
         // Update local state with response
         if (data.connections) {
           const merged = defaultConnections.map(defaultConn => {
-            const saved = data.connections.find((s: any) => s.platform === defaultConn.platform);
+            const saved = data.connections.find((s: ConnectionPayload) => s.platform === defaultConn.platform);
             return saved ? { ...defaultConn, ...saved } : defaultConn;
           });
           setConnections(merged);
@@ -234,9 +235,10 @@ export function PlatformConnections() {
         
         // Set flag to trigger header refresh (similar to connection completion)
         sessionStorage.setItem('platform_disconnected', 'true');
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = toAppError(error);
         logger.error('Disconnect error', error, { platform });
-        toast.error(error.message || 'Failed to disconnect platform');
+        toast.error(err.message || 'Failed to disconnect platform');
       }
     }
     setPlatformToDisconnect(null);
@@ -288,9 +290,10 @@ export function PlatformConnections() {
 
       // Redirect to OAuth provider
       window.location.href = data.authUrl;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('OAuth flow error', error, { platform });
-      toast.error(error.message || 'Failed to connect platform');
+      toast.error(err.message || 'Failed to connect platform');
     }
   };
 
@@ -346,7 +349,7 @@ export function PlatformConnections() {
       
       // Refresh connections to show the new connection
       await loadConnections();
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('WordPress connection error', error);
       throw error;
     }

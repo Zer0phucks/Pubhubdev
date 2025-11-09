@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import type { ProjectSettingsTab } from '@/types';
 import { useOutletContext } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
@@ -11,7 +12,7 @@ const LoadingFallback = () => (
 );
 
 interface OutletContext {
-  projectSettingsTab: any;
+  projectSettingsTab: ProjectSettingsTab;
 }
 
 export function SettingsRoute() {

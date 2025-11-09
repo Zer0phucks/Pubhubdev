@@ -1,3 +1,4 @@
+import type { Project } from '@/types';
 import { useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
@@ -28,7 +29,7 @@ export function ProjectManagement() {
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const handleEdit = (project: any) => {
+  const handleEdit = (project: Project) => {
     setEditingId(project.id);
     setEditName(project.name);
     setEditDescription(project.description || "");
@@ -42,8 +43,9 @@ export function ProjectManagement() {
       });
       setEditingId(null);
       toast.success("Project updated successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update project");
+    } catch (error: unknown) {
+      const err = toAppError(error);
+      toast.error(err.message || "Failed to update project");
     }
   };
 
@@ -66,16 +68,17 @@ export function ProjectManagement() {
       toast.success("Project deleted successfully");
       setDeleteDialogOpen(false);
       setProjectToDelete(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete project");
+    } catch (error: unknown) {
+      const err = toAppError(error);
+      toast.error(err.message || "Failed to delete project");
     }
   };
 
-  const handleSetCurrent = async (project: any) => {
+  const handleSetCurrent = async (project: Project) => {
     try {
       await setCurrentProject(project);
       toast.success(`Switched to ${project.name}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to switch project");
     }
   };

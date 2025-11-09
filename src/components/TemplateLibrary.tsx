@@ -231,7 +231,7 @@ const templates: ContentTemplate[] = [
   }
 ];
 
-const categoryIcons: Record<TemplateCategory, any> = {
+const categoryIcons: Record<TemplateCategory, React.ComponentType> = {
   announcement: Megaphone,
   educational: BookOpen,
   promotional: TrendingUp,

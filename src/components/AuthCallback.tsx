@@ -69,9 +69,10 @@ export function AuthCallback() {
             setStatus('error');
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = toAppError(err);
         logger.error('Auth callback error:', err);
-        setError(err.message || 'An error occurred during authentication.');
+        setError(error.message || 'An error occurred during authentication.');
         setStatus('error');
       }
     };

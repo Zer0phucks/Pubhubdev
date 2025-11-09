@@ -98,7 +98,7 @@ export function PostEditor({
   const [attachments, setAttachments] = useState<Attachment[]>(_initialAttachments);
   const [crossPostTo, setCrossPostTo] = useState<Platform[]>(_initialCrossPostTo);
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<"none" | "daily" | "weekly" | "monthly">(
-    (data.recurrence?.frequency as any) || "none"
+    data.recurrence?.frequency || "none"
   );
 
   const platforms = [
@@ -285,7 +285,7 @@ export function PostEditor({
               <Label>Recurrence</Label>
               <select
                 value={recurrenceFrequency}
-                onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
+                onChange={(e) => setRecurrenceFrequency(e.target.value as "none" | "daily" | "weekly" | "monthly")}
                 className="mt-2 w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
               >
                 <option value="none">Does not repeat</option>

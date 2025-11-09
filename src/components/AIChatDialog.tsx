@@ -122,9 +122,10 @@ Try asking me to create a post or show you your recent content!`,
           } else {
             throw new Error(response.error || 'Failed to get AI response');
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const err = toAppError(error);
           logger.error('AI chat error during auto-submit', error);
-          toast.error('Failed to get AI response: ' + error.message);
+          toast.error('Failed to get AI response: ' + err.message);
 
           const errorMessage: Message = {
             id: (Date.now() + 1).toString(),
@@ -188,9 +189,10 @@ Try asking me to create a post or show you your recent content!`,
       } else {
         throw new Error(response.error || 'Failed to get AI response');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('AI chat error during manual submit', error);
-      toast.error('Failed to get AI response: ' + error.message);
+      toast.error('Failed to get AI response: ' + err.message);
 
       // Add error message to chat
       const errorMessage: Message = {

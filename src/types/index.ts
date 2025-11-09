@@ -354,3 +354,27 @@ export function toAppError(error: unknown): AppError {
   }
   return new Error('An unknown error occurred') as AppError;
 }
+
+// Application view types (for routing)
+export type AppView = 
+  | "project-overview"
+  | "compose"
+  | "inbox"
+  | "calendar"
+  | "analytics"
+  | "library"
+  | "notifications"
+  | "ebooks"
+  | "trending"
+  | "competition"
+  | "project-settings";
+
+// Project types
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  ownerId?: string;
+}

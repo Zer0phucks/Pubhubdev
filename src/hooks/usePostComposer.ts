@@ -115,9 +115,10 @@ export function usePostComposer(projectId: string) {
       });
 
       toast.success('Draft saved successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Failed to save draft', error);
-      toast.error(error.message || 'Failed to save draft');
+      toast.error(err.message || 'Failed to save draft');
       throw error;
     } finally {
       setIsPublishing(false);
@@ -147,7 +148,7 @@ export function usePostComposer(projectId: string) {
           platforms: [targetPlatform],
           content: publishContent,
           status: 'publishing',
-          attachments: attachments.filter((a: any) => a.platform === targetPlatform),
+          attachments: attachments.filter((a: Attachment) => a.platform === targetPlatform),
         });
 
         // Note: Actual publishing to platforms would be handled by Edge Function
@@ -156,9 +157,10 @@ export function usePostComposer(projectId: string) {
         toast.success('Post published successfully', {
           description: `Published to ${targetPlatform}`,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = toAppError(error);
         logger.error('Publishing error', error, { platform: targetPlatform });
-        toast.error(error.message || 'Failed to publish post');
+        toast.error(err.message || 'Failed to publish post');
         throw error;
       } finally {
         setPublishingPlatforms((prev) => {

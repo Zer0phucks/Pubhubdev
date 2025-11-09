@@ -47,9 +47,10 @@ export function ProfileSettings() {
       await uploadAPI.uploadProfilePicture(file);
       await refreshProfile();
       toast.success('Profile picture updated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Profile picture upload error:', error);
-      toast.error(error.message || 'Failed to upload profile picture');
+      toast.error(err.message || 'Failed to upload profile picture');
     } finally {
       setUploadingProfile(false);
       if (profileInputRef.current) {
@@ -80,9 +81,10 @@ export function ProfileSettings() {
       await uploadAPI.uploadProjectLogo(currentProject.id, file);
       await refreshProjects();
       toast.success('Project logo updated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error('Project logo upload error:', error);
-      toast.error(error.message || 'Failed to upload project logo');
+      toast.error(err.message || 'Failed to upload project logo');
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) {

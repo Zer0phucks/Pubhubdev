@@ -35,14 +35,14 @@ interface PlatformTest {
   status: 'idle' | 'testing' | 'success' | 'error';
   error?: string;
   logs: TestLog[];
-  connection?: any;
+  connection?: ConnectionPayload;
 }
 
 interface TestLog {
   timestamp: string;
   type: 'info' | 'success' | 'error' | 'warning';
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 export function OAuthTester() {
@@ -58,7 +58,7 @@ export function OAuthTester() {
     pinterest: { platform: 'pinterest', name: 'Pinterest', status: 'idle', logs: [] },
     reddit: { platform: 'reddit', name: 'Reddit', status: 'idle', logs: [] },
   });
-  const [connections, setConnections] = useState<any[]>([]);
+  const [connections, setConnections] = useState<ConnectionPayload[]>([]);
   const [envVarsStatus, setEnvVarsStatus] = useState<Record<string, boolean>>({});
   const [loadingConnections, setLoadingConnections] = useState(true);
 
@@ -69,7 +69,7 @@ export function OAuthTester() {
     }
   }, [currentProject?.id]);
 
-  const addLog = (platform: Platform, type: TestLog['type'], message: string, details?: any) => {
+  const addLog = (platform: Platform, type: TestLog['type'], message: string, details?: unknown) => {
     setPlatformTests(prev => ({
       ...prev,
       [platform]: {
@@ -95,7 +95,7 @@ export function OAuthTester() {
       // Update platform tests with connection status
       setPlatformTests(prev => {
         const updated = { ...prev };
-        savedConnections?.forEach((conn: any) => {
+        savedConnections?.forEach((conn: ConnectionPayload) => {
           if (updated[conn.platform as Platform]) {
             updated[conn.platform as Platform].connection = conn;
             updated[conn.platform as Platform].status = conn.connected ? 'success' : 'idle';
@@ -103,7 +103,7 @@ export function OAuthTester() {
         });
         return updated;
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to load connections:', error);
       toast.error('Failed to load connections');
     } finally {
@@ -207,14 +207,15 @@ export function OAuthTester() {
         window.location.href = authData.authUrl;
       }, 1500);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error(`OAuth test failed for ${platform}:`, error);
-      addLog(platform, 'error', error.message || 'OAuth flow failed', error);
+      addLog(platform, 'error', err.message || 'OAuth flow failed', error);
       setPlatformTests(prev => ({
         ...prev,
-        [platform]: { ...prev[platform], status: 'error', error: error.message },
+        [platform]: { ...prev[platform], status: 'error', error: err.message },
       }));
-      toast.error(`OAuth test failed: ${error.message}`);
+      toast.error(`OAuth test failed: ${err.message}`);
     }
   };
 
@@ -262,14 +263,15 @@ export function OAuthTester() {
       
       await loadConnections();
       toast.success(`${platformTests[platform].name} disconnected`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = toAppError(error);
       logger.error(`Disconnect failed for ${platform}:`, error);
-      addLog(platform, 'error', error.message || 'Disconnect failed');
+      addLog(platform, 'error', err.message || 'Disconnect failed');
       setPlatformTests(prev => ({
         ...prev,
-        [platform]: { ...prev[platform], status: 'error', error: error.message },
+        [platform]: { ...prev[platform], status: 'error', error: err.message },
       }));
-      toast.error(`Disconnect failed: ${error.message}`);
+      toast.error(`Disconnect failed: ${err.message}`);
     }
   };
 

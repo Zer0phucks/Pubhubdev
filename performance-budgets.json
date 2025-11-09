@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json.schemastore.org/performance-budget.json",
+  "budgets": [
+    {
+      "resourceSizes": [
+        {
+          "resourceType": "script",
+          "budget": 600,
+          "unit": "kB",
+          "description": "JavaScript bundle size (total)"
+        },
+        {
+          "resourceType": "stylesheet",
+          "budget": 100,
+          "unit": "kB",
+          "description": "CSS bundle size"
+        },
+        {
+          "resourceType": "image",
+          "budget": 500,
+          "unit": "kB",
+          "description": "Total image assets"
+        },
+        {
+          "resourceType": "font",
+          "budget": 200,
+          "unit": "kB",
+          "description": "Font files"
+        },
+        {
+          "resourceType": "total",
+          "budget": 1500,
+          "unit": "kB",
+          "description": "Total page weight"
+        }
+      ],
+      "resourceCounts": [
+        {
+          "resourceType": "script",
+          "budget": 15,
+          "description": "Maximum number of JS files"
+        },
+        {
+          "resourceType": "stylesheet",
+          "budget": 5,
+          "description": "Maximum number of CSS files"
+        },
+        {
+          "resourceType": "third-party",
+          "budget": 10,
+          "description": "Third-party requests"
+        }
+      ]
+    }
+  ],
+  "timings": {
+    "FCP": {
+      "budget": 1800,
+      "unit": "ms",
+      "description": "First Contentful Paint - Target: < 1.8s (good), < 3s (moderate)"
+    },
+    "LCP": {
+      "budget": 2500,
+      "unit": "ms",
+      "description": "Largest Contentful Paint - Target: < 2.5s (good), < 4s (moderate)"
+    },
+    "FID": {
+      "budget": 100,
+      "unit": "ms",
+      "description": "First Input Delay - Target: < 100ms (good), < 300ms (moderate)"
+    },
+    "INP": {
+      "budget": 200,
+      "unit": "ms",
+      "description": "Interaction to Next Paint - Target: < 200ms (good), < 500ms (moderate)"
+    },
+    "CLS": {
+      "budget": 0.1,
+      "unit": "ratio",
+      "description": "Cumulative Layout Shift - Target: < 0.1 (good), < 0.25 (moderate)"
+    },
+    "TTFB": {
+      "budget": 800,
+      "unit": "ms",
+      "description": "Time to First Byte - Target: < 800ms (good), < 1.8s (moderate)"
+    },
+    "TTI": {
+      "budget": 3800,
+      "unit": "ms",
+      "description": "Time to Interactive - Target: < 3.8s (good), < 7.3s (moderate)"
+    },
+    "TBT": {
+      "budget": 200,
+      "unit": "ms",
+      "description": "Total Blocking Time - Target: < 200ms (good), < 600ms (moderate)"
+    },
+    "SpeedIndex": {
+      "budget": 3400,
+      "unit": "ms",
+      "description": "Speed Index - Target: < 3.4s (good), < 5.8s (moderate)"
+    }
+  },
+  "routes": {
+    "/dashboard": {
+      "LCP": 2000,
+      "FCP": 1500,
+      "description": "Dashboard should load quickly as it's the main entry point"
+    },
+    "/compose": {
+      "LCP": 2500,
+      "FCP": 1800,
+      "description": "Compose view can be slightly slower due to rich editor"
+    },
+    "/calendar": {
+      "LCP": 3000,
+      "FCP": 2000,
+      "description": "Calendar has complex rendering, allow more time"
+    },
+    "/analytics": {
+      "LCP": 2500,
+      "FCP": 1800,
+      "description": "Analytics dashboard with charts and data visualization"
+    }
+  },
+  "monitoring": {
+    "sentry": {
+      "enabled": true,
+      "tracesSampleRate": 0.3,
+      "profilesSampleRate": 0.3,
+      "description": "Sentry performance monitoring configuration"
+    },
+    "webVitals": {
+      "enabled": true,
+      "reportAllChanges": false,
+      "description": "Core Web Vitals monitoring"
+    }
+  },
+  "notes": [
+    "Budgets are based on Google's Core Web Vitals recommendations",
+    "Current bundle size is ~112 kB, maintain below 150 kB",
+    "Route-specific budgets account for lazy loading and code splitting",
+    "Monitor Sentry Performance dashboard for violations",
+    "Run 'npm run build' to check bundle sizes against budgets"
+  ]
+}

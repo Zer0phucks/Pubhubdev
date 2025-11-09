@@ -42,8 +42,9 @@ export function AuthPage() {
 
     try {
       await signin(email.trim(), password);
-    } catch (err: any) {
-      logger.error("Sign in error:", err);
+    } catch (err: unknown) {
+      const error = toAppError(err);
+      logger.error("Sign in error:", error);
       
       const errorMsg = (err.message || '').toLowerCase();
       
@@ -93,8 +94,9 @@ export function AuthPage() {
 
     try {
       await signup(email.trim(), password, name.trim());
-    } catch (err: any) {
-      logger.error("Sign up error:", err);
+    } catch (err: unknown) {
+      const error = toAppError(err);
+      logger.error("Sign up error:", error);
       
       const errorMessage = (err.message || '').toLowerCase();
       
@@ -139,7 +141,7 @@ export function AuthPage() {
           await signinWithTwitter();
           break;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error(`${provider} sign-in error:`, err);
       setError(`Failed to sign in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}. Please try again.`);
     } finally {

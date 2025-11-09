@@ -95,7 +95,7 @@ export function useInboxMessages(
       ];
 
       setMessages(mockMessages);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to fetch inbox messages', err, { projectId });
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -152,7 +152,7 @@ export function useInboxMessages(
           msg.id === messageId ? { ...msg, isRead: true } : msg
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to mark message as read', err, { messageId });
       throw err;
     }
@@ -166,7 +166,7 @@ export function useInboxMessages(
       setMessages((prev) =>
         prev.map((msg) => ({ ...msg, isRead: true }))
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to mark all messages as read', err);
       throw err;
     }
@@ -178,7 +178,7 @@ export function useInboxMessages(
       // await messagesAPI.reply(messageId, content);
 
       logger.info('Reply sent successfully', { messageId });
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to send reply', err, { messageId });
       throw err;
     }
@@ -190,7 +190,7 @@ export function useInboxMessages(
       // await messagesAPI.archive(messageId);
 
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to archive message', err, { messageId });
       throw err;
     }

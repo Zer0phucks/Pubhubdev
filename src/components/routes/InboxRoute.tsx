@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Platform, InboxView } from '@/types';
 import { useOutletContext } from 'react-router-dom';
 import { UnifiedInbox } from '../UnifiedInbox';
 import { Loader2 } from 'lucide-react';
@@ -10,8 +11,8 @@ const LoadingFallback = () => (
 );
 
 interface OutletContext {
-  selectedPlatform: any;
-  inboxView: any;
+  selectedPlatform: Platform;
+  inboxView: InboxView;
 }
 
 export function InboxRoute() {

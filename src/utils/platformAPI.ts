@@ -1,5 +1,6 @@
 // Platform API utilities for making authenticated requests to social media platforms
 import { supabase } from './supabase/client';
+import type { PlatformPublishResult } from '../types';
 import { oauthAPI, setAuthToken } from './api';
 
 export interface PlatformPost {
@@ -32,7 +33,7 @@ async function getAccessToken(platform: string, projectId: string): Promise<stri
 export async function postToTwitter(
   projectId: string,
   post: PlatformPost
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('twitter', projectId);
 
   const response = await fetch('https://api.twitter.com/2/tweets', {
@@ -60,7 +61,7 @@ export async function postToTwitter(
 export async function postToLinkedIn(
   projectId: string,
   post: PlatformPost
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('linkedin', projectId);
 
   // Get user's LinkedIn ID first
@@ -117,7 +118,7 @@ export async function postToFacebook(
   projectId: string,
   post: PlatformPost,
   pageId?: string
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('facebook', projectId);
 
   // If no pageId provided, get the first page
@@ -163,7 +164,7 @@ export async function postToReddit(
   projectId: string,
   post: PlatformPost,
   subreddit: string
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('reddit', projectId);
 
   const response = await fetch('https://oauth.reddit.com/api/submit', {
@@ -196,7 +197,7 @@ export async function postToInstagram(
   projectId: string,
   post: PlatformPost,
   imageUrl: string
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('instagram', projectId);
 
   // Note: Instagram API requires media. This is a simplified example.
@@ -213,7 +214,7 @@ export async function postToPinterest(
   post: PlatformPost,
   boardId: string,
   imageUrl: string
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('pinterest', projectId);
 
   const response = await fetch('https://api.pinterest.com/v5/pins', {
@@ -247,7 +248,7 @@ export async function uploadToYouTube(
   projectId: string,
   post: PlatformPost,
   videoFile: File
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('youtube', projectId);
 
   // This is a simplified example. Real YouTube upload requires:
@@ -265,7 +266,7 @@ export async function postToTikTok(
   projectId: string,
   post: PlatformPost,
   videoUrl: string
-): Promise<any> {
+): Promise<PlatformPublishResult> {
   const accessToken = await getAccessToken('tiktok', projectId);
 
   // TikTok API requires video upload
@@ -279,8 +280,8 @@ export async function postToPlatform(
   platform: string,
   projectId: string,
   post: PlatformPost,
-  options?: any
-): Promise<any> {
+  options?: Record<string, unknown>
+): Promise<PlatformPublishResult> {
   switch (platform) {
     case 'twitter':
       return postToTwitter(projectId, post);

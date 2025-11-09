@@ -1,3 +1,4 @@
+import type { Project } from '@/types';
 import { useState } from "react";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { Button } from "./ui/button";
@@ -41,7 +42,7 @@ export function ProjectSwitcher() {
   const [open, setOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const handleProjectSelect = async (project: any) => {
+  const handleProjectSelect = async (project: Project) => {
     await setCurrentProject(project);
     setOpen(false);
   };

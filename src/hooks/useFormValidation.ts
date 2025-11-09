@@ -17,7 +17,7 @@ import { ValidationResult, ValidationRule, FieldsValidationResult } from '../typ
  *   }
  * );
  */
-export function useFormValidation<T extends Record<string, any>>(
+export function useFormValidation<T extends Record<string, unknown>>(
   initialValues: T,
   schema: Record<keyof T, ValidationRule>
 ) {
