@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
-        console.error('Profile initialization error:', err);
+        logger.error('Profile initialization error during signin', err);
       }
     }
   };
