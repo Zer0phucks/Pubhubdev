@@ -177,7 +177,7 @@ export function PlatformConnections() {
         setConnections(merged);
       }
     } catch (error) {
-      console.error('Failed to load connections:', error);
+      logger.error('Failed to load connections', error);
       toast.error('Failed to load connections');
     } finally {
       setLoading(false);
@@ -191,7 +191,7 @@ export function PlatformConnections() {
       setSaving(true);
       await connectionsAPI.update(updatedConnections, currentProject.id);
     } catch (error: any) {
-      console.error('Failed to save connections:', error);
+      logger.error('Failed to save connections', error);
       // Show specific error message if provided
       toast.error(error.message || 'Failed to save connections');
       throw error;
@@ -289,7 +289,7 @@ export function PlatformConnections() {
       // Redirect to OAuth provider
       window.location.href = data.authUrl;
     } catch (error: any) {
-      console.error('OAuth flow error:', error);
+      logger.error('OAuth flow error', error, { platform });
       toast.error(error.message || 'Failed to connect platform');
     }
   };
@@ -347,7 +347,7 @@ export function PlatformConnections() {
       // Refresh connections to show the new connection
       await loadConnections();
     } catch (error: any) {
-      console.error('WordPress connection error:', error);
+      logger.error('WordPress connection error', error);
       throw error;
     }
   };
