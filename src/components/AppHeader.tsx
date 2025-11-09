@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useAuth } from "./AuthContext";
-import { useConnectedPlatforms } from "./useConnectedPlatforms";
+import { useConnectedPlatforms } from "../hooks/useConnectedPlatforms";
 import { logger } from '../utils/logger';
 
 type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "competition" | "project-settings";

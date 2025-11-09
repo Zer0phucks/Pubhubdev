@@ -1,21 +1,5 @@
 // Comprehensive input validation utilities for PubHub
-
-// Validation result interface
-interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  sanitizedValue?: any;
-}
-
-// Validation rules interface
-interface ValidationRule {
-  required?: boolean;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: RegExp;
-  custom?: (value: any) => string | null;
-  sanitize?: (value: any) => any;
-}
+import type { ValidationResult, ValidationRule, FieldsValidationResult, FileUploadOptions, JsonSchema, RateLimitData } from '../types';
 
 // Common validation patterns
 export const patterns = {
@@ -84,7 +68,7 @@ export const rules = {
 };
 
 // Main validation function
-export function validate(value: any, rule: ValidationRule): ValidationResult {
+export function validate<T = unknown>(value: T, rule: ValidationRule<T>): ValidationResult<T> {
   const errors: string[] = [];
   let sanitizedValue = value;
 
@@ -144,13 +128,11 @@ export function validate(value: any, rule: ValidationRule): ValidationResult {
 }
 
 // Validate multiple fields
-export function validateFields(fields: Record<string, { value: any; rule: ValidationRule }>): {
-  isValid: boolean;
-  errors: Record<string, string[]>;
-  sanitizedValues: Record<string, any>;
-} {
+export function validateFields<T extends Record<string, unknown>>(
+  fields: Record<string, { value: unknown; rule: ValidationRule }>
+): FieldsValidationResult<T> {
   const errors: Record<string, string[]> = {};
-  const sanitizedValues: Record<string, any> = {};
+  const sanitizedValues: Record<string, unknown> = {};
   let isValid = true;
 
   Object.entries(fields).forEach(([fieldName, { value, rule }]) => {
@@ -162,7 +144,7 @@ export function validateFields(fields: Record<string, { value: any; rule: Valida
     sanitizedValues[fieldName] = result.sanitizedValue;
   });
 
-  return { isValid, errors, sanitizedValues };
+  return { isValid, errors, sanitizedValues: sanitizedValues as T };
 }
 
 // Sanitize HTML content
@@ -233,11 +215,7 @@ export function sanitizeFileName(fileName: string): string {
 }
 
 // Validate file upload
-export function validateFileUpload(file: File, options: {
-  maxSize?: number;
-  allowedTypes?: string[];
-  allowedExtensions?: string[];
-} = {}): ValidationResult {
+export function validateFileUpload(file: File, options: FileUploadOptions = {}): ValidationResult<File> {
   const errors: string[] = [];
   const {
     maxSize = 5 * 1024 * 1024, // 5MB default
@@ -283,7 +261,7 @@ export function validateFileUpload(file: File, options: {
 }
 
 // Validate JSON input
-export function validateJson(jsonString: string, schema?: any): ValidationResult {
+export function validateJson(jsonString: string, schema?: JsonSchema): ValidationResult<Record<string, unknown>> {
   const errors: string[] = [];
 
   try {
@@ -319,9 +297,9 @@ export function validateJson(jsonString: string, schema?: any): ValidationResult
 }
 
 // Validate URL parameters
-export function validateUrlParams(params: Record<string, string>, rules: Record<string, ValidationRule>): ValidationResult {
+export function validateUrlParams(params: Record<string, string>, rules: Record<string, ValidationRule>): ValidationResult<Record<string, unknown>> {
   const errors: string[] = [];
-  const sanitizedParams: Record<string, any> = {};
+  const sanitizedParams: Record<string, unknown> = {};
 
   Object.entries(rules).forEach(([paramName, rule]) => {
     const value = params[paramName];
@@ -342,7 +320,7 @@ export function validateUrlParams(params: Record<string, string>, rules: Record<
 }
 
 // Rate limiting validation
-export function validateRateLimit(identifier: string, limit: number, windowMs: number): ValidationResult {
+export function validateRateLimit(identifier: string, limit: number, windowMs: number): ValidationResult<RateLimitData> {
   // This is a simplified rate limiting validation
   // In production, use Redis or similar for distributed rate limiting
   const key = `rate_limit:${identifier}`;
@@ -393,8 +371,8 @@ export const validators = {
   url: (value: string) => validate(value, rules.url),
   hashtag: (value: string) => validate(value, rules.hashtag),
   username: (value: string) => validate(value, rules.username),
-  file: (file: File, options?: any) => validateFileUpload(file, options),
-  json: (jsonString: string, schema?: any) => validateJson(jsonString, schema),
+  file: (file: File, options?: FileUploadOptions) => validateFileUpload(file, options),
+  json: (jsonString: string, schema?: JsonSchema) => validateJson(jsonString, schema),
   urlParams: (params: Record<string, string>, rules: Record<string, ValidationRule>) => validateUrlParams(params, rules),
   rateLimit: (identifier: string, limit: number, windowMs: number) => validateRateLimit(identifier, limit, windowMs),
 };

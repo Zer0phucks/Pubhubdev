@@ -33,6 +33,21 @@ export interface ScheduledPost {
   recurrence?: Recurrence; // Optional recurrence metadata
 }
 
+// Backend post format from API
+export interface BackendPost {
+  id: string;
+  content: string;
+  platforms: string[];
+  status: string;
+  scheduledFor?: string;
+  publishedAt?: string;
+  attachments?: Attachment[];
+  recurrence?: Recurrence;
+  projectId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Attachment {
   name: string;
   size: number;
@@ -155,4 +170,187 @@ export interface ContentTemplate {
   platforms: Platform[];
   hashtags?: string[];
   emoji?: string;
+}
+
+// ============= API TYPES =============
+
+// Generic API response wrapper
+export interface ApiResponse<T = unknown> {
+  data?: T;
+  error?: string;
+  message?: string;
+  status?: number;
+}
+
+// Post creation/update payload
+export interface PostPayload {
+  content: string;
+  platform: Platform | Platform[];
+  scheduledAt?: string;
+  status?: PostStatus;
+  attachments?: Attachment[];
+  crossPostTo?: Platform[];
+  recurrence?: Recurrence;
+  projectId?: string;
+}
+
+// Template creation payload
+export interface TemplatePayload {
+  title: string;
+  category: TemplateCategory;
+  content: string;
+  platforms: Platform[];
+  hashtags?: string[];
+  emoji?: string;
+}
+
+// Automation payload
+export interface AutomationPayload {
+  name: string;
+  trigger: string;
+  action: string;
+  enabled: boolean;
+  config?: Record<string, unknown>;
+  projectId?: string;
+}
+
+// Connection update payload
+export interface ConnectionPayload {
+  platform: Platform;
+  connected: boolean;
+  accountId?: string;
+  accountName?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Settings payload
+export interface SettingsPayload {
+  theme?: string;
+  notifications?: {
+    email?: boolean;
+    push?: boolean;
+    inApp?: boolean;
+  };
+  timezone?: string;
+  language?: string;
+  [key: string]: unknown;
+}
+
+// OAuth types
+export interface OAuthAuthorizationResponse {
+  authUrl: string;
+  state: string;
+}
+
+export interface OAuthCallbackPayload {
+  code: string;
+  state: string;
+  platform: string;
+}
+
+export interface OAuthTokenResponse {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: string;
+  scope?: string[];
+}
+
+// ============= VALIDATION TYPES =============
+
+// Validation result with generic sanitized value
+export interface ValidationResult<T = unknown> {
+  isValid: boolean;
+  errors: string[];
+  sanitizedValue?: T;
+}
+
+// Validation rule definition
+export interface ValidationRule<T = unknown> {
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: RegExp;
+  custom?: (value: T) => string | null;
+  sanitize?: (value: T) => T;
+}
+
+// Field validation input
+export interface FieldValidation<T = unknown> {
+  value: T;
+  rule: ValidationRule<T>;
+}
+
+// Multiple field validation result
+export interface FieldsValidationResult<T = Record<string, unknown>> {
+  isValid: boolean;
+  errors: Record<string, string[]>;
+  sanitizedValues: T;
+}
+
+// File upload options
+export interface FileUploadOptions {
+  maxSize?: number;
+  allowedTypes?: string[];
+  allowedExtensions?: string[];
+}
+
+// JSON schema type (simplified)
+export interface JsonSchema {
+  [key: string]: {
+    required?: boolean;
+    type?: string;
+    [key: string]: unknown;
+  };
+}
+
+// Rate limit data
+export interface RateLimitData {
+  count: number;
+  resetTime: number;
+}
+
+// ============= PUBLISH API TYPES =============
+
+// Platform publish result
+export interface PlatformPublishResult {
+  platform: Platform;
+  success: boolean;
+  url?: string;
+  error?: string;
+  postId?: string;
+}
+
+// Publish response from API
+export interface PublishResponse {
+  success: boolean;
+  results?: PlatformPublishResult[];
+  error?: string;
+}
+
+// ============= ERROR TYPES =============
+
+// Standard error interface for catch blocks
+export interface AppError extends Error {
+  code?: string;
+  status?: number;
+  details?: Record<string, unknown>;
+}
+
+// Type guard for AppError
+export function isAppError(error: unknown): error is AppError {
+  return error instanceof Error;
+}
+
+// Safe error conversion utility
+export function toAppError(error: unknown): AppError {
+  if (error instanceof Error) {
+    return error as AppError;
+  }
+  if (typeof error === 'string') {
+    return new Error(error) as AppError;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    return new Error(String(error.message)) as AppError;
+  }
+  return new Error('An unknown error occurred') as AppError;
 }

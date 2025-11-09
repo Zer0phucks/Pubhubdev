@@ -31,7 +31,7 @@ import {
   Wand2,
   Loader2,
 } from "lucide-react";
-import { PLATFORM_CONSTRAINTS, type Platform, type Attachment } from "../types";
+import { PLATFORM_CONSTRAINTS, type Platform, type Attachment, type PublishResponse, type AppError } from "../types";
 import { toast } from "sonner";
 import { TransformedContent } from "../utils/contentTransformer";
 import { projectId } from "../utils/supabase/info";
@@ -322,14 +322,14 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
         }
       );
 
-      const publishData = await publishResponse.json();
+      const publishData = await publishResponse.json() as PublishResponse;
 
       if (!publishResponse.ok) {
         throw new Error(publishData.error || 'Failed to publish');
       }
 
       // Check if platform was successfully posted
-      const platformResult = publishData.results?.find((r: any) => r.platform === platform);
+      const platformResult = publishData.results?.find(r => r.platform === platform);
 
       if (platformResult?.success) {
         // Update post status
@@ -351,11 +351,12 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
       } else {
         throw new Error(platformResult?.error || 'Failed to publish to platform');
       }
-    } catch (error: any) {
-      logger.error('Publishing error', error, { platform });
+    } catch (error) {
+      const appError = error as AppError;
+      logger.error('Publishing error', appError, { platform });
 
       // Check if it's a connection issue
-      if (error.message?.includes('not connected') || error.message?.includes('Platform not connected')) {
+      if (appError.message?.includes('not connected') || appError.message?.includes('Platform not connected')) {
         toast.error("Platform Not Connected", {
           description: `Connect your ${platforms.find(p => p.id === platform)?.name} account in Settings to publish live.`,
           action: {
@@ -366,7 +367,7 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
             },
           },
         });
-      } else if (error.message?.includes('OAuth not configured')) {
+      } else if (appError.message?.includes('OAuth not configured')) {
         toast.error("Platform Setup Required", {
           description: "OAuth credentials need to be configured for this platform.",
         });
@@ -407,10 +408,11 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
       toast.success("Saved as Draft", {
         description: "Your post has been saved as a draft.",
       });
-    } catch (error: any) {
-      logger.error('Draft save error', error, { platform });
+    } catch (error) {
+      const appError = error as AppError;
+      logger.error('Draft save error', appError, { platform });
       toast.error("Save Failed", {
-        description: error.message || "Failed to save draft.",
+        description: appError.message || "Failed to save draft.",
       });
     }
   }, [currentProject, attachments]);

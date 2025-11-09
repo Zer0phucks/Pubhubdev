@@ -27,17 +27,57 @@ export default defineConfig({
     outDir: 'build',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor': ['react', 'react-dom'],
-          'ui': ['@radix-ui/react-accordion', '@radix-ui/react-alert-dialog', '@radix-ui/react-aspect-ratio', '@radix-ui/react-avatar', '@radix-ui/react-checkbox', '@radix-ui/react-collapsible', '@radix-ui/react-context-menu', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-hover-card', '@radix-ui/react-label', '@radix-ui/react-menubar', '@radix-ui/react-navigation-menu', '@radix-ui/react-popover', '@radix-ui/react-progress', '@radix-ui/react-radio-group', '@radix-ui/react-scroll-area', '@radix-ui/react-select', '@radix-ui/react-separator', '@radix-ui/react-slider', '@radix-ui/react-slot', '@radix-ui/react-switch', '@radix-ui/react-tabs', '@radix-ui/react-toggle', '@radix-ui/react-toggle-group', '@radix-ui/react-tooltip'],
-          'charts': ['recharts'],
-          'supabase': ['@supabase/supabase-js', '@jsr/supabase__supabase-js'],
-          'forms': ['react-hook-form', 'react-day-picker', 'input-otp'],
-          'utils': ['class-variance-authority', 'clsx', 'tailwind-merge', 'cmdk'],
-          'icons': ['lucide-react'],
+        manualChunks: (id) => {
+          // Core vendor libraries
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'vendor-ui';
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('@supabase') || id.includes('supabase-js')) {
+              return 'vendor-supabase';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('react-hook-form') || id.includes('react-day-picker') || id.includes('input-otp')) {
+              return 'vendor-forms';
+            }
+            if (id.includes('class-variance-authority') || id.includes('clsx') || id.includes('tailwind-merge') || id.includes('cmdk')) {
+              return 'vendor-utils';
+            }
+            // Other vendor libraries
+            return 'vendor-other';
+          }
+
+          // Route-based code splitting for lazy-loaded components
+          if (id.includes('/components/Analytics')) {
+            return 'route-analytics';
+          }
+          if (id.includes('/components/ContentCalendar') || id.includes('/components/calendar/')) {
+            return 'route-calendar';
+          }
+          if (id.includes('/components/AIChatDialog')) {
+            return 'route-ai-chat';
+          }
+          if (id.includes('/components/MediaLibrary') || id.includes('/components/Trending') || id.includes('/components/CompetitionWatch')) {
+            return 'route-media';
+          }
+          if (id.includes('/components/AccountSettings') || id.includes('/components/ProjectSettings')) {
+            return 'route-settings';
+          }
+          if (id.includes('/components/EbookGenerator') || id.includes('/components/Notifications')) {
+            return 'route-features';
+          }
         }
       }
-    }
+    },
+    chunkSizeWarningLimit: 600
   },
   server: {
     port: 3000,

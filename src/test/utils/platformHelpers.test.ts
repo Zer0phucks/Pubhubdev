@@ -16,7 +16,7 @@ describe('platformHelpers', () => {
 
   describe('getPlatformName', () => {
     it('returns correct display name for each platform', () => {
-      expect(getPlatformName('twitter')).toBe('Twitter');
+      expect(getPlatformName('twitter')).toBe('Twitter / X');
       expect(getPlatformName('instagram')).toBe('Instagram');
       expect(getPlatformName('linkedin')).toBe('LinkedIn');
       expect(getPlatformName('facebook')).toBe('Facebook');
@@ -24,7 +24,7 @@ describe('platformHelpers', () => {
       expect(getPlatformName('tiktok')).toBe('TikTok');
       expect(getPlatformName('pinterest')).toBe('Pinterest');
       expect(getPlatformName('reddit')).toBe('Reddit');
-      expect(getPlatformName('blog')).toBe('Blog');
+      expect(getPlatformName('blog')).toBe('Blog / WordPress');
     });
 
     it('returns platform name as fallback for unknown platform', () => {

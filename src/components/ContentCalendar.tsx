@@ -25,7 +25,7 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
-import type { Platform, PlatformFilter, ScheduledPost, PostStatus } from "../types";
+import type { Platform, PlatformFilter, ScheduledPost, PostStatus, BackendPost, AppError } from "../types";
 
 interface ContentCalendarProps {
   selectedPlatform?: PlatformFilter;
@@ -65,7 +65,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
       const { posts } = await postsAPI.getAll({ projectId: currentProject.id });
       
       // Convert backend posts to ScheduledPost format
-      const convertedPosts: ScheduledPost[] = posts.map((post: any) => {
+      const convertedPosts: ScheduledPost[] = posts.map((post: BackendPost) => {
         const scheduledDate = post.scheduledFor ? new Date(post.scheduledFor) : 
                              post.publishedAt ? new Date(post.publishedAt) : new Date();
         
@@ -192,10 +192,11 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
         toast.success('Post updated successfully');
         setIsEditDialogOpen(false);
         setEditingPost(null);
-      } catch (error: any) {
-        logger.error('Failed to update post', error);
+      } catch (error) {
+        const appError = error as AppError;
+        logger.error('Failed to update post', appError);
         toast.error('Failed to update post', {
-          description: error.message || 'Please try again'
+          description: appError.message || 'Please try again'
         });
       } finally {
         setSaving(false);
@@ -218,10 +219,11 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
         await postsAPI.delete(postToDelete.id);
         setScheduledPosts(prev => prev.filter(post => post.id !== postToDelete.id));
         toast.success("Post deleted successfully");
-      } catch (error: any) {
-        logger.error('Failed to delete post', error);
+      } catch (error) {
+        const appError = error as AppError;
+        logger.error('Failed to delete post', appError);
         toast.error('Failed to delete post', {
-          description: error.message || 'Please try again'
+          description: appError.message || 'Please try again'
         });
       } finally {
         setSaving(false);
@@ -295,10 +297,11 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
       setScheduledPosts([...scheduledPosts, newPost]);
       toast.success('Post scheduled successfully');
       setIsCreateDialogOpen(false);
-    } catch (error: any) {
-      logger.error('Failed to create post', error);
+    } catch (error) {
+      const appError = error as AppError;
+      logger.error('Failed to create post', appError);
       toast.error('Failed to schedule post', {
-        description: error.message || 'Please try again'
+        description: appError.message || 'Please try again'
       });
     } finally {
       setSaving(false);

@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { connectionsAPI } from "../utils/api";
-import { useProject } from "./ProjectContext";
+import { useProject } from "../components/ProjectContext";
 import { logger } from "../utils/logger";
-
-export type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
+import { Platform } from "../types";
 
 interface PlatformConnection {
   platform: Platform;
@@ -98,9 +97,9 @@ export function useConnectedPlatforms() {
     };
   }, [currentProject]);
 
-  const loadConnectedPlatforms = async () => {
+  const loadConnectedPlatforms = useCallback(async () => {
     if (!currentProject) return;
-    
+
     try {
       setLoading(true);
       logger.info('Loading connected platforms for project:', { projectId: currentProject.id });
@@ -124,14 +123,39 @@ export function useConnectedPlatforms() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProject]);
 
-  const hasUnconnectedPlatforms = connectedPlatforms.length < allPlatforms.length;
+  const hasUnconnectedPlatforms = useMemo(
+    () => connectedPlatforms.length < allPlatforms.length,
+    [connectedPlatforms.length]
+  );
+
+  const isPlatformConnected = useCallback(
+    (platform: Platform) => connectedPlatforms.includes(platform),
+    [connectedPlatforms]
+  );
+
+  const getConnectionStatus = useCallback(
+    (platforms: Platform[]) => {
+      const connected = platforms.filter(p => connectedPlatforms.includes(p));
+      const notConnected = platforms.filter(p => !connectedPlatforms.includes(p));
+
+      return {
+        allConnected: notConnected.length === 0,
+        connected,
+        notConnected,
+      };
+    },
+    [connectedPlatforms]
+  );
 
   return {
     connectedPlatforms,
+    allPlatforms,
     loading,
     hasUnconnectedPlatforms,
-    refresh: loadConnectedPlatforms
+    isPlatformConnected,
+    getConnectionStatus,
+    refresh: loadConnectedPlatforms,
   };
 }

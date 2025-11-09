@@ -1,4 +1,12 @@
 import { projectId, publicAnonKey } from './supabase/info';
+import type {
+  PostPayload,
+  TemplatePayload,
+  AutomationPayload,
+  ConnectionPayload,
+  SettingsPayload,
+  ApiResponse
+} from '../types';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
 
@@ -80,14 +88,14 @@ export const postsAPI = {
     return apiCall(`/posts/${id}`);
   },
 
-  async create(post: any) {
+  async create(post: PostPayload) {
     return apiCall('/posts', {
       method: 'POST',
       body: JSON.stringify(post),
     });
   },
 
-  async update(id: string, updates: any) {
+  async update(id: string, updates: Partial<PostPayload>) {
     return apiCall(`/posts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
@@ -108,7 +116,7 @@ export const templatesAPI = {
     return apiCall('/templates');
   },
 
-  async create(template: any) {
+  async create(template: TemplatePayload) {
     return apiCall('/templates', {
       method: 'POST',
       body: JSON.stringify(template),
@@ -129,14 +137,14 @@ export const automationsAPI = {
     return apiCall('/automations');
   },
 
-  async create(automation: any) {
+  async create(automation: AutomationPayload) {
     return apiCall('/automations', {
       method: 'POST',
       body: JSON.stringify(automation),
     });
   },
 
-  async update(id: string, updates: any) {
+  async update(id: string, updates: Partial<AutomationPayload>) {
     return apiCall(`/automations/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
@@ -158,7 +166,7 @@ export const connectionsAPI = {
     return apiCall(`/connections${query}`);
   },
 
-  async update(connections: any[], projectId?: string) {
+  async update(connections: ConnectionPayload[], projectId?: string) {
     return apiCall('/connections', {
       method: 'PUT',
       body: JSON.stringify({ connections, projectId }),
@@ -211,7 +219,7 @@ export const settingsAPI = {
     return apiCall('/settings');
   },
 
-  async update(settings: any) {
+  async update(settings: SettingsPayload) {
     return apiCall('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),

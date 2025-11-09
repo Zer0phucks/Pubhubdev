@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -7,8 +7,8 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { PlatformIcon } from "./PlatformIcon";
 import { AITextGenerator } from "./AITextGenerator";
-import { 
-  Search, 
+import {
+  Search,
   Star,
   Reply,
   Heart,
@@ -33,13 +33,13 @@ interface UnifiedInboxProps {
   selectedPlatform: Platform;
 }
 
-export function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps) {
+export const UnifiedInbox = memo(function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps) {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [replyText, setReplyText] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
 
   // Messages will be loaded from connected platforms
-  const allMessages: Message[] = messages.length > 0 ? messages : [
+  const allMessages: Message[] = useMemo(() => messages.length > 0 ? messages : [
     {
       id: "1",
       platform: "twitter",
@@ -130,7 +130,7 @@ export function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps)
       isRead: true,
       type: "comment"
     }
-  ];
+  ], [messages]);
 
   // Filter messages based on inbox view and platform
   const filteredMessages = useMemo(() => {
@@ -156,22 +156,22 @@ export function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps)
     }
 
     return filtered;
-  }, [inboxView, selectedPlatform]);
+  }, [allMessages, inboxView, selectedPlatform]);
 
-  const getPlatformIcon = (platform: string) => {
+  const getPlatformIcon = useCallback((platform: string) => {
     return <PlatformIcon platform={platform} className="w-3 h-3" />;
-  };
+  }, []);
 
-  const getTypeColor = (type: string) => {
+  const getTypeColor = useCallback((type: string) => {
     switch (type) {
       case "comment": return "bg-blue-500/10 text-blue-500";
       case "dm": return "bg-purple-500/10 text-purple-500";
       case "mention": return "bg-green-500/10 text-green-500";
       default: return "";
     }
-  };
+  }, []);
 
-  const getViewTitle = () => {
+  const getViewTitle = useCallback(() => {
     switch (inboxView) {
       case "unread":
         return "Unread Messages";
@@ -182,7 +182,7 @@ export function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps)
       default:
         return "All Messages";
     }
-  };
+  }, [inboxView]);
 
   return (
     <div className="space-y-6">
@@ -203,8 +203,8 @@ export function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps)
                     key={message.id}
                     onClick={() => setSelectedMessage(message)}
                     className={`w-full p-3 rounded-lg border text-left transition-colors ${
-                      selectedMessage?.id === message.id 
-                        ? 'border-primary bg-primary/5' 
+                      selectedMessage?.id === message.id
+                        ? 'border-primary bg-primary/5'
                         : 'border-border hover:bg-accent'
                     } ${!message.isRead ? 'bg-accent/50' : ''}`}
                   >
@@ -334,4 +334,4 @@ export function UnifiedInbox({ inboxView, selectedPlatform }: UnifiedInboxProps)
       </div>
     </div>
   );
-}
+});
