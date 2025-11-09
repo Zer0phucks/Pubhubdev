@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Loader2 } from "lucide-react";
 import { Card } from "./ui/card";
 
@@ -6,7 +7,7 @@ interface LoadingStateProps {
   variant?: "default" | "subtle";
 }
 
-export function LoadingState({ message = "Loading...", variant = "default" }: LoadingStateProps) {
+const LoadingStateComponent = ({ message = "Loading...", variant = "default" }: LoadingStateProps) => {
   const content = (
     <div className="flex flex-col items-center justify-center py-12 px-4">
       <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-4" />
@@ -19,4 +20,7 @@ export function LoadingState({ message = "Loading...", variant = "default" }: Lo
   }
 
   return <Card className="w-full">{content}</Card>;
-}
+};
+
+// Memoize component since it's a pure presentational component
+export const LoadingState = memo(LoadingStateComponent);

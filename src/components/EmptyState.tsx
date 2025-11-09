@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { LucideIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -11,14 +12,14 @@ interface EmptyStateProps {
   variant?: "default" | "subtle";
 }
 
-export function EmptyState({
+const EmptyStateComponent = ({
   icon: Icon,
   title,
   description,
   actionLabel,
   onAction,
   variant = "default",
-}: EmptyStateProps) {
+}: EmptyStateProps) => {
   const content = (
     <div className="text-center py-12 px-4">
       <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -44,4 +45,7 @@ export function EmptyState({
   }
 
   return <Card className="w-full">{content}</Card>;
-}
+};
+
+// Memoize component since it's a pure presentational component with callbacks
+export const EmptyState = memo(EmptyStateComponent);

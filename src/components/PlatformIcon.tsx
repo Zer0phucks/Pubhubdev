@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Twitter, Instagram, Linkedin, Youtube, Music, Pin, FileText, Facebook } from "lucide-react";
 
 interface PlatformIconProps {
@@ -6,7 +7,7 @@ interface PlatformIconProps {
   size?: number;
 }
 
-export function PlatformIcon({ platform, className = "w-4 h-4", size }: PlatformIconProps) {
+const PlatformIconComponent = ({ platform, className = "w-4 h-4", size }: PlatformIconProps) => {
   const platformLower = platform.toLowerCase();
   
   if (platformLower === "twitter") {
@@ -61,6 +62,9 @@ export function PlatformIcon({ platform, className = "w-4 h-4", size }: Platform
   if (platformLower === "blog") {
     return <FileText className={className} style={{ color: '#8B5CF6' }} role="img" aria-label="Blog" />;
   }
-  
+
   return <Twitter className={className} role="img" aria-label="Twitter" />;
-}
+};
+
+// Memoize component since it's rendered frequently with same props
+export const PlatformIcon = memo(PlatformIconComponent);
