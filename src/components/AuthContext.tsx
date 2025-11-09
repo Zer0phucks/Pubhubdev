@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode, useEffect, useState } from 'react
 import { supabase } from '../utils/supabase/client';
 import { projectId } from '../utils/supabase/info';
 import { setAuthToken } from '../utils/api';
+import { logger } from '../utils/logger';
 
 interface User {
   id: string;
@@ -39,14 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch user profile with profile picture
   const refreshProfile = async () => {
     if (!user) {
-      console.warn('Cannot refresh profile: no user authenticated');
+      logger.warn('Cannot refresh profile: no user authenticated');
       return;
     }
-    
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        console.warn('No session token available for profile refresh');
+        logger.warn('No session token available for profile refresh');
         return;
       }
 
@@ -70,10 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } else {
-        console.error('Failed to refresh profile:', response.status, response.statusText);
+        logger.error('Failed to refresh profile', new Error(`HTTP ${response.status}: ${response.statusText}`), {
+          status: response.status,
+          statusText: response.statusText,
+        });
       }
     } catch (error) {
-      console.error('Error refreshing profile:', error);
+      logger.error('Error refreshing profile', error);
     }
   };
 
@@ -93,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthToken(session.access_token);
         }
       } catch (error) {
-        console.error('Session check error:', error);
+        logger.error('Session check error', error);
       } finally {
         setLoading(false);
       }
@@ -214,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         });
       } catch (err) {
-        console.error('Profile initialization error:', err);
+        logger.error('Profile initialization error during signup', err);
       }
     }
   };
