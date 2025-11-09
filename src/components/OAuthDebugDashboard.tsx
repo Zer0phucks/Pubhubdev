@@ -17,6 +17,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '../utils/logger';
 
 type Platform = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'youtube' | 'tiktok' | 'pinterest' | 'reddit' | 'blog';
 
@@ -235,7 +236,7 @@ export function OAuthDebugDashboard() {
         return connection || null;
       }
     } catch (error) {
-      console.error('Failed to check connections:', error);
+      logger.error('Failed to check connections:', error);
     }
     return null;
   };
@@ -264,8 +265,8 @@ export function OAuthDebugDashboard() {
         toast.success(`OAuth URL generated successfully for ${platform}`, {
           description: 'Check the console for the authorization URL'
         });
-        console.log(`${platform} OAuth URL:`, data.authUrl);
-        console.log(`State parameter:`, data.state);
+        logger.info(`${platform} OAuth URL:`, data.authUrl);
+        logger.info(`State parameter:`, data.state);
 
         // Copy URL to clipboard
         await navigator.clipboard.writeText(data.authUrl);

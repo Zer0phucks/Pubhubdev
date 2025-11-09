@@ -1,4 +1,5 @@
 import type { ContentTemplate } from "../types";
+import { logger } from '../utils/logger';
 
 const STORAGE_KEY = "pubhub_custom_templates";
 
@@ -8,7 +9,7 @@ export function getCustomTemplates(): ContentTemplate[] {
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (error) {
-    console.error("Error loading custom templates:", error);
+    logger.error("Error loading custom templates:", error);
     return [];
   }
 }
@@ -28,7 +29,7 @@ export function saveCustomTemplate(template: ContentTemplate): void {
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
   } catch (error) {
-    console.error("Error saving custom template:", error);
+    logger.error("Error saving custom template:", error);
     throw new Error("Failed to save template");
   }
 }
@@ -39,7 +40,7 @@ export function deleteCustomTemplate(templateId: string): void {
     const filtered = templates.filter(t => t.id !== templateId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error("Error deleting custom template:", error);
+    logger.error("Error deleting custom template:", error);
     throw new Error("Failed to delete template");
   }
 }
@@ -54,7 +55,7 @@ export function updateCustomTemplate(templateId: string, updates: Partial<Conten
       localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
     }
   } catch (error) {
-    console.error("Error updating custom template:", error);
+    logger.error("Error updating custom template:", error);
     throw new Error("Failed to update template");
   }
 }

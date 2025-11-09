@@ -14,6 +14,7 @@
       }
     },
     "Sentry": {
+      "type": "http",
       "url": "https://mcp.sentry.dev/mcp/devconsul/sentry-pubhub"
     }
   }

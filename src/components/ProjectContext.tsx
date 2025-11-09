@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
+import { logger } from "../utils/logger";
 
 interface Project {
   id: string;
@@ -59,7 +60,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Error fetching projects:", error);
+      logger.error("Error fetching projects", error);
     }
   };
 
@@ -85,7 +86,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Error fetching current project:", error);
+      logger.error("Error fetching current project", error);
     } finally {
       setLoading(false);
     }
@@ -113,7 +114,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("currentProjectId", project.id);
       }
     } catch (error) {
-      console.error("Error setting current project:", error);
+      logger.error("Error setting current project", error);
     }
   };
 
@@ -145,7 +146,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Failed to create project");
       }
     } catch (error) {
-      console.error("Error creating project:", error);
+      logger.error("Error creating project", error);
       throw error;
     }
   };
@@ -177,7 +178,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Error updating project:", error);
+      logger.error("Error updating project", error);
       throw error;
     }
   };
@@ -209,7 +210,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || "Failed to delete project");
       }
     } catch (error) {
-      console.error("Error deleting project:", error);
+      logger.error("Error deleting project", error);
       throw error;
     }
   };

@@ -11,6 +11,7 @@ import { Sparkles, Loader2, Wand2, Copy, Check, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { projectId } from "../utils/supabase/info";
 import { getAuthToken } from "../utils/api";
+import { logger } from '../utils/logger';
 
 interface AITextGeneratorProps {
   onGenerate: (text: string) => void;
@@ -101,7 +102,7 @@ export function AITextGenerator({
       setGeneratedText(data.text);
       toast.success("Text generated!");
     } catch (error) {
-      console.error("AI generation error:", error);
+      logger.error("AI generation error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate text. Please try again.");
     } finally {
       setLoading(false);

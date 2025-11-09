@@ -1,14 +1,84 @@
 import { vi } from 'vitest';
 
+// Mock localStorage for MSW and components
+class LocalStorageMock {
+  private store: { [key: string]: string } = {};
+
+  getItem(key: string): string | null {
+    return this.store[key] || null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.store[key] = value.toString();
+  }
+
+  removeItem(key: string): void {
+    delete this.store[key];
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+
+  get length(): number {
+    return Object.keys(this.store).length;
+  }
+
+  key(index: number): string | null {
+    const keys = Object.keys(this.store);
+    return keys[index] || null;
+  }
+}
+
+// Apply localStorage mock to both global and window objects
+if (typeof global !== 'undefined') {
+  global.localStorage = new LocalStorageMock() as Storage;
+}
+
+if (typeof window !== 'undefined') {
+  window.localStorage = new LocalStorageMock() as Storage;
+}
+
+// Mock Supabase auth responses
+export const mockUser = {
+  id: 'test-user-id',
+  email: 'test@example.com',
+  user_metadata: {
+    name: 'Test User',
+    profilePicture: null,
+  },
+  created_at: new Date().toISOString(),
+  identities: [{ identity_id: 'test-identity-id' }],
+};
+
+export const mockSession = {
+  access_token: 'mock-access-token',
+  refresh_token: 'mock-refresh-token',
+  expires_in: 3600,
+  token_type: 'bearer',
+  user: mockUser,
+};
+
+export const mockAuthError = (message: string) => ({
+  message,
+  status: 400,
+  name: 'AuthError',
+});
+
 // Mock Supabase client
 export const mockSupabaseClient = {
   auth: {
-    signUp: vi.fn(),
-    signInWithPassword: vi.fn(),
-    signOut: vi.fn(),
-    getSession: vi.fn(),
-    onAuthStateChange: vi.fn(),
-    getUser: vi.fn(),
+    signUp: vi.fn().mockResolvedValue({ data: { user: mockUser, session: mockSession }, error: null }),
+    signInWithPassword: vi.fn().mockResolvedValue({ data: { user: mockUser, session: mockSession }, error: null }),
+    signInWithOAuth: vi.fn().mockResolvedValue({ data: { url: 'https://mock-oauth-url.com', provider: 'google' }, error: null }),
+    signOut: vi.fn().mockResolvedValue({ error: null }),
+    getSession: vi.fn().mockResolvedValue({ data: { session: mockSession }, error: null }),
+    onAuthStateChange: vi.fn((callback) => {
+      // Call callback immediately with session
+      callback('SIGNED_IN', mockSession);
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    }),
+    getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
   },
   from: vi.fn(() => ({
     select: vi.fn().mockReturnThis(),

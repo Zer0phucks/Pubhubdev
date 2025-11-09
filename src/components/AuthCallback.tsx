@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { PubHubLogo } from './PubHubLogo';
+import { logger } from '../utils/logger';
 
 export function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -15,7 +16,7 @@ export function AuthCallback() {
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Auth callback error:', error);
+          logger.error('Auth callback error:', error);
           setError(error.message);
           setStatus('error');
           return;
@@ -54,7 +55,7 @@ export function AuthCallback() {
             });
             
             if (setSessionError) {
-              console.error('Set session error:', setSessionError);
+              logger.error('Set session error:', setSessionError);
               setError(setSessionError.message);
               setStatus('error');
             } else {
@@ -69,7 +70,7 @@ export function AuthCallback() {
           }
         }
       } catch (err: any) {
-        console.error('Auth callback error:', err);
+        logger.error('Auth callback error:', err);
         setError(err.message || 'An error occurred during authentication.');
         setStatus('error');
       }

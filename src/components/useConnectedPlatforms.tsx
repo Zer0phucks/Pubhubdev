@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { connectionsAPI } from "../utils/api";
 import { useProject } from "./ProjectContext";
+import { logger } from "../utils/logger";
 
 export type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -44,7 +45,7 @@ export function useConnectedPlatforms() {
       const platformDisconnected = sessionStorage.getItem('platform_disconnected');
       
       if (oauthJustCompleted === 'true') {
-        console.log('OAuth just completed, refreshing connected platforms...');
+        logger.info('OAuth just completed, refreshing connected platforms...');
         sessionStorage.removeItem('oauth_just_completed');
         // Add a small delay to ensure backend has saved the data
         setTimeout(() => {
@@ -53,7 +54,7 @@ export function useConnectedPlatforms() {
       }
       
       if (wordpressJustConnected === 'true') {
-        console.log('WordPress just connected, refreshing connected platforms...');
+        logger.info('WordPress just connected, refreshing connected platforms...');
         sessionStorage.removeItem('wordpress_just_connected');
         // Add a small delay to ensure backend has saved the data
         setTimeout(() => {
@@ -62,7 +63,7 @@ export function useConnectedPlatforms() {
       }
       
       if (platformDisconnected === 'true') {
-        console.log('Platform disconnected, refreshing connected platforms...');
+        logger.info('Platform disconnected, refreshing connected platforms...');
         sessionStorage.removeItem('platform_disconnected');
         // Add a small delay to ensure backend has saved the data
         setTimeout(() => {
@@ -102,23 +103,23 @@ export function useConnectedPlatforms() {
     
     try {
       setLoading(true);
-      console.log('Loading connected platforms for project:', currentProject.id);
+      logger.info('Loading connected platforms for project:', { projectId: currentProject.id });
       const { connections } = await connectionsAPI.getAll(currentProject.id);
-      console.log('Received connections from API:', connections);
-      
+      logger.info('Received connections from API:', { connectionsCount: connections?.length });
+
       // Filter to only connected platforms
       if (connections && connections.length > 0) {
         const connected = connections
           .filter((conn: PlatformConnection) => conn.connected === true)
           .map((conn: PlatformConnection) => conn.platform);
-        console.log('Connected platforms found:', connected);
+        logger.info('Connected platforms found:', { platforms: connected });
         setConnectedPlatforms(connected);
       } else {
-        console.log('No connected platforms found');
+        logger.info('No connected platforms found');
         setConnectedPlatforms([]);
       }
     } catch (error) {
-      console.error('Failed to load connected platforms:', error);
+      logger.error('Failed to load connected platforms', error);
       setConnectedPlatforms([]);
     } finally {
       setLoading(false);

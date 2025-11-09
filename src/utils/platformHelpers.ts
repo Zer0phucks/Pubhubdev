@@ -1,4 +1,5 @@
 import { connectionsAPI } from './api';
+import { logger } from '../utils/logger';
 
 export type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -22,7 +23,7 @@ export async function getConnectedPlatforms(): Promise<Platform[]> {
       .filter((c: PlatformConnection) => c.connected)
       .map((c: PlatformConnection) => c.platform);
   } catch (error) {
-    console.error('Failed to get connected platforms:', error);
+    logger.error('Failed to get connected platforms:', error);
     return [];
   }
 }

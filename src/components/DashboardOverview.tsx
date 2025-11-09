@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card } from "./ui/card";
 import { TrendingUp, Users, Heart, MessageSquare, Calendar, Zap, Workflow, Settings, Loader2, RefreshCw, Link2 } from "lucide-react";
 import { PlatformIcon } from "./PlatformIcon";
@@ -9,6 +9,7 @@ import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { useProject } from "./ProjectContext";
 import { OnboardingChecklist } from "./OnboardingChecklist";
+import { logger } from '../utils/logger';
 
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -20,7 +21,7 @@ interface StatCardProps {
   isPositive: boolean;
 }
 
-function StatCard({ title, value, change, icon, isPositive }: StatCardProps) {
+const StatCard = memo(function StatCard({ title, value, change, icon, isPositive }: StatCardProps) {
   const gradientClasses = [
     "from-blue-500/10 to-cyan-500/10 border-blue-500/20",
     "from-pink-500/10 to-rose-500/10 border-pink-500/20",
@@ -54,7 +55,7 @@ function StatCard({ title, value, change, icon, isPositive }: StatCardProps) {
       </div>
     </Card>
   );
-}
+});
 
 interface DashboardOverviewProps {
   selectedPlatform: Platform;
@@ -62,7 +63,7 @@ interface DashboardOverviewProps {
   onOpenAIChat?: (query?: string, autoSubmit?: boolean) => void;
 }
 
-export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }: DashboardOverviewProps) {
+export const DashboardOverview = memo(function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }: DashboardOverviewProps) {
   const [loading, setLoading] = useState(true);
   const [postsData, setPostsData] = useState<any[]>([]);
   const [connectionsData, setConnectionsData] = useState<any[]>([]);
@@ -75,7 +76,7 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
     }
   }, [currentProject?.id]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     if (!currentProject) return;
     
     try {
@@ -88,27 +89,27 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
       setPostsData(postsResponse.posts || []);
       setConnectionsData(connectionsResponse.connections || []);
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      logger.error('Failed to load dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProject]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
       await loadDashboardData();
       toast.success('Dashboard refreshed');
     } catch (error) {
-      console.error('Failed to refresh:', error);
+      logger.error('Failed to refresh:', error);
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [loadDashboardData]);
 
-  // Calculate real stats from backend data
-  const calculateStats = () => {
+  // Calculate real stats from backend data (memoized)
+  const stats = useMemo(() => {
     const filteredPosts = selectedPlatform === 'all' 
       ? postsData 
       : postsData.filter(post => post.platforms?.includes(selectedPlatform));
@@ -138,12 +139,10 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
       upcomingPosts,
       connectedCount,
     };
-  };
+  }, [selectedPlatform, postsData, connectionsData]);
 
-  const stats = calculateStats();
-
-  // Get recent posts (up to 3 most recent)
-  const getRecentPosts = () => {
+  // Get recent posts (up to 3 most recent) - memoized
+  const recentPosts = useMemo(() => {
     const filteredPosts = selectedPlatform === 'all'
       ? postsData
       : postsData.filter(post => post.platforms?.includes(selectedPlatform));
@@ -162,9 +161,9 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
         engagement: '0', // Placeholder for real engagement data
         time: formatTimeAgo(new Date(post.publishedAt || post.createdAt)),
       }));
-  };
+  }, [selectedPlatform, postsData]);
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = useCallback((date: Date) => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -176,9 +175,7 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
     if (diffDays === 1) return '1d ago';
     if (diffDays < 7) return `${diffDays}d ago`;
     return `${Math.floor(diffDays / 7)}w ago`;
-  };
-
-  const recentPosts = getRecentPosts();
+  }, []);
 
   // Mock data for fallback when no real data
   const statsData: Record<Platform, typeof defaultStats> = {
@@ -569,4 +566,4 @@ export function DashboardOverview({ selectedPlatform, onNavigate, onOpenAIChat }
       </Card>
     </div>
   );
-}
+});

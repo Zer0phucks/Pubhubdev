@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { useProject } from "./ProjectContext";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { getAuthToken } from "../utils/api";
+import { logger } from "../utils/logger";
 
 interface BookDetails {
   title: string;
@@ -197,7 +198,7 @@ export function EbookGenerator() {
         setPreviousBooks(data.books || []);
       }
     } catch (error) {
-      console.error('Error loading previous books:', error);
+      logger.error('Error loading previous books', error);
     }
   };
 
@@ -245,7 +246,7 @@ export function EbookGenerator() {
 
       toast.success('AI suggestions applied!');
     } catch (error) {
-      console.error('Error getting AI suggestions:', error);
+      logger.error('Error getting AI suggestions', error);
       toast.error('Failed to get AI suggestions');
     } finally {
       setIsGettingSuggestions(false);
@@ -286,7 +287,7 @@ export function EbookGenerator() {
       setCurrentStep("outline");
       toast.success('Outline generated successfully!');
     } catch (error) {
-      console.error('Error generating outline:', error);
+      logger.error('Error generating outline', error);
       toast.error('Failed to generate outline');
     } finally {
       setIsGeneratingOutline(false);
@@ -331,7 +332,7 @@ export function EbookGenerator() {
 
       toast.success(`Chapter "${chapter.title}" generated successfully!`);
     } catch (error) {
-      console.error('Error generating chapter:', error);
+      logger.error('Error generating chapter', error);
       toast.error('Failed to generate chapter');
     } finally {
       setIsGeneratingChapter(null);
@@ -350,7 +351,7 @@ export function EbookGenerator() {
       setCurrentStep("content");
       toast.success('All chapters generated successfully!');
     } catch (error) {
-      console.error('Error generating all chapters:', error);
+      logger.error('Error generating all chapters', error);
       toast.error('Failed to generate all chapters');
     } finally {
       setIsGeneratingAllChapters(false);
@@ -389,7 +390,7 @@ export function EbookGenerator() {
       setCurrentStep("cover");
       toast.success('Cover art generated successfully!');
     } catch (error) {
-      console.error('Error generating cover art:', error);
+      logger.error('Error generating cover art', error);
       toast.error('Failed to generate cover art');
     } finally {
       setIsGeneratingCover(false);
@@ -427,7 +428,7 @@ export function EbookGenerator() {
 
       toast.success(`Ebook exported as ${format.toUpperCase()}`);
     } catch (error) {
-      console.error('Error exporting ebook:', error);
+      logger.error('Error exporting ebook', error);
       toast.error('Failed to export ebook');
     }
   };

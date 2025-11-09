@@ -1,4 +1,6 @@
 // Content Security Policy configuration for PubHub
+import { logger } from './logger';
+
 export const cspConfig = {
   // Default CSP policy
   default: {
@@ -224,9 +226,9 @@ export function validateCSPCompliance(): void {
   });
 
   if (violations.length > 0) {
-    console.warn('CSP Compliance Issues:', violations);
+    logger.warn('CSP Compliance Issues:', violations);
   } else {
-    console.log('CSP compliance check passed');
+    logger.info('CSP compliance check passed');
   }
 }
 
@@ -249,7 +251,7 @@ export function setupCSPReporting(): void {
       url: window.location.href
     };
 
-    console.error('CSP Violation:', violation);
+    logger.error('CSP Violation:', violation);
 
     // Send to monitoring service (Sentry)
     if (typeof Sentry !== 'undefined') {

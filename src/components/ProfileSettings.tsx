@@ -10,6 +10,7 @@ import { useAuth } from "./AuthContext";
 import { useProject } from "./ProjectContext";
 import { uploadAPI } from "../utils/api";
 import { toast } from "sonner";
+import { logger } from '../utils/logger';
 
 export function ProfileSettings() {
   const { user, profilePicture, refreshProfile } = useAuth();
@@ -47,7 +48,7 @@ export function ProfileSettings() {
       await refreshProfile();
       toast.success('Profile picture updated successfully!');
     } catch (error: any) {
-      console.error('Profile picture upload error:', error);
+      logger.error('Profile picture upload error:', error);
       toast.error(error.message || 'Failed to upload profile picture');
     } finally {
       setUploadingProfile(false);
@@ -80,7 +81,7 @@ export function ProfileSettings() {
       await refreshProjects();
       toast.success('Project logo updated successfully!');
     } catch (error: any) {
-      console.error('Project logo upload error:', error);
+      logger.error('Project logo upload error:', error);
       toast.error(error.message || 'Failed to upload project logo');
     } finally {
       setUploadingLogo(false);

@@ -9,6 +9,7 @@ import { Upload, Image as ImageIcon, Loader2, Check, Save, FolderOpen } from "lu
 import { useProject } from "./ProjectContext";
 import { uploadAPI } from "../utils/api";
 import { toast } from "sonner";
+import { logger } from '../utils/logger';
 
 export function ProjectDetails() {
   const { currentProject, projects, refreshProjects, updateProject } = useProject();
@@ -49,7 +50,7 @@ export function ProjectDetails() {
       await refreshProjects();
       toast.success('Project logo updated successfully!');
     } catch (error: any) {
-      console.error('Project logo upload error:', error);
+      logger.error('Project logo upload error:', error);
       toast.error(error.message || 'Failed to upload project logo');
     } finally {
       setUploadingLogo(false);
@@ -76,7 +77,7 @@ export function ProjectDetails() {
       await refreshProjects();
       toast.success('Project details updated successfully!');
     } catch (error: any) {
-      console.error('Project update error:', error);
+      logger.error('Project update error:', error);
       toast.error(error.message || 'Failed to update project details');
     } finally {
       setSavingDetails(false);

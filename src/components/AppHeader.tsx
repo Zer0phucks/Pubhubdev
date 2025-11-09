@@ -24,6 +24,7 @@ import {
 } from "./ui/dropdown-menu";
 import { useAuth } from "./AuthContext";
 import { useConnectedPlatforms } from "./useConnectedPlatforms";
+import { logger } from '../utils/logger';
 
 type View = "project-overview" | "compose" | "inbox" | "calendar" | "analytics" | "library" | "notifications" | "ebooks" | "trending" | "competition" | "project-settings";
 type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
@@ -65,7 +66,7 @@ export function AppHeader({
     try {
       await signout();
     } catch (error) {
-      console.error('Sign out error:', error);
+      logger.error('Sign out error:', error);
     }
   };
 

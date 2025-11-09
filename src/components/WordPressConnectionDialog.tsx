@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { Alert, AlertDescription } from "./ui/alert";
 import { ExternalLink, Loader2, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
+import { logger } from '../utils/logger';
 
 interface WordPressConnectionDialogProps {
   open: boolean;
@@ -75,7 +76,7 @@ export function WordPressConnectionDialog({
       setApplicationPassword("");
       onOpenChange(false);
     } catch (error: any) {
-      console.error('WordPress connection error:', error);
+      logger.error('WordPress connection error:', error);
       toast.error(error.message || "Failed to connect to WordPress");
     } finally {
       setLoading(false);

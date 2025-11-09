@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Separator } from "./ui/separator";
+import { logger } from '../utils/logger';
 
 export function AuthPage() {
   // Default to sign up for first-time users
@@ -42,7 +43,7 @@ export function AuthPage() {
     try {
       await signin(email.trim(), password);
     } catch (err: any) {
-      console.error("Sign in error:", err);
+      logger.error("Sign in error:", err);
       
       const errorMsg = (err.message || '').toLowerCase();
       
@@ -93,7 +94,7 @@ export function AuthPage() {
     try {
       await signup(email.trim(), password, name.trim());
     } catch (err: any) {
-      console.error("Sign up error:", err);
+      logger.error("Sign up error:", err);
       
       const errorMessage = (err.message || '').toLowerCase();
       
@@ -139,7 +140,7 @@ export function AuthPage() {
           break;
       }
     } catch (err: any) {
-      console.error(`${provider} sign-in error:`, err);
+      logger.error(`${provider} sign-in error:`, err);
       setError(`Failed to sign in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}. Please try again.`);
     } finally {
       setLoading(false);

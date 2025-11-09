@@ -25,6 +25,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '../utils/logger';
 
 type Platform = 'twitter' | 'instagram' | 'linkedin' | 'facebook' | 'youtube' | 'tiktok' | 'pinterest' | 'reddit';
 
@@ -103,7 +104,7 @@ export function OAuthTester() {
         return updated;
       });
     } catch (error: any) {
-      console.error('Failed to load connections:', error);
+      logger.error('Failed to load connections:', error);
       toast.error('Failed to load connections');
     } finally {
       setLoadingConnections(false);
@@ -207,7 +208,7 @@ export function OAuthTester() {
       }, 1500);
 
     } catch (error: any) {
-      console.error(`OAuth test failed for ${platform}:`, error);
+      logger.error(`OAuth test failed for ${platform}:`, error);
       addLog(platform, 'error', error.message || 'OAuth flow failed', error);
       setPlatformTests(prev => ({
         ...prev,
@@ -262,7 +263,7 @@ export function OAuthTester() {
       await loadConnections();
       toast.success(`${platformTests[platform].name} disconnected`);
     } catch (error: any) {
-      console.error(`Disconnect failed for ${platform}:`, error);
+      logger.error(`Disconnect failed for ${platform}:`, error);
       addLog(platform, 'error', error.message || 'Disconnect failed');
       setPlatformTests(prev => ({
         ...prev,

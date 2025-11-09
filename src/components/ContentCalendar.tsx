@@ -12,6 +12,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { postsAPI } from "../utils/api";
 import { toast } from "sonner";
 import { useProject } from "./ProjectContext";
+import { logger } from "../utils/logger";
 import {
   ChevronLeft,
   ChevronRight,
@@ -90,7 +91,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
 
       setScheduledPosts(convertedPosts);
     } catch (error) {
-      console.error('Failed to load posts:', error);
+      logger.error('Failed to load posts', error);
       toast.error('Failed to load posts from server');
     } finally {
       setLoading(false);
@@ -192,7 +193,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
         setIsEditDialogOpen(false);
         setEditingPost(null);
       } catch (error: any) {
-        console.error('Failed to update post:', error);
+        logger.error('Failed to update post', error);
         toast.error('Failed to update post', {
           description: error.message || 'Please try again'
         });
@@ -218,7 +219,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
         setScheduledPosts(prev => prev.filter(post => post.id !== postToDelete.id));
         toast.success("Post deleted successfully");
       } catch (error: any) {
-        console.error('Failed to delete post:', error);
+        logger.error('Failed to delete post', error);
         toast.error('Failed to delete post', {
           description: error.message || 'Please try again'
         });
@@ -295,7 +296,7 @@ export function ContentCalendar({ selectedPlatform = "all" }: ContentCalendarPro
       toast.success('Post scheduled successfully');
       setIsCreateDialogOpen(false);
     } catch (error: any) {
-      console.error('Failed to create post:', error);
+      logger.error('Failed to create post', error);
       toast.error('Failed to schedule post', {
         description: error.message || 'Please try again'
       });

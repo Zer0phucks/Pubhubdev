@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -66,7 +66,7 @@ interface GeneratedPreview {
   content: string;
 }
 
-export function ContentComposer({ transformedContent = null, remixContent = null, onContentUsed }: ContentComposerProps = {}) {
+export const ContentComposer = memo(function ContentComposer({ transformedContent = null, remixContent = null, onContentUsed }: ContentComposerProps = {}) {
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [currentRemixContent, setCurrentRemixContent] = useState<RemixContent | null>(null);
@@ -74,6 +74,7 @@ export function ContentComposer({ transformedContent = null, remixContent = null
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(getCustomTemplates());
   const [generatedPreviews, setGeneratedPreviews] = useState<GeneratedPreview[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [publishingPlatforms, setPublishingPlatforms] = useState<Set<Platform>>(new Set());
   const { currentProject } = useProject();
 
   const [platforms, setPlatforms] = useState<PlatformSelection[]>([
@@ -137,19 +138,19 @@ export function ContentComposer({ transformedContent = null, remixContent = null
     setCustomTemplates(getCustomTemplates());
   }, []);
 
-  const togglePlatform = (id: Platform) => {
-    setPlatforms(platforms.map(p => 
+  const togglePlatform = useCallback((id: Platform) => {
+    setPlatforms(platforms.map(p =>
       p.id === id ? { ...p, enabled: !p.enabled } : p
     ));
-  };
+  }, [platforms]);
 
-  const handleTemplateSelect = (platformId: Platform, templateId: string) => {
+  const handleTemplateSelect = useCallback((platformId: Platform, templateId: string) => {
     setPlatforms(platforms.map(p =>
       p.id === platformId ? { ...p, selectedTemplate: templateId } : p
     ));
-  };
+  }, [platforms]);
 
-  const validateContent = (platform: Platform, contentToValidate: string) => {
+  const validateContent = useCallback((platform: Platform, contentToValidate: string) => {
     const constraints = PLATFORM_CONSTRAINTS[platform];
     const contentLength = contentToValidate.length;
     const imageCount = attachments.filter(a => a.type.startsWith('image/')).length;
@@ -168,9 +169,9 @@ export function ContentComposer({ transformedContent = null, remixContent = null
     }
 
     return { isValid: issues.length === 0, issues };
-  };
+  }, [attachments]);
 
-  const generateWithAI = () => {
+  const generateWithAI = useCallback(() => {
     const suggestions = [
       "Just discovered an amazing productivity hack that's changed my workflow! 🚀 Who else struggles with time management?",
       "Behind the scenes look at how we create content that resonates. The secret? Authenticity always wins. 💡",
@@ -178,9 +179,9 @@ export function ContentComposer({ transformedContent = null, remixContent = null
     ];
     const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
     setContent(randomSuggestion);
-  };
+  }, []);
 
-  const handleFileAttachment = () => {
+  const handleFileAttachment = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
@@ -200,13 +201,22 @@ export function ContentComposer({ transformedContent = null, remixContent = null
     };
     
     input.click();
-  };
+  }, [attachments]);
 
-  const removeAttachment = (attachmentName: string) => {
+  const removeAttachment = useCallback((attachmentName: string) => {
     setAttachments(attachments.filter(a => a.name !== attachmentName));
-  };
+  }, [attachments]);
 
-  const handleGeneratePreviews = () => {
+  const enabledPlatforms = useMemo(() =>
+    platforms.filter(p => p.enabled),
+    [platforms]
+  );
+
+  const availableTemplatesForPlatform = useCallback((platformId: Platform) => {
+    return customTemplates.filter(t => t.platforms.includes(platformId));
+  }, [customTemplates]);
+
+  const handleGeneratePreviews = useCallback(() => {
     const enabledPlatforms = platforms.filter(p => p.enabled);
     
     if (enabledPlatforms.length === 0) {
@@ -255,14 +265,9 @@ export function ContentComposer({ transformedContent = null, remixContent = null
         description: `Created ${previews.length} preview(s) for your selected platforms.`,
       });
     }, 1500);
-  };
+  }, [enabledPlatforms, content, customTemplates, platforms]);
 
-  const enabledPlatforms = platforms.filter(p => p.enabled);
-  const availableTemplatesForPlatform = (platformId: Platform) => {
-    return customTemplates.filter(t => t.platforms.includes(platformId));
-  };
-
-  const handlePostNow = async (platform: Platform, content: string) => {
+  const handlePostNow = useCallback(async (platform: Platform, content: string) => {
     if (!currentProject) {
       toast.error("No project selected");
       return;
@@ -377,9 +382,9 @@ export function ContentComposer({ transformedContent = null, remixContent = null
         return next;
       });
     }
-  };
+  }, [currentProject, attachments, platforms]);
 
-  const handleSchedule = async (platform: Platform, content: string) => {
+  const handleSchedule = useCallback(async (platform: Platform, content: string) => {
     if (!currentProject) {
       toast.error("No project selected");
       return;
@@ -408,7 +413,7 @@ export function ContentComposer({ transformedContent = null, remixContent = null
         description: error.message || "Failed to save draft.",
       });
     }
-  };
+  }, [currentProject, attachments]);
 
   return (
     <div className="space-y-6">
@@ -780,4 +785,4 @@ export function ContentComposer({ transformedContent = null, remixContent = null
       </div>
     </div>
   );
-}
+});

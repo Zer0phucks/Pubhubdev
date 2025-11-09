@@ -1,4 +1,5 @@
 // Automation rule storage and management
+import { logger } from './logger';
 
 export type TriggerPlatform = "youtube" | "tiktok";
 export type TransformationType = "blog" | "social-thread" | "linkedin-post" | "social-announcement" | "newsletter" | "captions";
@@ -30,7 +31,7 @@ export const getAutomationRules = (): AutomationRule[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('Error loading automation rules:', error);
+    logger.error('Error loading automation rules:', error);
     return [];
   }
 };
@@ -40,7 +41,7 @@ export const saveAutomationRules = (rules: AutomationRule[]): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
   } catch (error) {
-    console.error('Error saving automation rules:', error);
+    logger.error('Error saving automation rules:', error);
   }
 };
 

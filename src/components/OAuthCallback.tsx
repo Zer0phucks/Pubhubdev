@@ -4,6 +4,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { supabase } from '../utils/supabase/client';
 import { oauthAPI, setAuthToken, getAuthToken } from '../utils/api';
+import { logger } from '../utils/logger';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -35,7 +36,7 @@ export function OAuthCallback() {
       const storedPlatform = sessionStorage.getItem('oauth_platform') || platform; // Fallback to URL param/path
       const storedProjectId = sessionStorage.getItem('oauth_project_id');
 
-      console.log('OAuth Callback Debug:', {
+      logger.info('OAuth Callback Debug:', {
         code: code ? 'present' : 'missing',
         state: state ? 'present' : 'missing',
         platform: platform || storedPlatform,
@@ -79,7 +80,7 @@ export function OAuthCallback() {
       // Verify token was set correctly before making API call
       const verifyToken = getAuthToken();
       if (!verifyToken || verifyToken !== token) {
-        console.warn('Token not properly set, retrying...');
+        logger.warn('Token not properly set, retrying...');
         // Force set it directly
         localStorage.setItem('pubhub_auth_token', token);
       }
@@ -106,7 +107,7 @@ export function OAuthCallback() {
       }, 2000);
 
     } catch (error: any) {
-      console.error('OAuth callback error:', error);
+      logger.error('OAuth callback error:', error);
       setStatus('error');
       setMessage(error.message || 'Failed to connect platform');
 
