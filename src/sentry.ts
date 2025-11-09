@@ -31,4 +31,9 @@ Sentry.init({
   },
 });
 
+// Expose Sentry globally for testing in console (development only)
+if (import.meta.env.MODE === 'development') {
+  (window as any).Sentry = Sentry;
+}
+
 export default Sentry;

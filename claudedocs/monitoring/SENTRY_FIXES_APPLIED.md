@@ -49,7 +49,12 @@ VITE_SENTRY_DSN="https://f400c21bed0184aa960502392fd26c57@o4510074583842816.inge
 SENTRY_ORG="devconsul"
 SENTRY_PROJECT="sentry-pubhub"
 SENTRY_AUTH_TOKEN="..." # For source map uploads
+
+# IMPORTANT: Enable Sentry in development mode
+VITE_SENTRY_DEBUG=true
 ```
+
+**⚠️ CRITICAL**: By default, Sentry does NOT send events in development mode (see `src/sentry.ts:27-29`). You MUST set `VITE_SENTRY_DEBUG=true` to test Sentry locally.
 
 ### Dependencies:
 - `@sentry/react` ^10.22.0 - Core Sentry SDK for React
@@ -86,6 +91,8 @@ SENTRY_AUTH_TOKEN="..." # For source map uploads
 
 ## Testing Sentry
 
+**IMPORTANT**: Make sure `VITE_SENTRY_DEBUG=true` is set in your `.env` file, then reload the dev server!
+
 ### Option 1: Use Test Component
 Add the test button to your app temporarily:
 
@@ -96,16 +103,25 @@ import { SentryTestButton } from './components/SentryTestButton';
 <SentryTestButton />
 ```
 
-### Option 2: Manual Testing
-Open browser console and run:
+### Option 2: Manual Testing in Console
+
+**Step 1**: Reload your dev server after adding `VITE_SENTRY_DEBUG=true`:
+```bash
+# Stop dev server (Ctrl+C), then:
+npm run dev
+```
+
+**Step 2**: Open browser console (F12) and run:
 
 ```javascript
-// Test error
-throw new Error('Test error for Sentry');
+// Sentry is now globally available in development
+window.Sentry.captureMessage('Test message from console', 'info');
 
-// Test message
-Sentry.captureMessage('Test message', 'info');
+// Or test error capture
+throw new Error('Test error for Sentry');
 ```
+
+**Step 3**: Check your Sentry dashboard for the events
 
 ### Verify in Sentry Dashboard
 - Project: `sentry-pubhub`
