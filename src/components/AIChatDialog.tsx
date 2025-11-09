@@ -15,6 +15,7 @@ import { cn } from "./ui/utils";
 import { aiAPI } from "../utils/api";
 import { useProject } from "./ProjectContext";
 import { toast } from "sonner";
+import { logger } from "../utils/logger";
 
 type View = "dashboard" | "compose" | "inbox" | "calendar" | "ai" | "connections";
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
@@ -122,7 +123,7 @@ Try asking me to create a post or show you your recent content!`,
             throw new Error(response.error || 'Failed to get AI response');
           }
         } catch (error: any) {
-          console.error('AI chat error:', error);
+          logger.error('AI chat error during auto-submit', error);
           toast.error('Failed to get AI response: ' + error.message);
 
           const errorMessage: Message = {
@@ -188,7 +189,7 @@ Try asking me to create a post or show you your recent content!`,
         throw new Error(response.error || 'Failed to get AI response');
       }
     } catch (error: any) {
-      console.error('AI chat error:', error);
+      logger.error('AI chat error during manual submit', error);
       toast.error('Failed to get AI response: ' + error.message);
 
       // Add error message to chat

@@ -3,6 +3,7 @@ import { Badge } from './ui/badge';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { connectionsAPI } from '../utils/api';
 import { useProject } from './ProjectContext';
+import { logger } from '../utils/logger';
 
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -29,8 +30,8 @@ export function ConnectionStatus({ platform, showLabel = true, compact = false }
       const { connections: data } = await connectionsAPI.getAll(currentProject.id);
       setConnections(data || []);
     } catch (error) {
-      console.error('Failed to load connections:', error);
-    } finally {
+      logger.error('Failed to load connections', error);
+    } finally{
       setLoading(false);
     }
   };

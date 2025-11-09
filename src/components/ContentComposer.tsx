@@ -19,9 +19,9 @@ import { AITextGenerator } from "./AITextGenerator";
 import { getCustomTemplates, type CustomTemplate } from "../utils/customTemplates";
 import { postsAPI } from "../utils/api";
 import { useProject } from "./ProjectContext";
-import { 
-  Sparkles, 
-  Send, 
+import {
+  Sparkles,
+  Send,
   Clock,
   Paperclip,
   X,
@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { TransformedContent } from "../utils/contentTransformer";
 import { projectId } from "../utils/supabase/info";
 import { supabase } from "../utils/supabase/client";
+import { logger } from "../utils/logger";
 
 interface PlatformSelection {
   id: Platform;
@@ -346,7 +347,7 @@ export function ContentComposer({ transformedContent = null, remixContent = null
         throw new Error(platformResult?.error || 'Failed to publish to platform');
       }
     } catch (error: any) {
-      console.error('Publishing error:', error);
+      logger.error('Publishing error', error, { platform });
 
       // Check if it's a connection issue
       if (error.message?.includes('not connected') || error.message?.includes('Platform not connected')) {
@@ -402,7 +403,7 @@ export function ContentComposer({ transformedContent = null, remixContent = null
         description: "Your post has been saved as a draft.",
       });
     } catch (error: any) {
-      console.error('Draft save error:', error);
+      logger.error('Draft save error', error, { platform });
       toast.error("Save Failed", {
         description: error.message || "Failed to save draft.",
       });
