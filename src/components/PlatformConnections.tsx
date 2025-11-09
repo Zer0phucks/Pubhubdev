@@ -9,9 +9,9 @@ import { PlatformIcon } from "./PlatformIcon";
 import { connectionsAPI, oauthAPI, setAuthToken } from "../utils/api";
 import { useProject } from "./ProjectContext";
 import { supabase } from "../utils/supabase/client";
-import { 
-  CheckCircle2, 
-  XCircle, 
+import {
+  CheckCircle2,
+  XCircle,
   Link as LinkIcon,
   Settings,
   Trash2,
@@ -30,6 +30,7 @@ import {
 import { ConfirmDialog } from "./ConfirmDialog";
 import { WordPressConnectionDialog, WordPressCredentials } from "./WordPressConnectionDialog";
 import { toast } from "sonner";
+import { logger } from "../utils/logger";
 
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -124,7 +125,7 @@ export function PlatformConnections() {
     const checkOAuthCompletion = async () => {
       const oauthJustCompleted = sessionStorage.getItem('oauth_just_completed');
       if (oauthJustCompleted === 'true') {
-        console.log('OAuth just completed, refreshing connections...');
+        logger.info('OAuth just completed, refreshing connections...');
         // Add a small delay to ensure backend has saved the data
         setTimeout(() => {
           loadConnections();
@@ -234,7 +235,7 @@ export function PlatformConnections() {
         // Set flag to trigger header refresh (similar to connection completion)
         sessionStorage.setItem('platform_disconnected', 'true');
       } catch (error: any) {
-        console.error('Disconnect error:', error);
+        logger.error('Disconnect error', error, { platform });
         toast.error(error.message || 'Failed to disconnect platform');
       }
     }
