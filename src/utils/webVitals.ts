@@ -86,12 +86,11 @@ function sendMetricToSentry(metric: Metric): void {
     );
   }
 
-  // Set metric as a measurement on the current transaction
-  const transaction = Sentry.getActiveTransaction();
-  if (transaction) {
-    transaction.setMeasurement(name, value, name === 'CLS' ? 'ratio' : 'millisecond');
-    transaction.setTag(`${name.toLowerCase()}_rating`, performanceRating);
-  }
+  // Set metric as a measurement on the active span
+  // Note: getActiveTransaction() is deprecated in Sentry v8+
+  // Measurements are now automatically added to the active span
+  Sentry.setMeasurement(name, value, name === 'CLS' ? 'ratio' : 'millisecond');
+  Sentry.setTag(`${name.toLowerCase()}_rating`, performanceRating);
 }
 
 /**

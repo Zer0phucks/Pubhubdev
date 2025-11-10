@@ -66,15 +66,9 @@ Sentry.init({
       includePerformanceEvents: true,
     }),
 
-    // React-specific error boundary integration
-    Sentry.reactErrorBoundaryIntegration({
-      showDialog: false,
-      fallback: ({ error, resetError }) => (
-        window as any).React?.createElement('div', {
-          className: 'error-boundary-fallback',
-          children: 'An error occurred. Please refresh the page.',
-        }),
-    }),
+    // Note: React Error Boundary integration has been removed.
+    // Use Sentry.ErrorBoundary component directly in React components instead.
+    // See: https://docs.sentry.io/platforms/javascript/guides/react/components/errorboundary/
 
     // Enable HTTP Client integration for API monitoring
     Sentry.httpClientIntegration(),
