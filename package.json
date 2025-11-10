@@ -57,6 +57,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.56.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -67,6 +68,7 @@
     "@vitejs/plugin-react-swc": "^3.10.2",
     "@vitest/coverage-v8": "^4.0.8",
     "@vitest/ui": "^4.0.3",
+    "axe-core": "^4.11.0",
     "eslint": "^9.39.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
@@ -94,6 +96,7 @@
     "test:all": "npm run test:run && npm run test:e2e",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:accessibility": "playwright test tests/accessibility/ --project=chromium"
   }
 }

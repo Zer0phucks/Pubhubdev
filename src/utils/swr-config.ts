@@ -132,6 +132,13 @@ export const CacheKeys = {
 
   /** Media library cache key */
   media: (projectId: string) => getCacheKey('media', projectId),
+
+  /** Trending posts cache key with platform and category */
+  trending: (projectId: string, platform?: string, category?: string, count?: string) =>
+    getCacheKey('trending', projectId, platform, category, count),
+
+  /** Export getCacheKey for custom cache keys */
+  getCacheKey,
 } as const;
 
 /**

@@ -1,39 +1,51 @@
 import { Card } from "./ui/card";
 import { PlatformIcon } from "./PlatformIcon";
 import { Badge } from "./ui/badge";
-import { TrendingUp, Heart, MessageCircle, Share2, Eye, ThumbsUp, Repeat2 } from "lucide-react";
+import { TrendingUp, Heart, MessageCircle, Share2, Eye, ThumbsUp, Repeat2, RefreshCw, AlertCircle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-
-type Platform = "all" | "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
-
-interface TrendingPost {
-  id: string;
-  platform: Exclude<Platform, "all">;
-  author: string;
-  authorImage: string;
-  content: string;
-  image?: string;
-  engagement: {
-    likes?: number;
-    comments?: number;
-    shares?: number;
-    views?: number;
-    retweets?: number;
-  };
-  timestamp: string;
-  niche: string;
-  trendScore: number;
-}
+import { useTrendingPosts } from "../hooks/useTrendingPosts";
+import { useProject } from "./ProjectContext";
+import type { PlatformFilter } from "../types";
 
 interface TrendingPostsProps {
-  selectedPlatform: Platform;
+  selectedPlatform: PlatformFilter;
 }
 
 export function TrendingPosts({ selectedPlatform }: TrendingPostsProps) {
-  // TODO: Fetch real trending posts from API
-  const trendingPosts: TrendingPost[] = [];
+  // Get current project ID
+  const { currentProject } = useProject();
+
+  // Fetch trending posts with SWR caching
+  const {
+    posts,
+    isLoading,
+    error,
+    refresh,
+    cached_at,
+    next_refresh,
+    totalCount,
+  } = useTrendingPosts(currentProject?.id || '', {
+    platform: selectedPlatform,
+    category: 'general', // TODO: Make configurable based on project niche
+    count: 20,
+    enabled: !!currentProject?.id, // Only fetch if project exists
+  });
+
+  // Map API response to component format
+  const trendingPosts = posts.map(post => ({
+    id: post.id,
+    platform: post.platform,
+    author: post.author.username,
+    authorImage: post.author.avatar || '',
+    content: post.content,
+    image: post.image,
+    engagement: post.engagement,
+    timestamp: new Date(post.created_at).toLocaleString(),
+    niche: post.niche || 'general',
+    trendScore: post.trending_score,
+  }));
 
   const filteredPosts = selectedPlatform === "all"
     ? trendingPosts
@@ -41,6 +53,59 @@ export function TrendingPosts({ selectedPlatform }: TrendingPostsProps) {
 
   // Sort by trend score
   const sortedPosts = [...filteredPosts].sort((a, b) => b.trendScore - a.trendScore);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card className="p-8">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-orange-500 animate-pulse" />
+              <h2 className="text-xl">Loading Trending Posts...</h2>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="p-4 animate-pulse">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 bg-muted rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-1/3" />
+                      <div className="h-3 bg-muted rounded w-1/4" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-full" />
+                    <div className="h-4 bg-muted rounded w-5/6" />
+                  </div>
+                  <div className="h-32 bg-muted rounded" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Error state
+  if (error && !sortedPosts.length) {
+    return (
+      <Card className="p-8 text-center border-destructive/50 bg-destructive/5">
+        <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+        <h3 className="mb-2 text-lg font-semibold">Failed to load trending posts</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          {error.message || 'An error occurred while fetching trending content'}
+        </p>
+        <Button onClick={refresh} variant="outline" className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Try Again
+        </Button>
+      </Card>
+    );
+  }
 
   const getEngagementIcon = (platform: string, type: string) => {
     if (type === "likes") {
@@ -137,11 +202,31 @@ export function TrendingPosts({ selectedPlatform }: TrendingPostsProps) {
           <TrendingUp className="w-5 h-5 text-orange-500" />
           <h2 className="text-xl">Trending in Your Niche</h2>
         </div>
-        <Badge variant="outline" className="gap-1">
-          <TrendingUp className="w-3 h-3" />
-          {sortedPosts.length} {sortedPosts.length === 1 ? "post" : "posts"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={refresh}
+            className="gap-2"
+            title="Refresh trending posts"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Badge variant="outline" className="gap-1">
+            <TrendingUp className="w-3 h-3" />
+            {sortedPosts.length} {sortedPosts.length === 1 ? "post" : "posts"}
+          </Badge>
+        </div>
       </div>
+
+      {/* Cache info */}
+      {cached_at && (
+        <p className="text-xs text-muted-foreground">
+          Last updated: {new Date(cached_at).toLocaleString()}
+          {next_refresh && ` • Next refresh: ${new Date(next_refresh).toLocaleTimeString()}`}
+        </p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {sortedPosts.map((post) => {

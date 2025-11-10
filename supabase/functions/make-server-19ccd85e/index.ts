@@ -3,7 +3,14 @@ import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
-// import { rateLimit, rateLimitConfigs } from "./rate-limit.tsx"; // TODO: Implement Hono-compatible rate limiting
+import { rateLimiter, userRateLimiter, rateLimitConfigs } from "./rate-limiter-hono.ts";
+import { uploadImageToLinkedIn, createLinkedInPostWithImage } from "./linkedin-upload.ts";
+import { uploadVideoToYouTube } from "./youtube-upload.ts";
+import {
+  fetchRedditTrending,
+  fetchRedditTrendingAll,
+  type NormalizedTrendingPost
+} from "./trending/reddit-fetcher.ts";
 
 const app = new Hono();
 
@@ -23,8 +30,8 @@ app.use(
   }),
 );
 
-// TODO: Implement Hono-compatible rate limiting
-// app.use('*');
+// Apply global rate limiting (general API protection)
+app.use('/make-server-19ccd85e/*', rateLimiter(rateLimitConfigs.api));
 
 // Supabase admin client for database access and auth verification
 const supabaseAdmin = createClient(
@@ -86,7 +93,7 @@ app.get("/make-server-19ccd85e/health", (c) => {
 // ============= STORAGE/UPLOAD ROUTES =============
 
 // Upload profile picture
-app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, userRateLimiter(rateLimitConfigs.upload), async (c) => {
   try {
     const userId = c.get('userId');
     const formData = await c.req.formData();
@@ -147,7 +154,7 @@ app.post("/make-server-19ccd85e/upload/profile-picture", requireAuth, async (c) 
 });
 
 // Upload project logo
-app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/upload/project-logo/:projectId", requireAuth, userRateLimiter(rateLimitConfigs.upload), async (c) => {
   try {
     const userId = c.get('userId');
     const projectId = c.req.param('projectId');
@@ -1013,6 +1020,111 @@ app.get("/make-server-19ccd85e/analytics", requireAuth, async (c) => {
   }
 });
 
+// ============= TRENDING POSTS ROUTES =============
+
+/**
+ * Get trending posts from social platforms
+ *
+ * Query parameters:
+ * - platform: Platform filter (reddit, twitter, etc.) - optional
+ * - category: Category filter (programming, technology, etc.) - optional
+ * - count: Number of posts to return (default: 25, max: 50)
+ * - projectId: Project ID for personalization
+ *
+ * Response includes:
+ * - posts: Array of trending posts with engagement metrics
+ * - cached_at: Server cache timestamp
+ * - next_refresh: Next refresh time
+ */
+app.get("/make-server-19ccd85e/trending", requireAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const platform = c.req.query('platform') || 'all';
+    const category = c.req.query('category') || 'general';
+    const count = Math.min(parseInt(c.req.query('count') || '25'), 50);
+    const projectId = c.req.query('projectId');
+
+    // Validate projectId if provided
+    if (projectId) {
+      const project = await kv.get(`project:${projectId}`);
+      if (!project || project.userId !== userId) {
+        return c.json({ error: 'Invalid project ID' }, 403);
+      }
+    }
+
+    // Generate cache key
+    const cacheKey = `trending:${platform}:${category}:${count}`;
+
+    // Check server-side cache (30 minutes TTL)
+    const cachedData = await kv.get(cacheKey);
+    const now = new Date();
+
+    if (cachedData && cachedData.cached_at) {
+      const cacheAge = now.getTime() - new Date(cachedData.cached_at).getTime();
+      const THIRTY_MINUTES = 30 * 60 * 1000;
+
+      // Return cached data if less than 30 minutes old
+      if (cacheAge < THIRTY_MINUTES) {
+        console.log('Returning cached trending posts', { cacheKey, cacheAge: cacheAge / 1000 });
+        return c.json(cachedData);
+      }
+    }
+
+    // Fetch fresh data based on platform
+    let posts: NormalizedTrendingPost[] = [];
+
+    if (platform === 'reddit' || platform === 'all') {
+      try {
+        if (category === 'all' || !category) {
+          posts = await fetchRedditTrendingAll(count);
+        } else {
+          posts = await fetchRedditTrending(category, count);
+        }
+      } catch (error) {
+        console.error('Reddit fetch error:', error);
+
+        // If cache exists, return stale cache on error
+        if (cachedData) {
+          console.log('Returning stale cache due to fetch error');
+          return c.json({
+            ...cachedData,
+            stale: true,
+            error: 'Using cached data due to API error'
+          });
+        }
+
+        throw error;
+      }
+    }
+
+    // TODO: Add support for other platforms (Twitter, Instagram, etc.)
+    // For now, only Reddit is supported
+
+    // Prepare response
+    const responseData = {
+      posts,
+      platform,
+      category,
+      count: posts.length,
+      cached_at: now.toISOString(),
+      next_refresh: new Date(now.getTime() + 30 * 60 * 1000).toISOString(), // 30 minutes
+    };
+
+    // Cache the response (30 minutes)
+    await kv.set(cacheKey, responseData, { ex: 30 * 60 }); // Redis-style expiry
+
+    return c.json(responseData);
+  } catch (error: any) {
+    console.error('Get trending posts error:', error);
+    return c.json({
+      error: `Failed to fetch trending posts: ${error.message}`,
+      posts: [], // Return empty array on error
+      cached_at: new Date().toISOString(),
+      next_refresh: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    }, 500);
+  }
+});
+
 // ============= EBOOK ROUTES =============
 
 // Get previous books
@@ -1803,7 +1915,7 @@ app.get("/make-server-19ccd85e/oauth/token/:platform/:projectId", requireAuth, a
 // ============= PLATFORM POSTING ROUTES =============
 
 // Publish content to social media platforms
-app.post("/make-server-19ccd85e/posts/publish", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/posts/publish", requireAuth, userRateLimiter(rateLimitConfigs.publishing), async (c) => {
   try {
     const userId = c.get('userId');
     const { postId, platforms, projectId, content, media } = await c.req.json();
@@ -1990,28 +2102,45 @@ async function publishToLinkedIn(accessToken: string, content: any, media: any) 
     });
 
     const profileData = await profileResponse.json();
-    const authorId = `urn:li:person:${profileData.id}`;
+    const authorUrn = `urn:li:person:${profileData.id}`;
 
+    // If media is provided, upload image first
+    if (media && media.url) {
+      const uploadResult = await uploadImageToLinkedIn({
+        imageUrl: media.url,
+        accessToken,
+        authorUrn
+      });
+
+      if (!uploadResult.success) {
+        throw new Error(`Image upload failed: ${uploadResult.error}`);
+      }
+
+      // Create post with uploaded image
+      return await createLinkedInPostWithImage(
+        accessToken,
+        authorUrn,
+        content.text || content.caption,
+        uploadResult.assetUrn!
+      );
+    }
+
+    // Text-only post (no media)
     const postBody: any = {
-      author: authorId,
+      author: authorUrn,
       lifecycleState: 'PUBLISHED',
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
           shareCommentary: {
             text: content.text || content.caption
           },
-          shareMediaCategory: media ? 'IMAGE' : 'NONE'
+          shareMediaCategory: 'NONE'
         }
       },
       visibility: {
         'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
       }
     };
-
-    if (media && media.url) {
-      // TODO: Implement LinkedIn image upload (requires multi-step process)
-      // For now, we'll post text-only
-    }
 
     const response = await fetch('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
@@ -2093,13 +2222,28 @@ async function publishToYouTube(accessToken: string, content: any, media: any) {
       return { success: false, error: 'YouTube requires a video file' };
     }
 
-    // TODO: Implement YouTube video upload
-    // This requires multipart upload and is more complex
-    // For now, return a placeholder
+    // Upload video to YouTube
+    const uploadResult = await uploadVideoToYouTube({
+      videoUrl: media.videoUrl,
+      accessToken,
+      title: content.title || content.text?.substring(0, 100) || 'Untitled Video',
+      description: content.description || content.text || '',
+      tags: content.tags || [],
+      categoryId: content.categoryId || '22', // Default: People & Blogs
+      privacyStatus: content.privacyStatus || 'public'
+    });
+
+    if (!uploadResult.success) {
+      return {
+        success: false,
+        error: uploadResult.error || 'YouTube video upload failed'
+      };
+    }
 
     return {
-      success: false,
-      error: 'YouTube video upload not yet implemented - requires video file upload'
+      success: true,
+      postId: uploadResult.videoId,
+      url: uploadResult.url
     };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -2233,7 +2377,7 @@ async function publishToReddit(accessToken: string, content: any, media: any) {
  * AI Text Generator - Context-aware text generation
  * Used for inline text generation across the app (replies, posts, comments, templates)
  */
-app.post("/make-server-19ccd85e/ai/generate-text", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/ai/generate-text", requireAuth, userRateLimiter(rateLimitConfigs.ai), async (c) => {
   try {
     const { prompt, contextType = 'general', context = '' } = await c.req.json();
 
@@ -2310,7 +2454,7 @@ app.post("/make-server-19ccd85e/ai/generate-text", requireAuth, async (c) => {
  * - Creating and scheduling posts
  * - Managing content across platforms
  */
-app.post("/make-server-19ccd85e/ai/chat", requireAuth, async (c) => {
+app.post("/make-server-19ccd85e/ai/chat", requireAuth, userRateLimiter(rateLimitConfigs.ai), async (c) => {
   try {
     const userId = c.get('userId');
     const { messages, projectId } = await c.req.json();

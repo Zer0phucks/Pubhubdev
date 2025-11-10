@@ -308,3 +308,28 @@ export const aiAPI = {
     });
   },
 };
+
+// ============= TRENDING POSTS API =============
+
+export const trendingAPI = {
+  /**
+   * Get trending posts from social platforms
+   * @param params - Query parameters (platform, category, count)
+   * @returns Trending posts with engagement metrics
+   */
+  async get(params: {
+    platform?: string;
+    category?: string;
+    count?: number;
+    projectId: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params.platform) queryParams.set('platform', params.platform);
+    if (params.category) queryParams.set('category', params.category);
+    if (params.count) queryParams.set('count', params.count.toString());
+    if (params.projectId) queryParams.set('projectId', params.projectId);
+
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return apiCall(`/trending${query}`);
+  },
+};

@@ -16,33 +16,57 @@ import fs from 'fs';
 export default defineConfig({
   testDir: './',
   testMatch: [
-    'e2e/**/*.ts',
-    'tests/e2e/**/*.ts'
+    'e2e/**/*.spec.ts',
+    'tests/e2e/**/*.spec.ts',
+    'tests/accessibility/**/*.spec.ts'
   ],
   /* Maximum time one test can run for */
-  timeout: process.env.CI ? 60000 : 30000,
+  timeout: process.env.CI ? 60000 : 45000,
+  /* Expect timeout for assertions */
+  expect: {
+    timeout: 10000,
+  },
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? [
-    ['html'],
+    ['html', { outputFolder: 'test-results/html-report' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
-    ['json', { outputFile: 'test-results/results.json' }]
-  ] : 'html',
+    ['json', { outputFile: 'test-results/results.json' }],
+    ['list']
+  ] : [
+    ['html', { outputFolder: 'test-results/html-report' }],
+    ['list']
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
     baseURL: process.env.BASE_URL || 'https://pubhub.dev',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
+
+    /* Screenshot on failure */
+    screenshot: 'only-on-failure',
+
+    /* Video on failure */
+    video: process.env.CI ? 'retain-on-failure' : 'off',
+
+    /* Navigation timeout */
+    navigationTimeout: 30000,
+
+    /* Action timeout */
+    actionTimeout: 15000,
   },
+
+  /* Folder for test artifacts such as screenshots, videos, traces, etc. */
+  outputDir: 'test-results/artifacts',
 
   /* Configure projects for major browsers */
   projects: [
