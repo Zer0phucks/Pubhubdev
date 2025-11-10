@@ -30,6 +30,7 @@ import {
   FileText,
   Wand2,
   Loader2,
+  Video,
 } from "lucide-react";
 import { PLATFORM_CONSTRAINTS, type Platform, type Attachment, type PublishResponse, type AppError } from "../types";
 import { toast } from "sonner";
@@ -97,7 +98,7 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
       setCurrentTransformation(null);
       
       // Show notification about source
-      toast.info("Content Loaded from Remix", {
+      toast.info("Content Loaded from Repurpose", {
         description: `"${remixContent.title}" from ${remixContent.platform}`,
       });
 
@@ -419,11 +420,21 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-emerald-400 mb-2">Create Content</h2>
-        <p className="text-muted-foreground">
-          Create content from scratch or use your remixed content
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-emerald-400 mb-2">Create Content</h2>
+          <p className="text-muted-foreground">
+            Create content from scratch or repurpose existing content
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => window.location.href = '/library'}
+          className="gap-2"
+        >
+          <Video className="w-4 h-4" />
+          Repurpose Existing Content
+        </Button>
       </div>
 
       {/* Project Indicator */}
@@ -445,7 +456,7 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
               <CardHeader className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-b border-emerald-500/20">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-emerald-400">Remix Source</h3>
+                  <h3 className="text-emerald-400">Repurpose Source</h3>
                 </div>
               </CardHeader>
               <CardContent className="p-4 space-y-3">

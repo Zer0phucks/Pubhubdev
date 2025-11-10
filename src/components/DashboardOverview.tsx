@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card } from "./ui/card";
-import { TrendingUp, Users, Heart, MessageSquare, Calendar, Zap, Workflow, Settings, Loader2, RefreshCw, Link2 } from "lucide-react";
+import { TrendingUp, Users, Heart, MessageSquare, Calendar, Zap, Workflow, Settings, Loader2, RefreshCw, Link2, Video } from "lucide-react";
 import { PlatformIcon } from "./PlatformIcon";
 import { getAutomationRules, getTransformationLabel } from "../utils/automationRules";
 import { postsAPI, connectionsAPI } from "../utils/api";
@@ -382,9 +382,9 @@ export const DashboardOverview = memo(function DashboardOverview({ selectedPlatf
                 <Workflow className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3>Active Automation Rules</h3>
+                <h3>Active Repurposing Automation</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {enabledRules.length} {enabledRules.length === 1 ? 'rule' : 'rules'} monitoring your video content
+                  {enabledRules.length} {enabledRules.length === 1 ? 'rule' : 'rules'} automatically repurposing your content
                 </p>
               </div>
             </div>
@@ -519,6 +519,20 @@ export const DashboardOverview = memo(function DashboardOverview({ selectedPlatf
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <button 
+            onClick={() => window.location.href = '/library'}
+            className="p-4 border border-violet-500/20 rounded-lg hover:bg-violet-500/10 transition-all hover:border-violet-500/40 text-left group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow">
+                <Video className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h4>Repurpose Now</h4>
+                <p className="text-muted-foreground text-sm">Transform existing content</p>
+              </div>
+            </div>
+          </button>
+          <button 
             onClick={() => onNavigate?.("compose")}
             className="p-4 border border-blue-500/20 rounded-lg hover:bg-blue-500/10 transition-all hover:border-blue-500/40 text-left group"
             data-tour="compose"
@@ -545,20 +559,6 @@ export const DashboardOverview = memo(function DashboardOverview({ selectedPlatf
               <div>
                 <h4>Schedule Content</h4>
                 <p className="text-muted-foreground text-sm">Plan your content calendar</p>
-              </div>
-            </div>
-          </button>
-          <button 
-            onClick={() => onOpenAIChat?.("Can you give me some suggestions for content to create?", true)}
-            className="p-4 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/10 transition-all hover:border-emerald-500/40 text-left group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h4>AI Suggestions</h4>
-                <p className="text-muted-foreground text-sm">Get content ideas</p>
               </div>
             </div>
           </button>

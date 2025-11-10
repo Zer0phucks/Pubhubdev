@@ -62,9 +62,17 @@ interface MediaLibraryProps {
     thumbnail: string;
     type: string;
   }) => void;
+  onRepurpose?: (content: {
+    id: string;
+    platform: string;
+    title: string;
+    description: string;
+    thumbnail: string;
+    type: string;
+  }) => void;
 }
 
-export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibraryProps) {
+export function MediaLibrary({ selectedPlatform = "all", onRemix, onRepurpose }: MediaLibraryProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "views" | "engagement">("recent");
   const [content, setContent] = useState<Content[]>([]);
@@ -108,8 +116,9 @@ export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibrary
   };
 
   const handleRemix = (content: Content) => {
-    if (onRemix) {
-      onRemix({
+    const handler = onRepurpose || onRemix;
+    if (handler) {
+      handler({
         id: content.id,
         platform: content.platform,
         title: content.title,
@@ -137,9 +146,9 @@ export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibrary
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1>Remix</h1>
+        <h1>Repurpose</h1>
         <p className="text-muted-foreground mt-2">
-          Remix your content from any platform into new formats with AI assistance
+          Repurpose your content from any platform into new formats with AI assistance
         </p>
       </div>
 
@@ -251,7 +260,7 @@ export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibrary
                 <div className="text-xs text-yellow-400 bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
                   <div className="flex items-center gap-1 mb-1">
                     <Zap className="w-3 h-3" />
-                    <span className="font-medium">Will auto-remix to:</span>
+                    <span className="font-medium">Will auto-repurpose to:</span>
                   </div>
                   <div className="space-y-1">
                     {matchingRules.map((rule, idx) => (
@@ -281,7 +290,7 @@ export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibrary
                   className="gap-1"
                 >
                   <Sparkles className="w-4 h-4" />
-                  Remix
+                  Repurpose
                 </Button>
               </div>
             </CardContent>
@@ -295,9 +304,13 @@ export function MediaLibrary({ selectedPlatform = "all", onRemix }: MediaLibrary
           <CardContent className="p-12 text-center">
             <Download className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
             <h3>No content found</h3>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 mb-4">
               Try adjusting your search query or select a different platform
             </p>
+            <Button onClick={() => {}} className="gap-2">
+              <Sparkles className="w-4 h-4" />
+              Start Repurposing
+            </Button>
           </CardContent>
         </Card>
       )}

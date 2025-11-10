@@ -125,7 +125,7 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
     
     if (option?.requiresTranscript && !video.hasTranscript) {
       toast.error("Transcript Required", {
-        description: "This remix requires a video transcript. Transcripts are available for YouTube videos.",
+        description: "This repurpose option requires a video transcript. Transcripts are available for YouTube videos.",
       });
       return;
     }
@@ -143,7 +143,7 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
     if (!selectedOption) return;
 
     // Show loading toast
-    toast.loading(`Remixing Content`, {
+    toast.loading(`Repurposing Content`, {
       description: `Creating ${selectedOption.title} from "${video.title}"...`,
     });
 
@@ -157,8 +157,8 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
         toast.dismiss();
         
         // Show success toast
-        toast.success("Remix Complete", {
-          description: "Your remixed content is ready in the composer!",
+        toast.success("Repurpose Complete", {
+          description: "Your repurposed content is ready in the composer!",
         });
 
         // Pass the transformed content back to parent
@@ -172,8 +172,8 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
         onOpenChange(false);
       } catch (error) {
         toast.dismiss();
-        toast.error("Remix Failed", {
-          description: error instanceof Error ? error.message : "An error occurred during remix.",
+        toast.error("Repurpose Failed", {
+          description: error instanceof Error ? error.message : "An error occurred during repurpose.",
         });
       }
     }, 1500);
@@ -194,12 +194,12 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
-            {selectedOption ? `Remix to ${selectedOption.title}` : "Remix Content"}
+            {selectedOption ? `Repurpose to ${selectedOption.title}` : "Repurpose Content"}
           </DialogTitle>
           <DialogDescription>
             {selectedOption 
-              ? "Add instructions to guide the AI on how to remix your content"
-              : "Choose how you'd like to remix this content"}
+              ? "Add instructions to guide the AI on how to repurpose your content"
+              : "Choose how you'd like to repurpose this content"}
           </DialogDescription>
         </DialogHeader>
 
@@ -244,7 +244,7 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Zap className="w-4 h-4" />
-              <span>Select a remix type</span>
+              <span>Select a repurpose type</span>
             </div>
             
             <div className="grid gap-3">
@@ -322,10 +322,10 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
                   <div className="flex gap-3">
                     <Sparkles className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <h4 className="text-yellow-400">Limited Remix Options</h4>
+                      <h4 className="text-yellow-400">Limited Repurpose Options</h4>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Some remixes require a video transcript. Transcripts are automatically available for YouTube videos.
-                        TikTok videos can use caption-based remixes.
+                        Some repurposing options require a video transcript. Transcripts are automatically available for YouTube videos.
+                        TikTok videos can use caption-based repurposing.
                       </p>
                     </div>
                   </div>
@@ -354,18 +354,18 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
 
             <div className="space-y-2">
               <Label htmlFor="remix-prompt">
-                Remix Instructions <span className="text-muted-foreground">(Optional)</span>
+                Repurpose Instructions <span className="text-muted-foreground">(Optional)</span>
               </Label>
               <Textarea
                 id="remix-prompt"
-                placeholder="Add specific instructions for how to remix this content. For example: 'Focus on actionable tips', 'Use a casual tone', 'Include emojis', 'Target audience is beginners', etc."
+                placeholder="Add specific instructions for how to repurpose this content. For example: 'Focus on actionable tips', 'Use a casual tone', 'Include emojis', 'Target audience is beginners', etc."
                 value={remixPrompt}
                 onChange={(e) => setRemixPrompt(e.target.value)}
                 rows={6}
                 className="resize-none"
               />
               <p className="text-sm text-muted-foreground">
-                These instructions will help the AI better tailor the remixed content to your needs.
+                These instructions will help the AI better tailor the repurposed content to your needs.
               </p>
             </div>
 
@@ -383,7 +383,7 @@ export function RemixDialog({ open, onOpenChange, video, onRemix }: RemixDialogP
                 className="flex-1 gap-2"
               >
                 <Sparkles className="w-4 h-4" />
-                Generate Remix
+                Generate Repurpose
               </Button>
             </div>
           </div>

@@ -89,7 +89,7 @@ export function CreateAutomationDialog({ open, onOpenChange, onSave, editRule }:
 
   const handleSave = () => {
     const rule: Omit<AutomationRule, 'id' | 'createdAt' | 'executionCount'> = {
-      name: name.trim() || `Auto-remix ${triggerPlatform} videos to ${getTransformationLabel(transformation)}`,
+      name: name.trim() || `Auto-repurpose ${triggerPlatform} videos to ${getTransformationLabel(transformation)}`,
       enabled: editRule?.enabled ?? true,
       trigger: {
         platform: triggerPlatform,
@@ -130,7 +130,7 @@ export function CreateAutomationDialog({ open, onOpenChange, onSave, editRule }:
             {editRule ? 'Edit Automation Rule' : 'Create Automation Rule'}
           </DialogTitle>
           <DialogDescription>
-            Automatically remix your videos into other content formats when they're published
+            Automatically repurpose your videos into other content formats when they're published
           </DialogDescription>
         </DialogHeader>
 
@@ -236,7 +236,7 @@ export function CreateAutomationDialog({ open, onOpenChange, onSave, editRule }:
             <CardContent className="p-4 space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-400" />
-                <h4>Remix it into...</h4>
+                <h4>Repurpose it into...</h4>
               </div>
 
               <div className="ml-6 space-y-2">
@@ -288,7 +288,7 @@ export function CreateAutomationDialog({ open, onOpenChange, onSave, editRule }:
                     className="min-h-[100px] resize-none text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    💡 Provide specific guidelines for how the AI should remix your content. This helps maintain your brand voice and content style.
+                    💡 Provide specific guidelines for how the AI should repurpose your content. This helps maintain your brand voice and content style.
                   </p>
                 </div>
               </div>

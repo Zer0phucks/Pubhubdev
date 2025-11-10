@@ -58,14 +58,16 @@ export function AIChatDialog({
       const welcomeMessage: Message = {
         id: "welcome",
         role: "assistant",
-        content: `Hi! I'm PubHub AI, your intelligent content assistant. I can help you:
+        content: `Hi! I'm PubHub AI, your intelligent content repurposing assistant. I can help you:
 
-• View and analyze your posts across all platforms
+• Repurpose your content across different platforms
 • Create and schedule new posts for multiple platforms
+• View and analyze your posts across all platforms
+• Get content ideas and brainstorm new topics
 • Check which platforms you're connected to
 • Parse natural language date/time (e.g., "Tuesday at 8am")
 
-Try asking me to create a post or show you your recent content!`,
+Try asking me to repurpose content or create a new post!`,
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);

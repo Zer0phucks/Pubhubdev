@@ -3,7 +3,7 @@ import type { Platform } from '@/types';
 import { useOutletContext } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
-const Trending = lazy(() => import('../Trending').then(m => ({ default: m.Trending })));
+const Brainstorm = lazy(() => import('../Brainstorm').then(m => ({ default: m.Brainstorm })));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
@@ -20,7 +20,7 @@ export function TrendingRoute() {
 
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <Trending selectedPlatform={selectedPlatform || 'all'} />
+      <Brainstorm selectedPlatform={selectedPlatform || 'all'} />
     </Suspense>
   );
 }

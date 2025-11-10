@@ -28,6 +28,16 @@ export function Landing({ onGetStarted, onSignUp }: LandingProps) {
 
   const features = [
     {
+      icon: Video,
+      title: "AI-Powered Content Repurposing",
+      description: "Transform one piece of content into multiple platform-optimized versions automatically. Repurpose your best-performing content across different platforms with AI-powered transformations.",
+    },
+    {
+      icon: Sparkles,
+      title: "AI Assistant",
+      description: "Get content ideas, optimal posting times, and engagement tips powered by advanced AI.",
+    },
+    {
       icon: Calendar,
       title: "Smart Scheduling",
       description: "Plan and schedule content across all platforms with our visual calendar. Never miss the perfect posting time.",
@@ -39,18 +49,8 @@ export function Landing({ onGetStarted, onSignUp }: LandingProps) {
     },
     {
       icon: BarChart3,
-      title: "Advanced Analytics",
+      title: "Performance Insights",
       description: "Track performance metrics, engagement rates, and growth across all your connected platforms.",
-    },
-    {
-      icon: Sparkles,
-      title: "AI Assistant",
-      description: "Get content ideas, optimal posting times, and engagement tips powered by advanced AI.",
-    },
-    {
-      icon: Video,
-      title: "Content Remix",
-      description: "Repurpose your best-performing content across different platforms with AI-powered transformations.",
     },
     {
       icon: FileText,
@@ -75,7 +75,7 @@ export function Landing({ onGetStarted, onSignUp }: LandingProps) {
     {
       icon: Clock,
       title: "Save 10+ Hours Weekly",
-      description: "Automate repetitive tasks and manage everything from one dashboard",
+      description: "Automatically repurpose content instead of creating from scratch",
     },
     {
       icon: TrendingUp,
@@ -90,7 +90,7 @@ export function Landing({ onGetStarted, onSignUp }: LandingProps) {
     {
       icon: Zap,
       title: "Work Smarter",
-      description: "AI-powered insights help you create content that resonates",
+      description: "AI-powered repurposing transforms your content for each platform automatically",
     },
   ];
 
@@ -127,16 +127,16 @@ export function Landing({ onGetStarted, onSignUp }: LandingProps) {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500/10 to-teal-600/10 border border-emerald-500/20 mb-6">
               <Sparkles className="w-4 h-4 text-emerald-500" />
-              <span className="text-emerald-500">The All-in-One Creator Platform</span>
+              <span className="text-emerald-500">AI-Powered Content Repurposing Platform</span>
             </div>
             
             <h1 className="text-6xl mb-6 bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
-              Publish Everywhere,<br />Manage from One Place
+              Transform One Piece of Content<br />Into Multiple Platform Versions
             </h1>
             
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              PubHub helps content creators publish, schedule, and manage their content across 9+ social platforms 
-              with AI-powered insights and unified analytics.
+              PubHub helps content creators automatically repurpose their best content across 9+ social platforms 
+              with AI-powered transformations, smart scheduling, and performance insights.
             </p>
 
             <div className="flex items-center justify-center gap-4 mb-12">

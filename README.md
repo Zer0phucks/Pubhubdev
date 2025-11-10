@@ -1,16 +1,19 @@
 # PubHub
 
-A multi-platform social media management dashboard for content creators to manage, schedule, and analyze their social media presence across multiple platforms.
+An AI-powered content repurposing platform that helps creators transform one piece of content into multiple platform-optimized versions automatically. Manage, schedule, and repurpose your content across 9 social media platforms from one dashboard.
 
 ![PubHub Dashboard](https://pubhub.dev)
 
 ## Features
 
+- **AI-Powered Content Repurposing** - Transform one piece of content into multiple platform-optimized versions automatically
+- **Automation Rules** - Set up workflows to automatically repurpose video content (e.g., TikTok → Blog Post)
 - **Multi-Platform Publishing** - Manage Twitter/X, Instagram, LinkedIn, Facebook, YouTube, TikTok, Pinterest, Reddit, and WordPress from one dashboard
 - **Content Composer** - Create and schedule posts with rich text, media, and platform-specific optimizations
+- **Content Brainstorm** - Get AI-powered content ideas aligned with your niche and content type
 - **Unified Inbox** - Centralized message management across all connected platforms
 - **Content Calendar** - Visual scheduling interface with drag-and-drop functionality
-- **Analytics Dashboard** - Real-time performance metrics and insights
+- **Performance Insights** - Real-time performance metrics and insights for creators
 - **AI Assistant** - Built-in AI chat for content suggestions and strategy (⌘K)
 - **OAuth Integration** - Secure platform connections with Google, Facebook, Twitter, LinkedIn, and more
 - **Dark Mode** - Full dark/light theme support

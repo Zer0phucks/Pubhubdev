@@ -35,7 +35,6 @@ import {
   FileText,
   BookOpen,
   TrendingUp,
-  Trophy,
   Loader2,
 } from 'lucide-react';
 import { PubHubLogo } from './PubHubLogo';
@@ -212,12 +211,11 @@ export function ProtectedLayout() {
   const menuItems = [
     { path: '/dashboard', label: 'Project Overview', icon: LayoutDashboard },
     { path: '/compose', label: 'Compose', icon: PenSquare },
-    { path: '/inbox', label: 'Inbox', icon: Inbox, collapsible: true },
+    { path: '/library', label: 'Repurpose', icon: Video },
     { path: '/calendar', label: 'Calendar', icon: Calendar },
-    { path: '/trending', label: 'Trending', icon: TrendingUp },
-    { path: '/competition', label: 'Competition Watch', icon: Trophy },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-    { path: '/library', label: 'Remix', icon: Video },
+    { path: '/inbox', label: 'Inbox', icon: Inbox, collapsible: true },
+    { path: '/trending', label: 'Brainstorm', icon: TrendingUp },
+    { path: '/analytics', label: 'Performance Insights', icon: BarChart3 },
     { path: '/settings', label: 'Project Settings', icon: SettingsIcon, collapsible: true },
   ];
 
@@ -231,7 +229,6 @@ export function ProtectedLayout() {
     if (path.startsWith('/library')) return 'library';
     if (path.startsWith('/notifications')) return 'notifications';
     if (path.startsWith('/trending')) return 'trending';
-    if (path.startsWith('/competition')) return 'competition';
     if (path.startsWith('/settings')) return 'project-settings';
     return 'project-overview';
   };
@@ -434,7 +431,6 @@ export function ProtectedLayout() {
                 'library': '/library',
                 'notifications': '/notifications',
                 'trending': '/trending',
-                'competition': '/competition',
                 'project-settings': '/settings',
               };
               handleNavigate(pathMap[view] || '/dashboard', subView);

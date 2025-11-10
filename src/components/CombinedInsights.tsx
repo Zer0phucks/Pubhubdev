@@ -532,39 +532,20 @@ export function CombinedInsights({ selectedPlatform }: CombinedInsightsProps) {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="p-6 bg-gradient-to-br from-pink-500/10 to-rose-500/10 border-pink-500/20">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="w-5 h-5 text-pink-400" />
-              <h4>Competitors to Watch</h4>
-            </div>
-            <div className="space-y-2">
-              {trendingInsights[selectedPlatform].competitors.map((competitor, index) => (
-                <div key={index} className="p-3 bg-pink-500/5 rounded flex items-center justify-between">
-                  <span>{competitor}</span>
-                  <Button variant="ghost" size="sm" className="text-pink-400 hover:text-pink-300">
-                    View
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-emerald-400" />
-              <h4>Content Opportunities</h4>
-            </div>
-            <div className="space-y-2">
-              {trendingInsights[selectedPlatform].opportunities.map((opportunity, index) => (
-                <div key={index} className="p-3 bg-emerald-500/5 rounded flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span className="text-sm">{opportunity}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+        <Card className="p-6 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-emerald-400" />
+            <h4>Content Opportunities</h4>
+          </div>
+          <div className="space-y-2">
+            {trendingInsights[selectedPlatform].opportunities.map((opportunity, index) => (
+              <div key={index} className="p-3 bg-emerald-500/5 rounded flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm">{opportunity}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         <Card className="p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
           <div className="flex items-center gap-2 mb-4">
@@ -576,7 +557,7 @@ export function CombinedInsights({ selectedPlatform }: CombinedInsightsProps) {
               • {trendingInsights[selectedPlatform].topics[0].name} is seeing explosive growth on {platformNames[selectedPlatform]}.
             </p>
             <p className="text-muted-foreground">
-              • Your competitors are posting 2x more frequently. Consider increasing your posting schedule.
+              • Consider repurposing your top-performing content into these trending topics for maximum reach.
             </p>
             <p className="text-muted-foreground">
               • Capitalize on trending topics early for maximum reach - posts made within the first 24 hours get 5x more engagement.

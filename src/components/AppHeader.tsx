@@ -115,11 +115,11 @@ export function AppHeader({
       case "calendar":
         return "Content Calendar";
       case "analytics":
-        return "Analytics";
+        return "Performance Insights";
       case "library":
-        return "Remix";
+        return "Repurpose";
       case "trending":
-        return "Trending Content";
+        return "Brainstorm";
       case "templates":
         return "Templates";
       case "project-settings":

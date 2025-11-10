@@ -365,7 +365,6 @@ export type AppView =
   | "library"
   | "notifications"
   | "trending"
-  | "competition"
   | "project-settings";
 
 // Project types
