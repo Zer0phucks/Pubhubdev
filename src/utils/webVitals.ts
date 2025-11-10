@@ -105,39 +105,27 @@ export async function initWebVitals(): Promise<void> {
 
     // Track Cumulative Layout Shift (CLS)
     // Target: < 0.1 (good), < 0.25 (moderate)
-    onCLS(sendMetricToSentry, {
-      reportAllChanges: false, // Only report on page hide/unload
-    });
+    onCLS(sendMetricToSentry);
 
     // Track First Input Delay (FID)
     // Target: < 100ms (good), < 300ms (moderate)
-    onFID(sendMetricToSentry, {
-      reportAllChanges: false,
-    });
+    onFID(sendMetricToSentry);
 
     // Track Largest Contentful Paint (LCP)
     // Target: < 2.5s (good), < 4s (moderate)
-    onLCP(sendMetricToSentry, {
-      reportAllChanges: false,
-    });
+    onLCP(sendMetricToSentry);
 
     // Track First Contentful Paint (FCP)
     // Target: < 1.8s (good), < 3s (moderate)
-    onFCP(sendMetricToSentry, {
-      reportAllChanges: false,
-    });
+    onFCP(sendMetricToSentry);
 
     // Track Time to First Byte (TTFB)
     // Target: < 800ms (good), < 1.8s (moderate)
-    onTTFB(sendMetricToSentry, {
-      reportAllChanges: false,
-    });
+    onTTFB(sendMetricToSentry);
 
     // Track Interaction to Next Paint (INP)
     // Target: < 200ms (good), < 500ms (moderate)
-    onINP(sendMetricToSentry, {
-      reportAllChanges: false,
-    });
+    onINP(sendMetricToSentry);
 
     if (import.meta.env.MODE === 'development') {
       console.log('📊 Core Web Vitals monitoring initialized');
@@ -195,12 +183,12 @@ export async function getWebVitalsSummary(): Promise<Record<string, number>> {
         }
       };
 
-      onCLS((metric) => { summary.CLS = metric.value; checkComplete(); });
-      onFID((metric) => { summary.FID = metric.value; checkComplete(); });
-      onLCP((metric) => { summary.LCP = metric.value; checkComplete(); });
-      onFCP((metric) => { summary.FCP = metric.value; checkComplete(); });
-      onTTFB((metric) => { summary.TTFB = metric.value; checkComplete(); });
-      onINP((metric) => { summary.INP = metric.value; checkComplete(); });
+      onCLS((metric) => { summary.CLS = metric.value; checkComplete(); }, { reportAllChanges: true });
+      onFID((metric) => { summary.FID = metric.value; checkComplete(); }, { reportAllChanges: true });
+      onLCP((metric) => { summary.LCP = metric.value; checkComplete(); }, { reportAllChanges: true });
+      onFCP((metric) => { summary.FCP = metric.value; checkComplete(); }, { reportAllChanges: true });
+      onTTFB((metric) => { summary.TTFB = metric.value; checkComplete(); }, { reportAllChanges: true });
+      onINP((metric) => { summary.INP = metric.value; checkComplete(); }, { reportAllChanges: true });
 
       // Timeout after 5 seconds
       setTimeout(() => resolve(summary), 5000);
