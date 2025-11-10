@@ -26,7 +26,7 @@ export function useFormValidation<T extends Record<string, unknown>>(
   const [touched, setTouched] = useState<Record<keyof T, boolean>>({} as Record<keyof T, boolean>);
 
   const validateField = useCallback(
-    (fieldName: keyof T, value: any): string[] => {
+    (fieldName: keyof T, value: unknown): string[] => {
       const rule = schema[fieldName];
       if (!rule) return [];
 
@@ -86,7 +86,7 @@ export function useFormValidation<T extends Record<string, unknown>>(
   }, [schema, values, validateField]);
 
   const handleChange = useCallback(
-    (fieldName: keyof T, value: any) => {
+    (fieldName: keyof T, value: unknown) => {
       // Update value
       setValues((prev) => ({
         ...prev,
@@ -135,7 +135,7 @@ export function useFormValidation<T extends Record<string, unknown>>(
     setTouched({} as Record<keyof T, boolean>);
   }, [initialValues]);
 
-  const setFieldValue = useCallback((fieldName: keyof T, value: any) => {
+  const setFieldValue = useCallback((fieldName: keyof T, value: unknown) => {
     setValues((prev) => ({
       ...prev,
       [fieldName]: value,
