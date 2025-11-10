@@ -86,7 +86,7 @@ export default defineConfig({
           if (id.includes('/components/AccountSettings') || id.includes('/components/ProjectSettings')) {
             return 'route-settings';
           }
-          if (id.includes('/components/EbookGenerator') || id.includes('/components/Notifications')) {
+          if (id.includes('/components/Notifications')) {
             return 'route-features';
           }
         },

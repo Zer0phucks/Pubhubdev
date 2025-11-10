@@ -23,7 +23,6 @@ const ContentCalendar = lazy(() => import('../components/ContentCalendar').then(
 const Analytics = lazy(() => import('../components/Analytics').then(m => ({ default: m.Analytics })));
 const MediaLibrary = lazy(() => import('../components/MediaLibrary').then(m => ({ default: m.MediaLibrary })));
 const Notifications = lazy(() => import('../components/Notifications').then(m => ({ default: m.Notifications })));
-const EbookGenerator = lazy(() => import('../components/EbookGenerator').then(m => ({ default: m.EbookGenerator })));
 const Trending = lazy(() => import('../components/Trending').then(m => ({ default: m.Trending })));
 const CompetitionWatch = lazy(() => import('../components/CompetitionWatch').then(m => ({ default: m.CompetitionWatch })));
 const ProjectSettings = lazy(() => import('../components/ProjectSettings').then(m => ({ default: m.ProjectSettings })));
@@ -100,13 +99,6 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { NotificationsRoute } = await import('../components/routes/NotificationsRoute');
           return { Component: NotificationsRoute };
-        },
-      },
-      {
-        path: 'ebooks',
-        lazy: async () => {
-          const { EbooksRoute } = await import('../components/routes/EbooksRoute');
-          return { Component: EbooksRoute };
         },
       },
       {

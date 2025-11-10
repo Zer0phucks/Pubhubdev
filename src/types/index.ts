@@ -364,7 +364,6 @@ export type AppView =
   | "analytics"
   | "library"
   | "notifications"
-  | "ebooks"
   | "trending"
   | "competition"
   | "project-settings";

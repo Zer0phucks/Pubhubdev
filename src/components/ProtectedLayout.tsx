@@ -177,11 +177,6 @@ export function ProtectedLayout() {
         e.preventDefault();
         navigate('/library');
       }
-      // Cmd/Ctrl + E for ebooks
-      if (e.key === "e" && (e.metaKey || e.ctrlKey) && e.target === document.body) {
-        e.preventDefault();
-        navigate('/ebooks');
-      }
       // Cmd/Ctrl + T for trending
       if (e.key === "t" && (e.metaKey || e.ctrlKey) && e.target === document.body) {
         e.preventDefault();
@@ -223,7 +218,6 @@ export function ProtectedLayout() {
     { path: '/competition', label: 'Competition Watch', icon: Trophy },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/library', label: 'Remix', icon: Video },
-    { path: '/ebooks', label: 'Ebooks', icon: BookOpen },
     { path: '/settings', label: 'Project Settings', icon: SettingsIcon, collapsible: true },
   ];
 
@@ -236,7 +230,6 @@ export function ProtectedLayout() {
     if (path.startsWith('/analytics')) return 'analytics';
     if (path.startsWith('/library')) return 'library';
     if (path.startsWith('/notifications')) return 'notifications';
-    if (path.startsWith('/ebooks')) return 'ebooks';
     if (path.startsWith('/trending')) return 'trending';
     if (path.startsWith('/competition')) return 'competition';
     if (path.startsWith('/settings')) return 'project-settings';
@@ -440,7 +433,6 @@ export function ProtectedLayout() {
                 'analytics': '/analytics',
                 'library': '/library',
                 'notifications': '/notifications',
-                'ebooks': '/ebooks',
                 'trending': '/trending',
                 'competition': '/competition',
                 'project-settings': '/settings',
@@ -497,7 +489,6 @@ export function ProtectedLayout() {
               'analytics': '/analytics',
               'library': '/library',
               'notifications': '/notifications',
-              'ebooks': '/ebooks',
               'trending': '/trending',
               'project-settings': '/settings',
             };
