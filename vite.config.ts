@@ -34,13 +34,13 @@ export default defineConfig({
         manualChunks: (id) => {
           // Core vendor libraries
           if (id.includes('node_modules')) {
-            // React core and all React-dependent libraries must be in vendor-react
-            if (id.includes('react') || id.includes('react-dom') ||
-                id.includes('next-themes') || id.includes('sonner') ||
+            // React core stays in main bundle to ensure it loads first
+            // Only split out React ecosystem libraries
+            if (id.includes('next-themes') || id.includes('sonner') ||
                 id.includes('vaul') || id.includes('react-resizable-panels') ||
                 id.includes('embla-carousel-react') || id.includes('swr') ||
                 id.includes('react-router-dom') || id.includes('@vercel/analytics')) {
-              return 'vendor-react';
+              return 'vendor-react-ecosystem';
             }
             if (id.includes('@radix-ui')) {
               return 'vendor-ui';
