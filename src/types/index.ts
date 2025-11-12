@@ -3,7 +3,7 @@
 export type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 export type PlatformFilter = "all" | Platform;
 
-export type View = "home" | "compose" | "inbox" | "calendar" | "settings";
+export type View = "home" | "compose" | "inbox" | "calendar" | "settings" | "brand" | "persona";
 export type InboxView = "all" | "unread" | "comments" | "messages";
 
 export type PostStatus = "scheduled" | "published" | "draft" | "failed";
@@ -367,8 +367,8 @@ export type AppView =
   | "trending"
   | "project-settings";
 
-// Project types
-export interface Project {
+// Project types (legacy - use Project from persona.ts for new code)
+export interface ProjectLegacy {
   id: string;
   name: string;
   description?: string;
@@ -376,3 +376,7 @@ export interface Project {
   updatedAt?: string;
   ownerId?: string;
 }
+
+// ============= PERSONA SYSTEM TYPES =============
+// Export all persona-related types
+export * from './persona';

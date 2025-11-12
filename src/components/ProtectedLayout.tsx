@@ -36,6 +36,8 @@ import {
   BookOpen,
   TrendingUp,
   Loader2,
+  Palette,
+  User,
 } from 'lucide-react';
 import { PubHubLogo } from './PubHubLogo';
 import { AppHeader } from './AppHeader';
@@ -216,6 +218,8 @@ export function ProtectedLayout() {
     { path: '/inbox', label: 'Inbox', icon: Inbox, collapsible: true },
     { path: '/trending', label: 'Brainstorm', icon: TrendingUp },
     { path: '/analytics', label: 'Performance Insights', icon: BarChart3 },
+    { path: '/brand', label: 'Brand', icon: Palette },
+    { path: '/persona', label: 'Persona', icon: User },
     { path: '/settings', label: 'Project Settings', icon: SettingsIcon, collapsible: true },
   ];
 
@@ -229,6 +233,8 @@ export function ProtectedLayout() {
     if (path.startsWith('/library')) return 'library';
     if (path.startsWith('/notifications')) return 'notifications';
     if (path.startsWith('/trending')) return 'trending';
+    if (path.startsWith('/brand')) return 'project-overview'; // Brand is part of project
+    if (path.startsWith('/persona')) return 'project-overview'; // Persona is part of project
     if (path.startsWith('/settings')) return 'project-settings';
     return 'project-overview';
   };

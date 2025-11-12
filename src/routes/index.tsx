@@ -114,6 +114,20 @@ export const router = createBrowserRouter([
           return { Component: SettingsRoute };
         },
       },
+      {
+        path: 'brand',
+        lazy: async () => {
+          const { BrandRoute } = await import('../components/routes/BrandRoute');
+          return { Component: BrandRoute };
+        },
+      },
+      {
+        path: 'persona',
+        lazy: async () => {
+          const { PersonaRoute } = await import('../components/routes/PersonaRoute');
+          return { Component: PersonaRoute };
+        },
+      },
     ],
   },
   {

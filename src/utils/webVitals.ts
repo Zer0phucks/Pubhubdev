@@ -3,11 +3,10 @@
  *
  * Tracks and reports Core Web Vitals metrics to Sentry:
  * - LCP (Largest Contentful Paint) - Target: < 2.5s
- * - FID (First Input Delay) - Target: < 100ms
  * - CLS (Cumulative Layout Shift) - Target: < 0.1
  * - FCP (First Contentful Paint) - Target: < 1.8s
  * - TTFB (Time to First Byte) - Target: < 800ms
- * - INP (Interaction to Next Paint) - Target: < 200ms
+ * - INP (Interaction to Next Paint) - Target: < 200ms (replaces FID in v5+)
  */
 
 import * as Sentry from '@sentry/react';
@@ -20,10 +19,6 @@ const THRESHOLDS = {
   LCP: {
     good: 2500,
     moderate: 4000,
-  },
-  FID: {
-    good: 100,
-    moderate: 300,
   },
   CLS: {
     good: 0.1,
@@ -101,15 +96,12 @@ function sendMetricToSentry(metric: Metric): void {
 export async function initWebVitals(): Promise<void> {
   try {
     // Dynamically import web-vitals to avoid bundle bloat
-    const { onCLS, onFID, onLCP, onFCP, onTTFB, onINP } = await import('web-vitals');
+    // Note: onFID is deprecated in v5+ (replaced by INP)
+    const { onCLS, onLCP, onFCP, onTTFB, onINP } = await import('web-vitals');
 
     // Track Cumulative Layout Shift (CLS)
     // Target: < 0.1 (good), < 0.25 (moderate)
     onCLS(sendMetricToSentry);
-
-    // Track First Input Delay (FID)
-    // Target: < 100ms (good), < 300ms (moderate)
-    onFID(sendMetricToSentry);
 
     // Track Largest Contentful Paint (LCP)
     // Target: < 2.5s (good), < 4s (moderate)
@@ -125,6 +117,7 @@ export async function initWebVitals(): Promise<void> {
 
     // Track Interaction to Next Paint (INP)
     // Target: < 200ms (good), < 500ms (moderate)
+    // Note: INP replaces FID (First Input Delay) in web-vitals v5+
     onINP(sendMetricToSentry);
 
     if (import.meta.env.MODE === 'development') {
@@ -168,13 +161,14 @@ export function reportCustomMetric(
  */
 export async function getWebVitalsSummary(): Promise<Record<string, number>> {
   try {
-    const { onCLS, onFID, onLCP, onFCP, onTTFB, onINP } = await import('web-vitals');
+    // Note: onFID is deprecated in v5+ (replaced by INP)
+    const { onCLS, onLCP, onFCP, onTTFB, onINP } = await import('web-vitals');
 
     const summary: Record<string, number> = {};
 
     return new Promise((resolve) => {
       let collected = 0;
-      const total = 6;
+      const total = 5; // Updated: removed FID, now 5 metrics
 
       const checkComplete = () => {
         collected++;
@@ -184,7 +178,6 @@ export async function getWebVitalsSummary(): Promise<Record<string, number>> {
       };
 
       onCLS((metric) => { summary.CLS = metric.value; checkComplete(); }, { reportAllChanges: true });
-      onFID((metric) => { summary.FID = metric.value; checkComplete(); }, { reportAllChanges: true });
       onLCP((metric) => { summary.LCP = metric.value; checkComplete(); }, { reportAllChanges: true });
       onFCP((metric) => { summary.FCP = metric.value; checkComplete(); }, { reportAllChanges: true });
       onTTFB((metric) => { summary.TTFB = metric.value; checkComplete(); }, { reportAllChanges: true });

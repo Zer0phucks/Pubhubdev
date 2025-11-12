@@ -2417,7 +2417,7 @@ app.post("/make-server-19ccd85e/ai/generate-text", requireAuth, userRateLimiter(
             { role: 'user', content: userMessage }
           ],
           max_completion_tokens: contextType === 'template' ? 800 : 400,
-          temperature: contextType === 'post' ? 0.8 : 0.7, // More creative for posts
+          // Note: temperature parameter removed - Azure OpenAI model only supports default value (1)
         }),
       }
     );

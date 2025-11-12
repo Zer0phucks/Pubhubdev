@@ -1,841 +1,594 @@
-# PubHub - Code Quality Improvement Tasks
+# Content Repurposing System Implementation Tasks
 
-**Generated**: 2025-11-08
-**Overall Health Score**: 72/100 → 91/100 ✅ **PHASE 3 TARGET EXCEEDED**
-**Phase 2 Target**: 85/100 ✅ | **Phase 3 Target**: 90/100 ✅ | **Achieved**: 91/100
-
-## Progress Overview
-- [x] Phase 1: Critical Foundations (1-2 weeks) ✅ **COMPLETED**
-- [x] Phase 2: Quality Improvements (2-3 weeks) ✅ **COMPLETED - EXCEEDED TARGET**
-- [x] Phase 3: Scalability & Performance (3-4 weeks) ✅ **COMPLETED - EXCEEDED TARGET**
+## Overview
+Implement comprehensive Brand + Persona management with RAG-powered content analysis for personalized content generation.
 
 ---
 
-## Phase 1: Critical Foundations (1-2 weeks)
+## Phase 1: Data Model & Database Schema
 
-### Task 1.1: TypeScript Configuration ✅ COMPLETED
-**Priority**: 🔴 Critical | **Effort**: Low (1 hour) | **Impact**: High
+### 1.1 Database Schema Design
 
-- [x] Create tsconfig.json with strict mode
-- [x] Enable `strictNullChecks`
-- [x] Configure path aliases (@/ → ./src/)
-- [x] Add `skipLibCheck` for faster compilation
-- [x] Test build with new config
-- [x] Create tsconfig.node.json for config files
-- [ ] Enable `noImplicitAny` (after `any` cleanup)
+#### Projects Table (if multi-project)
+```sql
+CREATE TABLE projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-**Files**: Root directory
+#### Brands Table
+```sql
+CREATE TABLE brands (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+
+  -- Colors
+  primary_color TEXT,
+  secondary_color TEXT,
+  accent_color TEXT,
+  palette_keywords TEXT[],
+
+  -- Logos (Supabase Storage paths)
+  logo_light_url TEXT,
+  logo_dark_url TEXT,
+  logo_square_url TEXT,
+  logo_keywords TEXT[],
+
+  -- Typography
+  primary_font TEXT,
+  secondary_font TEXT,
+
+  -- Brand elements (from persona schema)
+  pillars TEXT[],
+  values TEXT[],
+  positioning_statement TEXT,
+  taglines TEXT[],
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(project_id)
+);
+```
+
+#### Personas Table
+```sql
+CREATE TABLE personas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+
+  -- Store entire persona as JSONB (matches CreatorPersona schema)
+  persona_data JSONB NOT NULL,
+
+  -- Version tracking
+  version_major INTEGER DEFAULT 1,
+  version_minor INTEGER DEFAULT 0,
+  version_patch INTEGER DEFAULT 0,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id),
+
+  UNIQUE(project_id)
+);
+```
+
+#### Content Sources Table
+```sql
+CREATE TABLE content_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+
+  -- Source info
+  platform TEXT, -- 'youtube', 'blog', 'twitter', 'linkedin', 'manual_url'
+  url TEXT NOT NULL,
+  title TEXT,
+
+  -- Content
+  raw_content TEXT,
+  processed_content TEXT,
+  content_type TEXT, -- 'article', 'video_transcript', 'social_post', 'pdf'
+
+  -- Metadata
+  metadata JSONB, -- platform-specific data, author, date, etc.
+
+  -- Processing status
+  status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
+  error_message TEXT,
+
+  -- Timestamps
+  ingested_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### Vector Storage Table (pgvector)
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE persona_vectors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_source_id UUID NOT NULL REFERENCES content_sources(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+
+  -- Vector embedding (512 dimensions for OpenAI text-embedding-3-small)
+  embedding vector(512),
+
+  -- Chunk info
+  chunk_text TEXT NOT NULL,
+  chunk_index INTEGER,
+
+  -- Metadata for filtering
+  metadata JSONB,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index for similarity search
+CREATE INDEX persona_vectors_embedding_idx ON persona_vectors
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+#### Tasks
+- [ ] Create migration file: `supabase/migrations/YYYYMMDDHHMMSS_create_persona_system.sql`
+- [ ] Add projects table (if multi-project confirmed)
+- [ ] Add brands table with visual + brand elements
+- [ ] Add personas table with JSONB storage
+- [ ] Add content_sources table
+- [ ] Enable pgvector extension
+- [ ] Add persona_vectors table with vector(1536) column
+- [ ] Create similarity search index (ivfflat)
+- [ ] Set up RLS policies:
+  - [ ] Users can only access their own projects
+  - [ ] Users can only access brands/personas for their projects
+  - [ ] Users can only access their content_sources
+  - [ ] Users can only query vectors for their projects
+- [ ] Test migration locally with `supabase db reset`
+
+### 1.2 TypeScript Types
+
+Create `src/types/persona.ts` with complete CreatorPersona schema types:
+
+```typescript
+export interface CreatorPersona {
+  id: string;
+  version?: {
+    major: number;
+    minor: number;
+    patch: number;
+    updated_at: string;
+  };
+  identity: {
+    display_name: string;
+    aliases?: string[];
+    bio_summary?: string;
+    expertise_domains?: string[];
+    audience_profile?: {
+      primary_audience?: string;
+      audience_needs?: string[];
+      reading_level?: 'casual' | 'intermediate' | 'advanced';
+    };
+  };
+  brand?: {
+    pillars?: string[];
+    values?: string[];
+    positioning_statement?: string;
+    taglines?: string[];
+    visual_notes?: {
+      palette_keywords?: string[];
+      logo_keywords?: string[];
+    };
+  };
+  voice?: {
+    tone_axes?: {
+      formal?: number; // 0-1
+      playful?: number;
+      confident?: number;
+      empathetic?: number;
+      direct?: number;
+      provocative?: number;
+    };
+    lexical_preferences?: {
+      signature_phrases?: string[];
+      preferred_terms?: string[];
+      avoid_terms?: string[];
+      jargon_level?: 'low' | 'medium' | 'high';
+      emoji_usage?: 'none' | 'light' | 'moderate' | 'heavy';
+      punctuation_style?: string;
+    };
+    rhetorical_moves?: Array<{
+      name: string;
+      pattern: string;
+      when_to_use?: string;
+    }>;
+    humor_style?: string;
+  };
+  style?: {
+    content_structures?: Array<{
+      format: string;
+      section_order?: string[];
+      length_targets?: {
+        words?: number;
+        minutes_speaking?: number;
+      };
+      cadence?: string;
+      call_to_action_patterns?: string[];
+      linking_and_citation_style?: string;
+    }>;
+    story_patterns?: Array<{
+      name: string;
+      beats?: string[];
+    }>;
+    formatting_preferences?: {
+      headings?: string;
+      lists?: string;
+      code_blocks?: string;
+      quotations?: string;
+    };
+  };
+  topics?: {
+    core_topics?: string[];
+    edge_topics?: string[];
+    taboo_topics?: string[];
+    stances?: Array<{
+      topic: string;
+      position: string;
+      nuance?: string;
+    }>;
+  };
+  content_signals?: {
+    sources?: Array<{
+      platform: 'youtube' | 'blog' | 'podcast' | 'newsletter' | 'social' | 'other';
+      url?: string;
+      content_ids?: string[];
+      coverage_window?: string;
+    }>;
+    quantitative?: {
+      avg_sentence_length?: number;
+      readability_index?: number;
+      type_token_ratio?: number;
+      question_rate?: number;
+      exclamation_rate?: number;
+    };
+    qualitative?: {
+      common_openers?: string[];
+      common_closers?: string[];
+      signature_examples?: string[];
+      negative_examples?: string[];
+    };
+    embeddings?: Array<{
+      store_name?: string;
+      index_id?: string;
+      namespace?: string;
+      dimension?: number;
+    }>;
+  };
+  dos_and_donts?: {
+    do?: string[];
+    dont?: string[];
+  };
+  constraints?: {
+    legal?: string[];
+    platform_specific?: string[];
+    content_boundaries?: string[];
+  };
+  safety_and_ethics: {
+    consent_status: 'granted' | 'revoked' | 'unknown';
+    attribution_rules?: string;
+    refusal_conditions?: string[];
+    disclosure_rules?: string;
+  };
+  prompting?: {
+    global_instructions?: string;
+    format_recipes?: Array<{
+      format: string;
+      system_preamble?: string;
+      style_directives?: string[];
+      checklist?: string[];
+    }>;
+  };
+  evaluation?: {
+    acceptance_tests?: Array<{
+      test_name: string;
+      input_prompt: string;
+      expected_traits?: string[];
+      automatic_metrics?: {
+        style_similarity_threshold?: number;
+        toxicity_limit?: number;
+      };
+    }>;
+    human_review_guidelines?: string;
+  };
+  provenance: {
+    created_at: string;
+    created_by?: string;
+    source_digest?: string;
+    data_summary: string;
+    notes?: string;
+  };
+}
+
+export interface Brand {
+  id: string;
+  project_id: string;
+
+  // Colors
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
+  palette_keywords?: string[];
+
+  // Logos
+  logo_light_url?: string;
+  logo_dark_url?: string;
+  logo_square_url?: string;
+  logo_keywords?: string[];
+
+  // Typography
+  primary_font?: string;
+  secondary_font?: string;
+
+  // Brand elements
+  pillars?: string[];
+  values?: string[];
+  positioning_statement?: string;
+  taglines?: string[];
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentSource {
+  id: string;
+  project_id: string;
+  platform: 'youtube' | 'blog' | 'twitter' | 'linkedin' | 'manual_url' | string;
+  url: string;
+  title?: string;
+  raw_content?: string;
+  processed_content?: string;
+  content_type?: 'article' | 'video_transcript' | 'social_post' | 'pdf';
+  metadata?: Record<string, any>;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message?: string;
+  ingested_at: string;
+  processed_at?: string;
+  created_at: string;
+}
+
+export interface VectorDocument {
+  id: string;
+  content_source_id: string;
+  project_id: string;
+  embedding: number[];
+  chunk_text: string;
+  chunk_index?: number;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+export interface Project {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+#### Tasks
+- [ ] Create `src/types/persona.ts` with all types above
+- [ ] Create `src/types/brand.ts` or include Brand in persona.ts
+- [ ] Create `src/types/content.ts` for ContentSource and VectorDocument
+- [ ] Export all types from `src/types/index.ts`
+- [ ] Ensure types match database schema exactly
 
 ---
 
-### Task 1.2: Remove Console Statements ✅ COMPLETED
-**Priority**: 🔴 Critical | **Effort**: Medium (4 hours) | **Impact**: High
+## Phase 2: Brand Management
 
-**Finding**: 324 console.log/warn/error across 44 files
+### 2.1 Brand Page UI (`src/components/BrandSettings.tsx`)
+- [ ] Create Brand page component
+- [ ] Color picker for primary/secondary/accent colors
+- [ ] Logo upload component (with preview)
+  - [ ] Support multiple variants (light/dark mode)
+  - [ ] Image optimization and storage (Supabase Storage)
+- [ ] Font selector (dropdown with web-safe fonts + Google Fonts?)
+- [ ] Live preview panel showing brand elements
+- [ ] Save/Cancel buttons with form validation
+- [ ] Loading states and error handling
 
-- [x] Install ESLint and plugins
-- [x] Create ESLint config with `no-console` rule
-- [x] Add lint scripts to package.json (lint, lint:fix, type-check)
-- [x] Create logger utility with Sentry integration (src/utils/logger.ts)
-- [x] Update AuthContext.tsx (7 occurrences → 4 logger calls)
-- [x] Update AIChatDialog.tsx (2 occurrences)
-- [x] Update ConnectionStatus.tsx (1 occurrence)
-- [x] Update ContentComposer.tsx (2 occurrences)
-- [x] Update PlatformConnections.tsx (6 occurrences)
-- [x] Update all remaining 39 files (114 total statements migrated)
-- [ ] Add pre-commit hook to prevent future console statements
-
-**Files**:
-- src/components/AuthContext.tsx:42,49,73,76
-- src/components/AIChatDialog.tsx
-- src/components/PlatformConnections.tsx
-- +41 more files
+### 2.2 Brand Integration
+- [ ] Add "Brand" to View type in App.tsx
+- [ ] Add Brand menu item to sidebar
+- [ ] Create brand context/hooks for accessing brand settings globally
+- [ ] Apply brand colors to theme system (if applicable)
 
 ---
 
-### Task 1.3: Testing Infrastructure & Baseline Coverage ✅ BASELINE ACHIEVED
-**Priority**: 🔴 Critical | **Effort**: High (2 weeks) | **Impact**: Critical
+## Phase 3: Persona Management
 
-**Current**: 31.45% coverage (63 tests) | **Target**: 20% baseline ✅, 60% goal 🔄
+### 3.1 Persona Page UI (`src/components/PersonaSettings.tsx`)
+- [ ] Create Persona page component
+- [ ] Editable form for all persona fields
+  - [ ] Text inputs for string fields
+  - [ ] Dropdowns for enum/option fields
+  - [ ] Textareas for longer text fields
+  - [ ] Nested object editing UI (if applicable)
+- [ ] "Add Content" button → opens URL input modal
+- [ ] URL input modal component
+  - [ ] Input field(s) for URLs (support up to 20)
+  - [ ] URL validation
+  - [ ] Submit/Cancel buttons
+  - [ ] Progress indicator during ingestion
+- [ ] Display ingested content sources (list/table)
+- [ ] Save/Cancel/Reset buttons
+- [ ] Loading states and error handling
 
-#### Subtask 1.3.1: Test Infrastructure Setup ✅ COMPLETED
-- [x] Verify Vitest configuration
-- [x] Set up test coverage reporting
-- [x] Configure test coverage thresholds (20% minimum)
-- [x] Add test scripts to package.json
-- [x] Create test utilities and helpers
-
-#### Subtask 1.3.2: Critical Path Testing - Authentication ✅ COMPLETED
-- [x] Test AuthContext provider initialization
-- [x] Test signin with email/password
-- [x] Test signup with email/password
-- [x] Test OAuth signin (Google, Facebook, Twitter)
-- [x] Test signout flow
-- [x] Test token refresh
-- [x] Test session persistence
-- [x] Test profile refresh (18 tests created, 14 passing)
-
-**Files Created**:
-- [x] src/test/components/AuthContext.test.tsx (18 tests)
-- [ ] src/test/components/AuthPage.test.tsx (deferred to Phase 2)
-
-#### Subtask 1.3.3: Critical Path Testing - Content Composer
-- [ ] Test platform selection toggle
-- [ ] Test content input and character limits
-- [ ] Test attachment handling
-- [ ] Test template selection
-- [ ] Test AI text generation integration
-- [ ] Test platform-specific previews
-- [ ] Test post scheduling
-- [ ] Test draft saving
-- [ ] Test post publishing
-
-**Files to Create**:
-- src/test/components/ContentComposer.test.tsx
-- src/test/utils/platformHelpers.test.tsx (already exists, expand)
-
-#### Subtask 1.3.4: Critical Path Testing - Platform Connections
-- [ ] Test platform connection status
-- [ ] Test OAuth callback handling
-- [ ] Test platform disconnection
-- [ ] Test token refresh
-- [ ] Test connection error states
-- [ ] Test multi-platform scenarios
-
-**Files to Create**:
-- src/test/components/PlatformConnections.test.tsx
-- src/test/components/OAuthCallback.test.tsx
-
-#### Subtask 1.3.5: E2E Test Suite Expansion
-- [ ] Add E2E test for complete compose → publish flow
-- [ ] Add E2E test for OAuth connection flow
-- [ ] Add E2E test for project management
-- [ ] Add E2E test for settings management
-- [ ] Verify all E2E tests pass in CI
-
-**Files**: tests/e2e/
+### 3.2 Persona API & Services
+- [ ] Create `src/utils/personaAPI.ts`
+  - [ ] `fetchPersona(projectId)` - Get current persona
+  - [ ] `updatePersona(projectId, persona)` - Update persona
+  - [ ] `generatePersona(projectId, sources)` - AI generation
+  - [ ] `ingestContent(projectId, urls)` - Add new content sources
+- [ ] Create Supabase Edge Function: `generate-persona`
+  - [ ] Accept content sources (text/URLs)
+  - [ ] Call Azure OpenAI to analyze content
+  - [ ] Generate persona JSON from analysis
+  - [ ] Return structured persona object
 
 ---
 
-### Task 1.4: Environment Variable Security Audit ✅ COMPLETED
-**Priority**: 🔴 Critical | **Effort**: Medium (3 hours) | **Impact**: High
+## Phase 4: Onboarding Persona Creation
 
-**Finding**: 15 files with process.env references, potential client-side exposure
+### 4.1 Onboarding Flow Updates
+- [ ] Add persona creation step to onboarding wizard
+- [ ] Check if user has connected platforms
+  - [ ] **If yes**: Scrape connected platforms for content
+    - [ ] Determine which platforms to scrape
+    - [ ] Implement platform content fetchers
+    - [ ] Fetch last N posts per platform
+  - [ ] **If no**: Show URL input form (up to 20 URLs)
+- [ ] Show loading indicator during AI analysis
+- [ ] Display generated persona preview
+- [ ] Allow user to edit before saving
+- [ ] Save persona to database
 
-- [x] Audit all environment variable usage (14 files analyzed)
-- [x] Ensure all client-side vars prefixed with `VITE_`
-- [x] Move secrets to server-side only (Edge Functions)
-- [x] Update .env.example with proper prefixes (documented)
-- [x] Document environment variable requirements
-- [x] Update supabase/functions/.env.functions (verified)
-- [x] Verify no secrets in client bundles (verified - Edge Functions only)
-
-**Files**:
-- supabase/functions/make-server-19ccd85e/index.ts
-- src/components/AuthContext.tsx
-- src/utils/api.ts
-- +12 more files
-
-**Checklist**:
-- [ ] YOUTUBE_CLIENT_ID → Server-only
-- [ ] YOUTUBE_CLIENT_SECRET → Server-only
-- [ ] TWITTER_CLIENT_ID → Server-only
-- [ ] TWITTER_CLIENT_SECRET → Server-only
-- [ ] FACEBOOK_APP_ID → Server-only
-- [ ] FACEBOOK_APP_SECRET → Server-only
-- [ ] AZURE_OPENAI_API_KEY → Server-only
-- [ ] VITE_SUPABASE_URL → Client-safe ✓
-- [ ] VITE_SUPABASE_ANON_KEY → Client-safe ✓
+### 4.2 Platform Content Scrapers
+- [ ] **PENDING**: Confirm which platforms to scrape
+- [ ] Twitter/X scraper (using OAuth API)
+- [ ] LinkedIn scraper (using OAuth API)
+- [ ] Blog/WordPress scraper (RSS/API)
+- [ ] Instagram scraper (if supported by OAuth)
+- [ ] Generic URL scraper (fallback for manual URLs)
 
 ---
 
-### Task 1.5: Consolidate Duplicated Edge Functions ✅ COMPLETED
-**Priority**: 🔴 Critical | **Effort**: Low (2 hours) | **Impact**: Medium
+## Phase 5: RAG Implementation
 
-**Finding**: src/supabase/functions/server/ duplicates supabase/functions/
+### 5.1 Vector Database Setup
+- [ ] **PENDING**: Confirm vector DB choice (pgvector vs external)
+- [ ] Enable pgvector extension in Supabase (if using)
+- [ ] Create vector storage schema
+- [ ] Set up embedding generation pipeline
+  - [ ] Choose embedding model (OpenAI, sentence-transformers, etc.)
+  - [ ] Create `generateEmbedding(text)` utility
+  - [ ] Batch processing for multiple documents
 
-- [x] Compare src/supabase/functions/server/ with supabase/functions/
-- [x] Identify differences and version drift (canonical 3 days newer)
-- [x] Merge changes to single source in supabase/functions/ (retained canonical)
-- [x] Remove src/supabase/functions/ directory (3 files deleted)
-- [x] Update imports in components (verified - no component imports found)
-- [x] Update documentation (verified - already correct)
-- [x] Test Edge Functions deployment (configuration verified)
+### 5.2 Content Ingestion Pipeline
+- [ ] Create Supabase Edge Function: `ingest-content`
+  - [ ] Accept URLs array
+  - [ ] Fetch content from URLs (web scraping)
+  - [ ] Extract text content
+  - [ ] Chunk content for embedding (if needed)
+  - [ ] Generate embeddings
+  - [ ] Store in vector database
+  - [ ] Link to project/persona
+- [ ] Create client-side API wrapper: `ingestContent(urls)`
+- [ ] Handle errors and retries
+- [ ] Progress tracking for batch ingestion
 
-**Files**:
-- supabase/functions/make-server-19ccd85e/
-- src/supabase/functions/server/ (DELETE)
-
----
-
-## Phase 2: Quality Improvements (2-3 weeks)
-
-### Task 2.1: Eliminate TypeScript `any` Types ✅ CLIENT-SIDE COMPLETE (100%)
-**Priority**: 🟡 Important | **Effort**: High (1 week) | **Impact**: High
-
-**Finding**: 256 `any` types across 37 files
-**Achievement**: 256 → 0 client-side instances (100% elimination, 256 total → 59 server-side remaining)
-
-#### Subtask 2.1.1: High-Priority Files ✅ COMPLETED
-- [x] src/utils/validation.ts (8 instances eliminated)
-- [ ] supabase/functions/make-server-19ccd85e/index.ts (82 instances - server-side, Phase 3)
-- [x] src/utils/api.ts (7 instances eliminated)
-- [x] src/components/AuthContext.tsx (instances eliminated)
-- [x] src/components/ContentComposer.tsx (4 instances eliminated)
-- [x] src/components/ContentCalendar.tsx (4 instances eliminated)
-
-#### Subtask 2.1.2: Strategy ✅ COMPLETED
-- [x] Create proper type definitions in src/types/index.ts (comprehensive)
-- [x] Replace `any` with `unknown` for dynamic data (patterns established)
-- [x] Add type guards for runtime validation (AppError, validation types)
-- [x] Use generics for reusable functions (ValidationResult<T>, ApiResponse<T>)
-- [x] Document complex types with TSDoc (documented)
-
-#### Subtask 2.1.3: Validation ✅ COMPLETED
-- [x] Enable `noImplicitAny` in tsconfig (enabled, client-side complete)
-- [x] Fix all client-side errors (0 remaining)
-- [x] Run type check: `tsc --noEmit` (Vite build passing)
-- [x] Verify build succeeds (passing)
-
-**Files**: 37 files with `any` usage
+### 5.3 RAG Query System
+- [ ] Create Supabase Edge Function: `rag-query`
+  - [ ] Accept query text + project_id
+  - [ ] Generate query embedding
+  - [ ] Similarity search in vector DB
+  - [ ] Retrieve top-K relevant documents
+  - [ ] Construct prompt with context + persona
+  - [ ] Call Azure OpenAI for generation
+  - [ ] Return generated content
+- [ ] Create client-side API wrapper: `queryRAG(query, projectId)`
+- [ ] Integrate RAG into content generation flows
+  - [ ] ContentComposer integration
+  - [ ] AI chat integration (AIChatDialog)
 
 ---
 
-### Task 2.2: Performance Optimizations ✅ COMPLETED (EXCEEDED TARGET)
-**Priority**: 🟡 Important | **Effort**: Medium (1 week) | **Impact**: High
+## Phase 6: Integration & Testing
 
-**Finding**: Only 18 useMemo/useCallback/React.memo in 110+ components
-**Achievement**: 81% bundle reduction (598 kB → 112 kB) ✅ **EXCEEDED 33% target by 148%**
+### 6.1 Navigation & Routing
+- [ ] Add "Brand" to sidebar menu
+- [ ] Add "Persona" to sidebar menu
+- [ ] Add keyboard shortcuts (optional)
+  - [ ] `B` for Brand?
+  - [ ] `P` for Persona?
+- [ ] Update CommandPalette with new pages
 
-#### Subtask 2.2.1: Component Memoization ✅ COMPLETED
-- [x] Audit expensive components with React DevTools Profiler
-- [x] Add React.memo to pure presentational components
-- [x] Priority components:
-  - [x] ContentComposer (Phase 1 - optimized)
-  - [x] DashboardOverview (Phase 1 - optimized)
-  - [x] Analytics (code-split with lazy loading)
-  - [x] ContentCalendar (code-split with lazy loading)
-  - [x] UnifiedInbox (React.memo + useCallback + useMemo)
-  - [x] PlatformIcon (Phase 1 - React.memo)
+### 6.2 State Management
+- [ ] Create brand context/hooks if needed
+- [ ] Create persona context/hooks if needed
+- [ ] Manage project-level state (if multi-project)
+- [ ] Cache persona/brand data to reduce API calls
 
-#### Subtask 2.2.2: Hook Optimizations ✅ COMPLETED
-- [x] Add useMemo for expensive calculations:
-  - [x] Platform filtering logic (UnifiedInbox, DashboardOverview)
-  - [x] Date range calculations (Calendar components)
-  - [x] Analytics data transformations (stat calculations)
-  - [x] Search/filter operations (message filtering)
-- [x] Add useCallback for event handlers:
-  - [x] togglePlatform callbacks (5 handlers in UnifiedInbox)
-  - [x] form submission handlers (ContentComposer)
-  - [x] modal open/close handlers (throughout)
+### 6.3 Testing
+- [ ] Unit tests for persona generation logic
+- [ ] Unit tests for vector operations
+- [ ] E2E tests for Brand page
+- [ ] E2E tests for Persona page
+- [ ] E2E tests for onboarding persona creation
+- [ ] E2E tests for URL ingestion flow
+- [ ] Test RAG query accuracy
 
-#### Subtask 2.2.3: Code Splitting ✅ COMPLETED
-- [x] Analyze bundle with vite-bundle-visualizer (598 kB → 112 kB)
-- [x] Add lazy loading for routes:
-  - [x] React.lazy() for 10 heavy components
-  - [x] Suspense boundaries with LoadingState (10 boundaries)
-- [x] Defer non-critical imports (dynamic manualChunks strategy)
-
-#### Subtask 2.2.4: Network Optimization 🔄 DEFERRED (Phase 3)
-- [ ] Implement request deduplication (React Query/SWR evaluation)
-- [ ] Add request cancellation for unmounted components
-- [ ] Batch API calls where possible
-- [ ] Consider React Query or SWR for caching
-
-**Files**: All component files
+### 6.4 Documentation
+- [ ] Update CLAUDE.md with new features
+- [ ] Document persona schema
+- [ ] Document RAG architecture
+- [ ] Add troubleshooting guide for vector DB
 
 ---
 
-### Task 2.3: Implement React Router ✅ COMPLETED
-**Priority**: 🟡 Important | **Effort**: Medium (3 days) | **Impact**: High
+## Phase 7: Multi-Project Support (If Needed)
 
-**Finding**: Component-based routing breaks deep linking, SEO, browser back button
-**Achievement**: 13 routes implemented, App.tsx reduced by 98% (716 lines → 14 lines)
-
-- [x] Install react-router-dom (v6)
-- [x] Design URL structure (13 routes):
-  - [x] `/` - Landing (auth-aware redirect)
-  - [x] `/auth` - Authentication
-  - [x] `/dashboard` - Project overview (default)
-  - [x] `/compose` - Content composer
-  - [x] `/inbox` - Unified inbox
-  - [x] `/calendar` - Content calendar
-  - [x] `/analytics` - Analytics dashboard
-  - [x] `/library` - Media library
-  - [x] `/notifications` - Notifications
-  - [x] `/ebooks` - Ebook generator
-  - [x] `/trending` - Trending content
-  - [x] `/competition` - Competition watch
-  - [x] `/settings` - Project settings
-  - [x] `/oauth/callback` - OAuth callback
-- [x] Create router configuration (src/routes/index.tsx)
-- [x] Replace currentView state with routes (View type removed)
-- [x] Add route guards for authentication (ProtectedLayout component)
-- [x] Preserve URL state (platform selection in query params)
-- [x] Update CommandPalette for router navigation (useNavigate)
-- [x] Update keyboard shortcuts (navigate() function)
-- [x] Add 404 page (wildcard route configured)
-- [x] Test browser back/forward navigation (working)
-- [ ] Test deep linking
-
-**Files**:
-- src/App.tsx (major refactor)
-- src/components/CommandPalette.tsx
-- New: src/routes/index.tsx
+### 7.1 Project Model
+- [ ] **PENDING**: Clarify if multi-project is needed
+- [ ] Create `projects` table (id, user_id, name, created_at)
+- [ ] Update all tables with project_id foreign keys
+- [ ] Create project switcher UI component
+- [ ] Update App.tsx with project context
+- [ ] Migrate existing data to default project (if applicable)
 
 ---
 
-### Task 2.4: Extract Common Hooks & Utilities ✅ COMPLETED
-**Priority**: 🟡 Important | **Effort**: Medium (4 days) | **Impact**: Medium
+## ✅ Confirmed Decisions
 
-**Finding**: Repeated platform logic, scattered state management
-**Achievement**: 7 custom hooks + platform constants + 6 utility functions (~40% duplication reduction)
-
-#### Subtask 2.4.1: Platform Hooks ✅ COMPLETED
-- [x] Create `usePlatformConstraints(platform)` hook
-  - [x] Character limits
-  - [x] Media requirements
-  - [x] Platform-specific validation
-- [x] Create `usePlatformConnection(platform)` hook
-  - [x] Connection status
-  - [x] OAuth flow initiation
-  - [x] Token refresh
-- [x] Expand `useConnectedPlatforms()` hook (enhanced)
-  - [x] Add loading states
-  - [x] Add error handling
-  - [x] Add refresh capability
-
-#### Subtask 2.4.2: Form Hooks ✅ COMPLETED
-- [x] Create `usePostComposer()` hook
-  - [x] Content management
-  - [x] Platform selection
-  - [x] Attachment handling
-  - [x] Validation
-- [x] Create `useFormValidation(schema)` hook
-
-#### Subtask 2.4.3: Data Fetching Hooks ✅ COMPLETED
-- [x] Create `useProject()` hook (exists in ProjectContext)
-- [x] Create `useAnalytics(dateRange)` hook
-- [x] Create `useInboxMessages(filter)` hook
-
-#### Subtask 2.4.4: Constants & Utilities ✅ COMPLETED
-- [x] Create src/constants/platforms.ts (complete platform configs)
-  - [x] Platform configurations (PLATFORM_CONFIGS)
-  - [x] Icon mappings
-  - [x] Color schemes (PLATFORM_COLORS, PLATFORM_GRADIENTS)
-- [x] Expand src/utils/platformHelpers.ts (6 new functions)
-  - [x] getPlatformColor(), getPlatformGradient()
-  - [x] validatePlatformContent(), formatPlatformError()
-  - [x] canPublishToPlatform(), getOptimalHashtagCount()
-- [x] src/utils/logger.ts (Phase 1 - already exists)
-
-**Files to Create**:
-- src/hooks/usePlatformConstraints.ts
-- src/hooks/usePlatformConnection.ts
-- src/hooks/usePostComposer.ts
-- src/hooks/useFormValidation.ts
-- src/constants/platforms.ts
-- src/utils/logger.ts
+1. **Persona Schema**: Using comprehensive CreatorPersona JSON schema (see Untitled-1)
+2. **Platform Scraping**: OAuth API calls when possible, URL scraping as fallback
+3. **Vector DB**: Supabase pgvector extension
+4. **Project Model**: Multi-project architecture - one persona per project, one brand per project
+5. **Embedding Model**: OpenAI `text-embedding-3-small` (512 dimensions, cost-effective)
+6. **AI Model**: GPT-4o-mini for persona generation (fast, affordable, good quality)
+7. **Platform Priority**: YouTube → TikTok → Blog → Twitter → Instagram
+8. **Content Types**: Web pages + YouTube transcripts initially (PDF/audio later)
 
 ---
 
-### Task 2.5: Complete TODO Implementations 🔧
-**Priority**: 🟡 Important | **Effort**: Medium (1 week) | **Impact**: Medium
+## Estimated Complexity
 
-**Finding**: 10+ TODO comments indicating incomplete features
+- **Phase 1**: 4-6 hours (database schema)
+- **Phase 2**: 6-8 hours (Brand page)
+- **Phase 3**: 8-12 hours (Persona page + API)
+- **Phase 4**: 10-15 hours (onboarding + scrapers)
+- **Phase 5**: 15-20 hours (RAG implementation)
+- **Phase 6**: 8-10 hours (integration + testing)
+- **Phase 7**: 6-10 hours (if multi-project needed)
 
-#### Subtask 2.5.1: Rate Limiting (PRIORITY - Security)
-- [ ] Uncomment rate limiting in make-server-19ccd85e/index.ts:6
-- [ ] Implement Hono-compatible rate limiting
-- [ ] Configure rate limits per endpoint
-- [ ] Add rate limit headers
-- [ ] Test rate limiting
-- [ ] Document rate limits
-
-**Files**: supabase/functions/make-server-19ccd85e/index.ts:6,26
-
-#### Subtask 2.5.2: LinkedIn Image Upload
-- [ ] Implement multi-step LinkedIn image upload
-- [ ] Test with various image formats
-- [ ] Add error handling
-- [ ] Document API requirements
-
-**Files**: supabase/functions/make-server-19ccd85e/index.ts:2012
-
-#### Subtask 2.5.3: YouTube Video Upload
-- [ ] Implement YouTube video upload API
-- [ ] Add video validation
-- [ ] Handle upload progress
-- [ ] Test with various video formats
-- [ ] Document API requirements
-
-**Files**: supabase/functions/make-server-19ccd85e/index.ts:2096
-
-#### Subtask 2.5.4: Trending Posts API
-- [ ] Replace mock data in TrendingPosts.tsx:35
-- [ ] Implement real trending posts API
-- [ ] Add caching strategy
-- [ ] Add error states
-
-**Files**: src/components/TrendingPosts.tsx:35
+**Total**: ~60-80 hours for full implementation
 
 ---
 
-## Phase 3: Scalability (3-4 weeks)
-
-### Task 3.1: State Management Evaluation 🗄️
-**Priority**: 🟢 Nice to Have | **Effort**: Medium (1 week) | **Impact**: High
-
-**Finding**: Centralized state in App.tsx won't scale, props drilling
-
-#### Subtask 3.1.1: Requirements Analysis
-- [ ] Document current state structure
-- [ ] Identify state that should be global vs local
-- [ ] Map component state dependencies
-- [ ] Evaluate options: Context API, Zustand, Jotai, Redux
-
-#### Subtask 3.1.2: Implementation Plan
-- [ ] Migrate theme state to React Context (or keep in App)
-- [ ] Migrate project state to Zustand/Jotai
-- [ ] Migrate platform connections to Zustand/Jotai
-- [ ] Keep UI state local (modals, dropdowns)
-
-#### Subtask 3.1.3: Migration
-- [ ] Create store structure
-- [ ] Migrate state incrementally
-- [ ] Remove props drilling
-- [ ] Update components
-- [ ] Test state persistence
-- [ ] Document state management patterns
-
-**Files**:
-- src/App.tsx (refactor)
-- New: src/store/ or src/state/
-
----
-
-### Task 3.2: Comprehensive E2E Testing 📊
-**Priority**: 🟢 Nice to Have | **Effort**: High (2 weeks) | **Impact**: High
-
-**Target**: Cover all critical user journeys
-
-#### Subtask 3.2.1: User Journey Tests
-- [ ] Complete onboarding flow
-- [ ] Platform connection flow (all providers)
-- [ ] Content creation and publishing
-- [ ] Content scheduling
-- [ ] Inbox message handling
-- [ ] Analytics viewing
-- [ ] Project management
-- [ ] Settings management
-- [ ] AI assistant interaction
-
-#### Subtask 3.2.2: Edge Case Tests
-- [ ] Offline behavior
-- [ ] Network errors
-- [ ] Token expiration
-- [ ] Concurrent sessions
-- [ ] Browser compatibility
-
-#### Subtask 3.2.3: Visual Regression Tests
-- [ ] Screenshot comparison for key pages
-- [ ] Responsive design validation
-- [ ] Theme switching
-
-**Files**: tests/e2e/
-
----
-
-### Task 3.3: Request Caching Strategy ✅ COMPLETED
-**Priority**: 🔴 Critical (upgraded) | **Effort**: Medium (1 week) | **Impact**: High
-
-- [x] Evaluate React Query vs SWR (SWR chosen for simplicity)
-- [x] Install SWR library (+10.08 kB gzipped)
-- [x] Implement caching for:
-  - [x] User profile (via useProjects - 1h TTL)
-  - [x] Project data (useProjects - optimistic updates)
-  - [x] Platform connections (useConnectedPlatforms - 30min TTL)
-  - [x] Analytics data (useAnalytics - 15min TTL)
-  - [x] Inbox messages (useInboxMessages - 5min TTL)
-- [x] Configure stale-while-revalidate (global + per-hook)
-- [x] Add cache invalidation on mutations (mutate functions)
-- [x] Add optimistic updates (useProjects CRUD operations)
-- [x] Test caching behavior (verified in commit e699cb2)
-
-**Achievement**:
-- 40-60% reduction in redundant API calls
-- Dashboard load: 5 requests → 1 request (80% reduction)
-- Page navigation: 1-2s → instant (cached data)
-- OAuth flow: 3-5s → 1-2s (50-70% faster)
-
-**Files**: All data-fetching hooks + global SWR config
-
----
-
-### Task 3.4: Performance Monitoring ✅ COMPLETED
-**Priority**: 🟡 Important | **Effort**: Low (2 days) | **Impact**: High
-
-- [x] Configure Sentry Performance monitoring (comprehensive config)
-- [x] Add custom performance marks (Core Web Vitals integration)
-- [x] Monitor Core Web Vitals (LCP, FID, CLS, FCP, TTFB, INP)
-- [x] Set up performance budgets (thresholds configured)
-- [x] Fix deprecated Sentry v10+ APIs (reactErrorBoundaryIntegration, getActiveTransaction)
-- [x] Verify monitoring integration (build passing)
-
-**Achievement**:
-- Full Sentry v10 integration with modern APIs
-- 6 Core Web Vitals tracked with Google-recommended thresholds
-- Browser tracing with React Router v7 integration
-- Session replay with performance events
-- Performance profiling (30% sample rate in production)
-- Automatic metric aggregation enabled
-
-**Files**: src/sentry.ts, src/utils/webVitals.ts
-
----
-
-### Task 3.5: Accessibility Audit & Fixes ♿
-**Priority**: 🟢 Nice to Have | **Effort**: Medium (1 week) | **Impact**: Medium
-
-#### Subtask 3.5.1: Automated Testing
-- [ ] Install axe-core or eslint-plugin-jsx-a11y
-- [ ] Run automated accessibility scan
-- [ ] Fix all critical issues
-- [ ] Fix all serious issues
-
-#### Subtask 3.5.2: Manual Testing
-- [ ] Keyboard navigation testing
-- [ ] Screen reader testing (NVDA/JAWS)
-- [ ] Color contrast validation
-- [ ] Focus management
-- [ ] ARIA labels and roles
-
-#### Subtask 3.5.3: WCAG Compliance
-- [ ] Target WCAG 2.1 Level AA
-- [ ] Document accessibility features
-- [ ] Create accessibility statement
-
-**Files**: All component files
-
----
-
-## Quick Wins (Can do today) ✅ ALL COMPLETED
-
-- [x] ✅ Create tsconfig.json
-- [x] Add ESLint no-console rule
-- [x] Prefix client env vars with VITE_
-- [x] Add React.memo to PlatformIcon
-- [x] Add React.memo to LoadingState
-- [x] Add React.memo to EmptyState
-- [x] Document architecture decisions
-
----
-
-## Metrics Tracking
-
-| Phase | Start Date | Target Date | Completion | Health Score |
-|-------|------------|-------------|------------|--------------|
-| Phase 1 | 2025-11-08 | 2025-11-09 | 100% ✅ | 72/100 → 78/100 (+6) |
-| Phase 2 | 2025-11-09 | 2025-11-09 | 100% ✅ | 78/100 → 85/100 (+7) ✅ **EXCEEDED** |
-| Phase 3 | 2025-11-10 | 2025-11-10 | 100% ✅ | 85/100 → 91/100 (+6) ✅ **EXCEEDED** |
-
-### Current Metrics
-- **Test Coverage**: 6% → 31.45% (+425% improvement) ✅ Baseline achieved
-- **Console Statements**: 324 → 0 ✅ COMPLETE
-- **TypeScript `any`**: 256 → 0 client-side (-100% client elimination) ✅ **COMPLETE**
-- **Bundle Size**: 598 kB → 112 kB (-81.2% reduction) ✅ **EXCEEDED target**
-- **Gzipped**: 167 kB → 29 kB (-82.7% reduction) ✅
-- **Initial Load (3G)**: 3.2s → 0.6s (-81.2% faster) ⚡
-- **Custom Hooks**: 0 → 7 created ✅
-- **Routes**: 0 → 13 with React Router ✅
-- **App.tsx Complexity**: 716 lines → 14 lines (-98% reduction) ✅
-- **Request Caching**: 0% → 40-60% redundant calls eliminated ✅ SWR
-- **Performance Monitoring**: None → Full Sentry + Core Web Vitals ✅
-
----
-
-## Notes & Decisions
-
-### 2025-11-08 - Session 1: Infrastructure & Foundation ✅
-**Duration**: ~2 hours | **Health Score**: 72/100 → 73/100 (+1)
-
-#### Completed
-- ✅ **Comprehensive Code Analysis**: Multi-domain analysis (Quality, Security, Performance, Architecture)
-- ✅ **Task 1.1 - TypeScript Configuration**: tsconfig.json + tsconfig.node.json with strict mode
-- ✅ **Task 1.2 - ESLint Setup**: .eslintrc.json with no-console rule + plugins
-- ✅ **Task 1.2 - Logging Utility**: src/utils/logger.ts with Sentry integration (145 lines)
-- ✅ **Task 1.2 - AuthContext Console Removal**: 7 console statements → logger (100% complete)
-- ✅ **Quick Wins - React.memo**: PlatformIcon, LoadingState, EmptyState optimized
-
-#### Git Commits
-1. `feat: Add TypeScript config, ESLint, and logging utility`
-2. `fix: Complete console.error removal in AuthContext`
-3. `perf: Add React.memo to pure components`
-
-#### In Progress
-- 🔄 **Task 1.2**: Console statement removal (7/324 done = 2.2% complete)
-  - **Remaining**: 43 files with 317 console statements
-  - **Next**: AIChatDialog, ConnectionStatus, ContentComposer, PlatformConnections
-
-#### Phase 1 Progress: 100% ✅ COMPLETE
-- [x] Task 1.1: TypeScript Configuration (100%)
-- [x] Task 1.2: Console Removal (100%)
-- [x] Task 1.3: Testing Infrastructure (Baseline 31.45% achieved)
-- [x] Task 1.4: Environment Variables (100%)
-- [x] Task 1.5: Duplicate Functions (100%)
-
-#### Next Session Priorities (Phase 2)
-1. Eliminate TypeScript `any` types (256 instances → <20 target)
-2. Complete authentication testing (fix 4 async error tests)
-3. Performance optimizations (code splitting, lazy loading)
-4. Implement React Router for proper URL handling
-
----
-
-### 2025-11-09 - Session 2: Phase 1 Complete - Meta-System Orchestration ✅
-**Duration**: ~3 hours | **Health Score**: 72/100 → 78/100 (+6)
-
-#### Strategy: Parallel Multi-Agent Coordination
-Deployed 5 specialized agents in parallel tracks:
-- **Track A**: quality-engineer + security-engineer (Code Quality & Security)
-- **Track B**: backend-architect + devops-architect (Infrastructure)
-- **Track C**: performance-engineer (Optimizations)
-- **Track D**: quality-engineer + frontend-architect (Testing Foundation)
-
-#### Completed Tasks
-
-**Task 1.2 - Console Statement Removal** ✅
-- **Agent**: quality-engineer
-- **Result**: 114 console statements → logger across 22 files
-- **Impact**: Professional logging with Sentry integration
-- **Documentation**: claudedocs/console-migration-report.md
-
-**Task 1.4 - Environment Variable Security Audit** ✅
-- **Agent**: security-engineer
-- **Result**: Complete security audit of 14 files
-- **Risk Level**: 🔴 HIGH → Remediation plan documented
-- **Documentation**: claudedocs/monitoring/ENVIRONMENT_VARIABLE_SECURITY_AUDIT.md
-- **Critical Finding**: 24+ OAuth secrets requiring server-side migration
-
-**Task 1.5 - Edge Functions Consolidation** ✅
-- **Agent**: backend-architect
-- **Result**: Removed duplicate src/supabase/functions/server/ (3 files)
-- **Finding**: Rate limiting intentionally disabled pending Hono compatibility
-- **Documentation**: claudedocs/EDGE_FUNCTIONS_CONSOLIDATION_REPORT.md
-
-**Task 1.3 - Testing Infrastructure Baseline** ✅
-- **Agent**: quality-engineer + frontend-architect
-- **Result**: 6% → 31.45% coverage (+425% improvement)
-- **Tests Created**: 63 tests (59 passing)
-- **New Suites**: AuthContext (18 tests), Button (14), PlatformIcon (13), UnifiedInbox (4)
-- **Documentation**: claudedocs/testing/TESTING_INFRASTRUCTURE_BASELINE.md
-
-**Quick Wins - Performance Optimizations** ✅
-- **Agent**: performance-engineer
-- **Result**: 5 major components optimized with React.memo
-- **Components**: ContentComposer, DashboardOverview, UnifiedInbox
-- **Impact**: 20-40% render time reduction estimated
-- **Bundle Analysis**: Generated optimization roadmap
-- **Documentation**: claudedocs/performance/quick-win-optimizations-completed.md
-
-#### Key Achievements
-
-1. **100% Phase 1 Completion**: All 5 critical foundation tasks complete
-2. **Test Coverage**: Exceeded 20% baseline target (31.45% achieved)
-3. **Code Quality**: Zero console statements, professional logging system
-4. **Security**: Comprehensive audit with remediation roadmap
-5. **Performance**: Strategic optimizations implemented
-6. **Documentation**: 6 comprehensive reports generated
-
-#### Git Commits Recommended
-1. `feat: Complete console statement migration to logger utility`
-2. `feat: Comprehensive testing infrastructure with 31% coverage`
-3. `perf: Optimize ContentComposer, DashboardOverview, UnifiedInbox`
-4. `refactor: Consolidate Edge Functions to canonical location`
-5. `docs: Add security audit and testing infrastructure documentation`
-
-#### Health Score Breakdown
-- **Code Quality**: +2 (console removal, professional logging)
-- **Testing**: +2 (31% coverage, comprehensive test infrastructure)
-- **Security**: +1 (audit completed, remediation documented)
-- **Performance**: +1 (strategic optimizations, bundle analysis)
-- **Total Improvement**: +6 points (72 → 78)
-
-#### Files Changed
-- **Modified**: 22 component files (logger migration)
-- **Created**: 6 test suites, 6 documentation reports
-- **Deleted**: 4 files (Edge Function duplicates, instrumentation.js)
-- **Optimized**: 5 major components (React.memo, useMemo, useCallback)
-
-#### Phase 2 Readiness
-All Phase 1 foundations complete. System ready for Phase 2 quality improvements:
-- TypeScript strict mode enforcement (`any` elimination)
-- Authentication testing completion (4 async error tests)
-- Advanced performance optimizations (code splitting, lazy loading)
-- React Router implementation for proper URL handling
-
----
-
-### 2025-11-09 - Session 3: Phase 2 Complete - Quality Improvements ✅
-**Duration**: ~4 hours | **Health Score**: 78/100 → 85/100 (+7) ✅ **EXCEEDED TARGET (82/100)**
-
-#### Strategy: Adaptive Multi-Agent Orchestration
-Deployed 4 specialized agents across parallel and sequential tracks:
-- **Track A (Parallel)**: python-expert → TypeScript any elimination
-- **Track B (Parallel)**: performance-engineer → Advanced optimizations
-- **Track C (Parallel)**: refactoring-expert → Hooks & utilities
-- **Track D (Sequential)**: frontend-architect → React Router implementation
-
-#### Completed Tasks
-
-**Task 2.1 - TypeScript Any Elimination** ✅ 77% Progress
-- **Agent**: python-expert (TypeScript specialist)
-- **Result**: 256 → 59 instances (77% reduction, 197 eliminated)
-- **High-Priority Files**: validation.ts, api.ts, ContentComposer, ContentCalendar (100% typed)
-- **Type System**: Comprehensive types in src/types/index.ts (API, validation, backend, error types)
-- **Patterns**: AppError interface, type guards, generic validation
-- **Remaining**: 59 instances (straightforward error patterns)
-- **Documentation**: claudedocs/typescript-any-elimination-progress.md
-
-**Task 2.2 - Advanced Performance Optimizations** ✅ EXCEEDED
-- **Agent**: performance-engineer
-- **Result**: 598 kB → 112 kB (81.2% reduction) ✅ **EXCEEDED 33% target by 148%**
-- **Gzipped**: 167 kB → 29 kB (82.7% reduction)
-- **Initial Load**: 3.2s → 0.6s on 3G (81% faster)
-- **Code Splitting**: 10 components with React.lazy() + Suspense
-- **Optimizations**: UnifiedInbox (React.memo + useCallback + useMemo)
-- **Chunk Strategy**: Dynamic manualChunks (5 vendor + 6 route chunks)
-- **Documentation**: claudedocs/performance/bundle-optimization-report.md
-
-**Task 2.4 - Hooks & Utilities Extraction** ✅
-- **Agent**: refactoring-expert
-- **Result**: 7 custom hooks + platform constants + 6 utilities
-- **Hooks**: usePlatformConstraints, usePlatformConnection, useFormValidation, usePostComposer, useAnalytics, useInboxMessages, enhanced useConnectedPlatforms
-- **Constants**: Complete PLATFORM_CONFIGS with colors, gradients, capabilities
-- **Utilities**: 6 new platformHelpers functions
-- **Impact**: ~40% code duplication reduction
-- **Documentation**: claudedocs/hooks-utilities-extraction-complete.md
-
-**Task 2.3 - React Router Implementation** ✅
-- **Agent**: frontend-architect + system-architect
-- **Result**: 13 routes with deep linking, App.tsx reduced 98% (716 → 14 lines)
-- **Routes**: Landing, auth, dashboard, compose, inbox, calendar, analytics, library, notifications, ebooks, trending, competition, settings, oauth/callback
-- **Features**: URL-based navigation, browser back/forward, auth guards, URL state persistence
-- **Components**: ProtectedLayout (499 lines), LandingWrapper, 11 route wrappers
-- **Navigation**: Updated sidebar (NavLink), AppHeader (breadcrumbs), CommandPalette, keyboard shortcuts
-- **Documentation**: claudedocs/react-router-implementation.md
-
-#### Key Achievements
-
-1. **Exceeded Phase 2 Target**: 78 → 85 (+7 points, target was 82)
-2. **Performance Excellence**: 81% bundle reduction (exceeded 33% by 148%)
-3. **Type Safety**: 77% any elimination (197 of 256 removed)
-4. **Code Organization**: 7 hooks, 40% duplication reduction, 98% App.tsx simplification
-5. **Professional Architecture**: React Router with 13 routes, deep linking, SEO-ready
-6. **Comprehensive Documentation**: 7 detailed reports, quick references, testing checklists
-
-#### Git Commits Recommended
-1. `feat: Eliminate 77% of TypeScript any types`
-2. `perf: Achieve 81% bundle size reduction through code splitting`
-3. `refactor: Extract 7 custom hooks and consolidate platform utilities`
-4. `feat: Implement React Router with 13 routes and deep linking`
-5. `docs: Complete Phase 2 quality improvements documentation`
-
-#### Health Score Breakdown
-- **Code Quality**: 80 → 88 (+8) - Type safety, hooks, utilities
-- **Testing**: 65 → 70 (+5) - Better testability with hooks
-- **Security**: 75 → 78 (+3) - Type guards, validation
-- **Performance**: 75 → 95 (+20) - 81% bundle reduction
-- **Architecture**: 78 → 90 (+12) - React Router, code organization
-- **Total Improvement**: +7 points (78 → 85) ✅ **EXCEEDED 82 target**
-
-#### Files Changed
-- **Created**: 41 files (7 hooks, 1 constants, 1 router, 14 components, 7 docs, 2 scripts)
-- **Modified**: 12 files (types, validation, api, components, vite.config, App.tsx)
-- **Impact**: 77% type coverage, 81% bundle reduction, 40% duplication reduction
-
-#### Phase 3 Readiness
-All Phase 2 quality improvements complete with exceptional results:
-- ✅ Type safety significantly improved (77% reduction)
-- ✅ Performance optimized (exceeded target by 148%)
-- ✅ Code organization enhanced (7 hooks, utilities)
-- ✅ Professional routing (React Router with deep linking)
-- ✅ Health score 85/100 ✅ **EXCEEDED Phase 2 target**
-
-System ready for Phase 3 scalability improvements toward 90/100 target.
-
----
-
-### 2025-11-10 - Session 4: Phase 3 Complete - Performance & Scalability ✅
-**Duration**: ~2 hours | **Health Score**: 85/100 → 91/100 (+6) ✅ **EXCEEDED 90 TARGET**
-
-#### Strategy: Quick Wins + High-Impact Optimizations
-Focused execution on highest-impact tasks with verified SWR implementation:
-- **Track A**: Verify SWR implementation (already complete from previous session)
-- **Track B**: Modernize Sentry Performance monitoring APIs
-- **Track C**: Complete TypeScript type safety (eliminate remaining any types)
-
-#### Completed Tasks
-
-**Task 3.3 - Request Caching Strategy** ✅ VERIFIED COMPLETE
-- **Status**: Already implemented in commit e699cb2 (Session 3)
-- **Achievement**: SWR fully operational with 4 high-priority hooks
-- **Impact**: 40-60% reduction in redundant API calls
-- **Performance**: Dashboard 5→1 requests (80% reduction), OAuth 3-5s→1-2s (50-70% faster)
-- **Documentation**: claudedocs/architecture/request-caching-strategy.md
-
-**Task 3.4 - Sentry Performance Monitoring** ✅ COMPLETED
-- **Action**: Fixed deprecated Sentry v10+ APIs
-- **Changes**:
-  - Removed reactErrorBoundaryIntegration (use ErrorBoundary component instead)
-  - Replaced getActiveTransaction() with setMeasurement() and setTag()
-- **Verification**: Build passing, Core Web Vitals monitoring operational
-- **Impact**: Full observability with 6 Core Web Vitals tracked
-- **Commit**: d262675
-
-**Task 2.1 - TypeScript Any Elimination (Client-Side)** ✅ COMPLETED
-- **Action**: Eliminated final 3 any types in useFormValidation.ts
-- **Achievement**: 100% client-side type safety (256 → 0 any types)
-- **Pattern**: Replaced any with unknown + type guards
-- **Verification**: noImplicitAny enabled, build passing
-- **Impact**: Full TypeScript strict mode operational
-- **Commit**: 33e828a
-
-#### Key Achievements
-
-1. **Exceeded Phase 3 Target**: 85 → 91 (+6 points, target was 90)
-2. **Request Caching Excellence**: 40-60% API call reduction via SWR
-3. **Type Safety Complete**: 100% client-side type coverage (0 any types)
-4. **Performance Monitoring**: Full Sentry + Core Web Vitals operational
-5. **Zero Build Errors**: All systems verified operational
-6. **Professional Architecture**: Production-ready observability and type safety
-
-#### Git Commits
-1. `9f8dde9` - fix: Add missing toAppError import in ProjectDetails
-2. `d262675` - fix: Update Sentry to use modern v10+ APIs
-3. `33e828a` - refactor: Eliminate remaining TypeScript any types in client code
-
-#### Health Score Breakdown
-- **Performance**: 95 → 97 (+2) - SWR caching, reduced network calls
-- **Monitoring**: 70 → 80 (+10) - Sentry Performance + Core Web Vitals
-- **Code Quality**: 88 → 91 (+3) - 100% TypeScript type safety
-- **Total Improvement**: +6 points (85 → 91) ✅ **EXCEEDED 90 target**
-
-#### Files Changed
-- **Modified**: 3 files (ProjectDetails, sentry.ts, webVitals.ts, useFormValidation.ts)
-- **Impact**: Type safety 100%, performance monitoring operational, caching verified
-
-#### Deferred Tasks (Optional Enhancements)
-- **Task 2.5** - Rate limiting in Edge Functions (security enhancement, not critical)
-- **Task 3.5** - Accessibility audit (WCAG compliance, quality enhancement)
-- **Task 3.2** - E2E test expansion (testing coverage enhancement)
-- **Task 3.1** - State Management evaluation (architecture exploration)
-
-#### Project Status: Production-Ready ✅
-All three phases complete with exceptional results:
-- ✅ Phase 1 foundations: Testing, logging, security, TypeScript setup
-- ✅ Phase 2 quality: Performance optimization (81% bundle reduction), React Router, hooks
-- ✅ Phase 3 scalability: SWR caching, Sentry monitoring, 100% type safety
-- ✅ Health score 91/100 ✅ **EXCEEDED all targets (72→78→85→91)**
-
-System ready for production deployment with enterprise-grade architecture.
+## Next Steps
+
+1. User provides persona JSON schema
+2. User answers clarification questions
+3. Prioritize phases (can implement incrementally)
+4. Begin Phase 1: Database schema design
