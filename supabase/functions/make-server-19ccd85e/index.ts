@@ -250,7 +250,7 @@ app.post("/make-server-19ccd85e/auth/initialize", requireAuth, async (c) => {
     });
 
     // Create default project
-    const defaultProjectId = `${userId}_${Date.now()}_default`;
+    const defaultProjectId = crypto.randomUUID();
     const defaultProject = {
       id: defaultProjectId,
       userId: userId,
@@ -325,7 +325,7 @@ app.get("/make-server-19ccd85e/auth/profile", requireAuth, async (c) => {
       await kv.set(`user:${userId}:profile`, newProfile);
       
       // Create default project
-      const defaultProjectId = `${userId}_${Date.now()}_default`;
+      const defaultProjectId = crypto.randomUUID();
       const defaultProject = {
         id: defaultProjectId,
         userId: userId,
@@ -869,7 +869,7 @@ app.post("/make-server-19ccd85e/projects", requireAuth, async (c) => {
     const userId = c.get('userId');
     const { name, description } = await c.req.json();
     
-    const projectId = `${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const projectId = crypto.randomUUID();
     const project = {
       id: projectId,
       userId,
