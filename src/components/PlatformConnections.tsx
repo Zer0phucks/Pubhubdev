@@ -31,6 +31,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { WordPressConnectionDialog, WordPressCredentials } from "./WordPressConnectionDialog";
 import { toast } from "sonner";
 import { logger } from "../utils/logger";
+import { toAppError } from "@/types";
 
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 

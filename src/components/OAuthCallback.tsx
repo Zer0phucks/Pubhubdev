@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { supabase } from '../utils/supabase/client';
 import { oauthAPI, setAuthToken, getAuthToken } from '../utils/api';
 import { logger } from '../utils/logger';
+import { toAppError } from '@/types';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');

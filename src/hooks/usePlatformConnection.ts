@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Platform } from '../types';
+import { Platform, toAppError } from '../types';
 import { oauthAPI, connectionsAPI, setAuthToken } from '../utils/api';
 import { supabase } from '../utils/supabase/client';
 import { toast } from 'sonner';

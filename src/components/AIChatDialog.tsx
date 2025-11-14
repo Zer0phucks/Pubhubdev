@@ -16,6 +16,7 @@ import { aiAPI } from "../utils/api";
 import { useProject } from "./ProjectContext";
 import { toast } from "sonner";
 import { logger } from "../utils/logger";
+import { toAppError } from "@/types";
 
 type View = "dashboard" | "compose" | "inbox" | "calendar" | "ai" | "connections";
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";

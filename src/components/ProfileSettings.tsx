@@ -11,6 +11,7 @@ import { useProject } from "./ProjectContext";
 import { uploadAPI } from "../utils/api";
 import { toast } from "sonner";
 import { logger } from '../utils/logger';
+import { toAppError } from "@/types";
 
 export function ProfileSettings() {
   const { user, profilePicture, refreshProfile } = useAuth();

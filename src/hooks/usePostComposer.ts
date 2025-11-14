@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Platform, Attachment, ScheduledPost } from '../types';
+import { Platform, Attachment, ScheduledPost, toAppError } from '../types';
 import { postsAPI } from '../utils/api';
 import { toast } from 'sonner';
 import { logger } from '../utils/logger';

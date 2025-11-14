@@ -15,6 +15,7 @@ import {
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { getAuthToken } from '../utils/api';
 import { toast } from 'sonner';
+import { toAppError } from '@/types';
 
 interface DebugInfo {
   section: string;

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { PubHubLogo } from './PubHubLogo';
 import { logger } from '../utils/logger';
+import { toAppError } from '@/types';
 
 export function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');

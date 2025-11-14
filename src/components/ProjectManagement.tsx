@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { CreateProjectDialog } from "./CreateProjectDialog";
+import { toAppError } from "@/types";
 
 export function ProjectManagement() {
   const { projects, currentProject, updateProject, deleteProject, setCurrentProject } = useProject();

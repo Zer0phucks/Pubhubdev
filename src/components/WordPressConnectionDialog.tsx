@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { ExternalLink, Loader2, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { logger } from '../utils/logger';
+import { toAppError } from "@/types";
 
 interface WordPressConnectionDialogProps {
   open: boolean;

@@ -13,6 +13,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { useProject } from "./ProjectContext";
 import { toast } from "sonner";
+import { toAppError } from "@/types";
 
 interface CreateProjectDialogProps {
   open: boolean;

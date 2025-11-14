@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { logger } from '../utils/logger';
+import { toAppError } from '@/types';
 
 export function AuthPage() {
   // Default to sign up for first-time users
