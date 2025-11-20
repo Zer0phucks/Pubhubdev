@@ -85,7 +85,7 @@ function attachSession(db: MockDatabase, userId: string) {
       access_token: tokens.token,
       token_type: 'bearer',
       expires_in: 3600,
-      expires_at: tokens.expiresAt / 1000,
+      expires_at: Math.floor(tokens.expiresAt / 1000),
       refresh_token: tokens.refreshToken,
       user: formatSupabaseUser(user),
     },
