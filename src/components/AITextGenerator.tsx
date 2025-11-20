@@ -9,8 +9,7 @@ import {
 } from "./ui/popover";
 import { Sparkles, Loader2, Wand2, Copy, Check, RotateCw } from "lucide-react";
 import { toast } from "sonner";
-import { projectId } from "../utils/supabase/info";
-import { getAuthToken } from "../utils/api";
+import { getAuthToken, API_URL } from "../utils/api";
 import { logger } from '../utils/logger';
 
 interface AITextGeneratorProps {
@@ -75,11 +74,11 @@ export function AITextGenerator({
 
     try {
       // Call AI text generation API
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/ai/generate-text`, {
+      const response = await fetch(`${API_URL}/ai/generate-text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`,
+          'Authorization': `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           prompt: effectivePrompt,

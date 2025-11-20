@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useAuth } from "./AuthContext";
-import { projectId, publicAnonKey } from "../utils/supabase/info";
+import { API_URL } from "../utils/api";
 import { logger } from "../utils/logger";
 
 interface Project {
@@ -34,7 +34,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, getToken } = useAuth();
 
-  const baseUrl = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
+  const baseUrl = API_URL;
 
   // Fetch all projects
   const fetchProjects = async () => {

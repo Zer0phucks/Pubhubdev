@@ -1,4 +1,4 @@
-import { projectId, publicAnonKey } from './supabase/info';
+import { projectId } from './supabase/info';
 import type {
   PostPayload,
   TemplatePayload,
@@ -8,13 +8,20 @@ import type {
   ApiResponse
 } from '../types';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
+const FALLBACK_API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
+export const API_URL =
+  import.meta.env.VITE_API_BASE_URL?.trim() || FALLBACK_API_URL;
 
 // Storage for auth token
 let authToken: string | null = null;
+let authTokenProvider: (() => Promise<string | null>) | null = null;
+const isBrowser = typeof window !== 'undefined';
 
 export function setAuthToken(token: string | null) {
   authToken = token;
+  if (!isBrowser) {
+    return;
+  }
   if (token) {
     localStorage.setItem('pubhub_auth_token', token);
   } else {
@@ -22,15 +29,30 @@ export function setAuthToken(token: string | null) {
   }
 }
 
-export function getAuthToken(): string | null {
-  if (!authToken) {
+export function registerAuthTokenProvider(
+  provider: (() => Promise<string | null>) | null
+) {
+  authTokenProvider = provider;
+}
+
+export async function getAuthToken(): Promise<string | null> {
+  if (authToken) {
+    return authToken;
+  }
+
+  if (authTokenProvider) {
+    return authTokenProvider();
+  }
+
+  if (isBrowser && !authToken) {
     authToken = localStorage.getItem('pubhub_auth_token');
   }
+
   return authToken;
 }
 
 async function apiCall(endpoint: string, options: RequestInit = {}) {
-  const token = getAuthToken();
+  const token = await getAuthToken();
   
   if (!token) {
     throw new Error('Not authenticated. Please sign in first.');
@@ -239,7 +261,7 @@ export const analyticsAPI = {
 
 export const uploadAPI = {
   async uploadProfilePicture(file: File) {
-    const token = getAuthToken();
+    const token = await getAuthToken();
     const formData = new FormData();
     formData.append('file', file);
     
@@ -260,7 +282,7 @@ export const uploadAPI = {
   },
   
   async uploadProjectLogo(projectId: string, file: File) {
-    const token = getAuthToken();
+    const token = await getAuthToken();
     const formData = new FormData();
     formData.append('file', file);
     

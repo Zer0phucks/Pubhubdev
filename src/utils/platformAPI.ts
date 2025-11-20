@@ -1,7 +1,6 @@
 // Platform API utilities for making authenticated requests to social media platforms
-import { supabase } from './supabase/client';
 import type { PlatformPublishResult } from '../types';
-import { oauthAPI, setAuthToken } from './api';
+import { oauthAPI } from './api';
 
 export interface PlatformPost {
   content: string;
@@ -13,15 +12,6 @@ export interface PlatformPost {
  * Get OAuth access token for a platform
  */
 async function getAccessToken(platform: string, projectId: string): Promise<string> {
-  // Ensure we have a fresh auth token
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError || !session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  // Update auth token for API calls
-  setAuthToken(session.access_token);
-
   // Use centralized OAuth API
   const data = await oauthAPI.getToken(platform, projectId);
   return data.accessToken;

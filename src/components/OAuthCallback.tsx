@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { supabase } from '../utils/supabase/client';
-import { oauthAPI, setAuthToken, getAuthToken } from '../utils/api';
+import { oauthAPI } from '../utils/api';
 import { logger } from '../utils/logger';
 import { toAppError } from '@/types';
+import { useAuth } from './AuthContext';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -15,6 +15,8 @@ export function OAuthCallback() {
   useEffect(() => {
     handleCallback();
   }, []);
+
+  const { getToken } = useAuth();
 
   const handleCallback = async () => {
     try {
@@ -67,23 +69,10 @@ export function OAuthCallback() {
       setPlatform(storedPlatform);
       setMessage(`Connecting your ${storedPlatform} account...`);
 
-      // Get fresh auth token from Supabase
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !session?.access_token) {
+      // Get fresh auth token
+      const token = await getToken();
+      if (!token) {
         throw new Error('Not authenticated. Please sign in first.');
-      }
-
-      // Update auth token for API calls - ensure it's set before making the call
-      const token = session.access_token;
-      setAuthToken(token);
-      
-      // Verify token was set correctly before making API call
-      const verifyToken = getAuthToken();
-      if (!verifyToken || verifyToken !== token) {
-        logger.warn('Token not properly set, retrying...');
-        // Force set it directly
-        localStorage.setItem('pubhub_auth_token', token);
       }
 
       // Exchange code for token on backend using centralized API

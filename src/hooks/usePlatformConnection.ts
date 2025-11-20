@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Platform, toAppError } from '../types';
-import { oauthAPI, connectionsAPI, setAuthToken } from '../utils/api';
-import { supabase } from '../utils/supabase/client';
+import { oauthAPI, connectionsAPI } from '../utils/api';
 import { toast } from 'sonner';
 import { logger } from '../utils/logger';
+import { useAuth } from '@/components/AuthContext';
 
 export interface PlatformConnectionState {
   isConnected: boolean;
@@ -38,6 +38,7 @@ export function usePlatformConnection(
   platform: Platform,
   projectId: string
 ): PlatformConnectionResult {
+  const { getToken } = useAuth();
   const [state, setState] = useState<PlatformConnectionState>({
     isConnected: false,
     isLoading: false,
@@ -87,14 +88,11 @@ export function usePlatformConnection(
         description: 'You will be redirected to authorize PubHub',
       });
 
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      // Ensure user is authenticated
+      const token = await getToken();
+      if (!token) {
         throw new Error('You must be signed in to connect platforms');
       }
-
-      // Update auth token for API calls
-      setAuthToken(session.access_token);
 
       // Get authorization URL from backend
       const data = await oauthAPI.authorize(platform, projectId);
@@ -128,14 +126,10 @@ export function usePlatformConnection(
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      const token = await getToken();
+      if (!token) {
         throw new Error('You must be signed in to disconnect platforms');
       }
-
-      // Update auth token for API calls
-      setAuthToken(session.access_token);
 
       // Call backend to disconnect OAuth
       await oauthAPI.disconnect(platform, projectId);

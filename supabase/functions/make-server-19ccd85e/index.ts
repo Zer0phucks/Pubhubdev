@@ -2,6 +2,7 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClerkClient } from "npm:@clerk/clerk-sdk-node";
 import * as kv from "./kv_store.tsx";
 import { rateLimiter, userRateLimiter, rateLimitConfigs } from "./rate-limiter-hono.ts";
 import { uploadImageToLinkedIn, createLinkedInPostWithImage } from "./linkedin-upload.ts";
@@ -34,10 +35,17 @@ app.use(
 app.use('/make-server-19ccd85e/*', rateLimiter(rateLimitConfigs.api));
 
 // Supabase admin client for database access and auth verification
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-);
+const supabaseAdminUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const supabaseAdmin = supabaseAdminUrl && supabaseServiceKey
+  ? createClient(supabaseAdminUrl, supabaseServiceKey)
+  : null;
+
+// Clerk client for token verification
+const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY') ?? '';
+const clerkClient = clerkSecretKey
+  ? createClerkClient({ secretKey: clerkSecretKey })
+  : null;
 
 // Initialize storage buckets on startup
 async function initializeStorage() {
@@ -72,16 +80,43 @@ async function requireAuth(c: any, next: any) {
 
   const token = authHeader.replace('Bearer ', '');
   
-  // Verify Supabase token
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-  
-  if (error || !user) {
+  let userId: string | null = null;
+  let userPayload: any = null;
+
+  // Try Supabase verification first (for backwards compatibility)
+  if (supabaseAdmin) {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (!error && data?.user) {
+      userId = data.user.id;
+      userPayload = data.user;
+    }
+  }
+
+  // Fallback to Clerk verification
+  if (!userId && clerkClient) {
+    try {
+      const verified = await clerkClient.verifyToken(token);
+      const clerkUser = await clerkClient.users.getUser(verified.sub);
+      userId = clerkUser.id;
+      userPayload = {
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress,
+        user_metadata: {
+          name: clerkUser.fullName || clerkUser.firstName || undefined,
+          profilePicture: clerkUser.imageUrl,
+        },
+      };
+    } catch (err) {
+      console.error('Clerk token verification failed', err);
+    }
+  }
+
+  if (!userId || !userPayload) {
     return c.json({ error: 'Unauthorized - Invalid token' }, 401);
   }
-  
-  // Set user info from Supabase token
-  c.set('userId', user.id);
-  c.set('user', user);
+
+  c.set('userId', userId);
+  c.set('user', userPayload);
   await next();
 }
 

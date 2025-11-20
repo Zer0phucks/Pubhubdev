@@ -12,8 +12,7 @@ import {
   Terminal,
   XCircle,
 } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { getAuthToken } from '../utils/api';
+import { getAuthToken, API_URL } from '../utils/api';
 import { toast } from 'sonner';
 import { toAppError } from '@/types';
 
@@ -41,7 +40,7 @@ export function OAuthDebugPanel() {
       message: 'Checking user authentication...',
     });
 
-    const authToken = getAuthToken();
+    const authToken = await getAuthToken();
     if (authToken) {
       info.push({
         section: 'Authentication',
@@ -61,26 +60,26 @@ export function OAuthDebugPanel() {
       return;
     }
 
-    // Check 2: Supabase Configuration
+    // Check 2: API Configuration
     info.push({
-      section: 'Supabase',
+      section: 'API',
       status: 'info',
-      message: 'Checking Supabase configuration...',
+      message: 'Checking API configuration...',
     });
 
-    if (projectId && publicAnonKey) {
+    if (API_URL) {
       info.push({
-        section: 'Supabase',
+        section: 'API',
         status: 'success',
-        message: 'Supabase is configured',
-        details: `Project ID: ${projectId}`,
+        message: 'API base URL detected',
+        details: `API URL: ${API_URL}`,
       });
     } else {
       info.push({
-        section: 'Supabase',
+        section: 'API',
         status: 'error',
-        message: 'Supabase configuration missing',
-        details: 'Project ID or Public Anon Key not found',
+        message: 'API configuration missing',
+        details: 'Set VITE_API_BASE_URL in your environment',
       });
     }
 
@@ -95,14 +94,7 @@ export function OAuthDebugPanel() {
     setDebugInfo([...info]);
 
     try {
-      const healthResponse = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/health`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
+      const healthResponse = await fetch(`${API_URL}/health`);
 
       if (healthResponse.ok) {
         info.push({
@@ -146,7 +138,7 @@ export function OAuthDebugPanel() {
     for (const platform of platforms) {
       try {
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=test`,
+          `${API_URL}/oauth/authorize/${platform}?projectId=test`,
           {
             headers: {
               'Authorization': `Bearer ${authToken}`,

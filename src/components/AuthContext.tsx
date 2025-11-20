@@ -1,7 +1,6 @@
 import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase/client';
-import { projectId } from '../utils/supabase/info';
-import { setAuthToken } from '../utils/api';
+import { API_URL, registerAuthTokenProvider, setAuthToken } from '../utils/api';
 import { logger } from '../utils/logger';
 
 interface User {
@@ -28,6 +27,27 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
+type DemoUserRecord = {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  createdAt: string;
+};
+
+type DemoSessionRecord = {
+  userId: string;
+  token: string;
+};
+
+const DEMO_USERS_KEY = 'pubhub::demo-users';
+const DEMO_SESSION_KEY = 'pubhub::demo-session';
+const isBrowser = typeof window !== 'undefined';
+
+const defaultDemoFlag = import.meta.env.DEV ? 'true' : 'false';
+const useDemoAuth =
+  (import.meta.env.VITE_DEMO_MODE ?? defaultDemoFlag).toLowerCase() === 'true';
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -35,10 +55,132 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
-  const baseUrl = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
+  const baseUrl = API_URL;
+
+  useEffect(() => {
+    if (useDemoAuth) {
+      registerAuthTokenProvider(null);
+      return;
+    }
+
+    registerAuthTokenProvider(async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      return session?.access_token ?? null;
+    });
+
+    return () => {
+      registerAuthTokenProvider(null);
+    };
+  }, []);
+
+  const loadDemoUsers = (): DemoUserRecord[] => {
+    if (!isBrowser) return [];
+    try {
+      const raw = localStorage.getItem(DEMO_USERS_KEY);
+      return raw ? (JSON.parse(raw) as DemoUserRecord[]) : [];
+    } catch (error) {
+      logger.error('Failed to parse demo users', error);
+      return [];
+    }
+  };
+
+  const persistDemoUsers = (records: DemoUserRecord[]) => {
+    if (!isBrowser) return;
+    localStorage.setItem(DEMO_USERS_KEY, JSON.stringify(records));
+  };
+
+  const readDemoSession = (): DemoSessionRecord | null => {
+    if (!isBrowser) return null;
+    try {
+      const raw = localStorage.getItem(DEMO_SESSION_KEY);
+      return raw ? (JSON.parse(raw) as DemoSessionRecord) : null;
+    } catch (error) {
+      logger.error('Failed to parse demo session', error);
+      return null;
+    }
+  };
+
+  const persistDemoSession = (session: DemoSessionRecord | null) => {
+    if (!isBrowser) return;
+    if (session) {
+      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session));
+    } else {
+      localStorage.removeItem(DEMO_SESSION_KEY);
+    }
+  };
+
+  const mapDemoUserToAuthUser = (record: DemoUserRecord): User => ({
+    id: record.id,
+    email: record.email,
+    user_metadata: {
+      name: record.name,
+    },
+  });
+
+  const createDemoToken = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return `demo-${crypto.randomUUID()}`;
+    }
+    return `demo-${Math.random().toString(36).slice(2)}`;
+  };
+
+  const demoSignup = (email: string, password: string, name: string) => {
+    const records = loadDemoUsers();
+    if (records.some((record) => record.email.toLowerCase() === email.toLowerCase())) {
+      throw new Error('User already registered');
+    }
+
+    const newRecord: DemoUserRecord = {
+      id: crypto.randomUUID(),
+      email,
+      password,
+      name,
+      createdAt: new Date().toISOString(),
+    };
+
+    records.push(newRecord);
+    persistDemoUsers(records);
+
+    const session: DemoSessionRecord = {
+      userId: newRecord.id,
+      token: createDemoToken(),
+    };
+    persistDemoSession(session);
+
+    const mappedUser = mapDemoUserToAuthUser(newRecord);
+    setUser(mappedUser);
+    setAuthToken(session.token);
+  };
+
+  const demoSignin = (email: string, password: string) => {
+    const records = loadDemoUsers();
+    const existing = records.find(
+      (record) => record.email.toLowerCase() === email.toLowerCase(),
+    );
+
+    if (!existing || existing.password !== password) {
+      throw new Error('Invalid email or password');
+    }
+
+    const session: DemoSessionRecord = {
+      userId: existing.id,
+      token: createDemoToken(),
+    };
+
+    persistDemoSession(session);
+    const mappedUser = mapDemoUserToAuthUser(existing);
+    setUser(mappedUser);
+    setAuthToken(session.token);
+  };
 
   // Fetch user profile with profile picture
   const refreshProfile = async () => {
+    if (useDemoAuth) {
+      return;
+    }
+
     if (!user) {
       logger.warn('Cannot refresh profile: no user authenticated');
       return;
@@ -83,10 +225,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
+    if (useDemoAuth) {
+      const session = readDemoSession();
+      if (session) {
+        const records = loadDemoUsers();
+        const current = records.find((record) => record.id === session.userId);
+        if (current) {
+          setUser(mapDemoUserToAuthUser(current));
+          setAuthToken(session.token);
+        }
+      }
+      setLoading(false);
+      return;
+    }
+
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (session?.user) {
           const mappedUser: User = {
             id: session.user.id,
@@ -105,8 +263,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkSession();
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const mappedUser: User = {
           id: session.user.id,
@@ -127,6 +286,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signin = async (email: string, password: string) => {
+    if (useDemoAuth) {
+      demoSignin(email, password);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -163,6 +327,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (email: string, password: string, name: string) => {
+    if (useDemoAuth) {
+      demoSignup(email, password, name);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -214,7 +383,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Initialize user profile (backend handles auto-init)
       try {
-        await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/auth/profile`, {
+        await fetch(`${baseUrl}/auth/profile`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         });
       } catch (err) {
@@ -224,12 +393,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signout = async () => {
+    if (useDemoAuth) {
+      persistDemoSession(null);
+      setUser(null);
+      setAuthToken(null);
+      return;
+    }
+
     await supabase.auth.signOut();
     setUser(null);
     setAuthToken(null);
   };
 
   const getToken = async () => {
+    if (useDemoAuth) {
+      const session = readDemoSession();
+      return session?.token ?? null;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || null;
   };

@@ -17,7 +17,7 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { PlatformIcon } from "./PlatformIcon";
 import { AITextGenerator } from "./AITextGenerator";
 import { getCustomTemplates, type CustomTemplate } from "../utils/customTemplates";
-import { postsAPI } from "../utils/api";
+import { postsAPI, API_URL } from "../utils/api";
 import { useProject } from "./ProjectContext";
 import {
   Sparkles,
@@ -35,9 +35,8 @@ import {
 import { PLATFORM_CONSTRAINTS, type Platform, type Attachment, type PublishResponse, type AppError } from "../types";
 import { toast } from "sonner";
 import { TransformedContent } from "../utils/contentTransformer";
-import { projectId } from "../utils/supabase/info";
-import { supabase } from "../utils/supabase/client";
 import { logger } from "../utils/logger";
+import { useAuth } from "./AuthContext";
 
 interface PlatformSelection {
   id: Platform;
@@ -77,6 +76,7 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishingPlatforms, setPublishingPlatforms] = useState<Set<Platform>>(new Set());
   const { currentProject } = useProject();
+  const { getToken } = useAuth();
 
   const [platforms, setPlatforms] = useState<PlatformSelection[]>([
     { id: "twitter", name: "Twitter", icon: <PlatformIcon platform="twitter" />, enabled: true },
@@ -290,19 +290,18 @@ export const ContentComposer = memo(function ContentComposer({ transformedConten
       const media = attachments.find(a => a.platform === platform);
 
       // Now publish to the actual platform via our Edge Function
-      // Ensure authenticated session for publishing
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      const token = await getToken();
+      if (!token) {
         throw new Error('You must be signed in to publish');
       }
 
       const publishResponse = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/posts/publish`,
+        `${API_URL}/posts/publish`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             postId: post.id,

@@ -8,8 +8,7 @@ import { PlatformIcon } from './PlatformIcon';
 import { useProject } from './ProjectContext';
 import { OAuthDebugPanel } from './OAuthDebugPanel';
 import { OAuthQuickHelp } from './OAuthQuickHelp';
-import { connectionsAPI, getAuthToken } from '../utils/api';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { connectionsAPI, getAuthToken, API_URL } from '../utils/api';
 import {
   CheckCircle2,
   XCircle,
@@ -119,9 +118,9 @@ export function OAuthTester() {
     
     for (const platform of platforms) {
       try {
-        const authToken = getAuthToken();
+        const authToken = await getAuthToken();
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=test`,
+          `${API_URL}/oauth/authorize/${platform}?projectId=test`,
           {
             headers: {
               'Authorization': `Bearer ${authToken}`,
@@ -162,7 +161,7 @@ export function OAuthTester() {
       // Step 1: Check env vars
       addLog(platform, 'info', 'Checking environment variables...');
       
-      const authToken = getAuthToken();
+      const authToken = await getAuthToken();
       if (!authToken) {
         throw new Error('Not authenticated. Please sign in first.');
       }
@@ -171,7 +170,7 @@ export function OAuthTester() {
       // Step 2: Request authorization URL
       addLog(platform, 'info', 'Requesting authorization URL...');
       const authResponse = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=${currentProject.id}`,
+        `${API_URL}/oauth/authorize/${platform}?projectId=${currentProject.id}`,
         {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -234,9 +233,9 @@ export function OAuthTester() {
     addLog(platform, 'info', 'Testing disconnect flow...');
 
     try {
-      const authToken = getAuthToken();
+      const authToken = await getAuthToken();
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/disconnect`,
+        `${API_URL}/oauth/disconnect`,
         {
           method: 'POST',
           headers: {

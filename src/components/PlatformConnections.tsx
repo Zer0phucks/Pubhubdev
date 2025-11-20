@@ -6,9 +6,8 @@ import { Switch } from "./ui/switch";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { PlatformIcon } from "./PlatformIcon";
-import { connectionsAPI, oauthAPI, setAuthToken } from "../utils/api";
+import { connectionsAPI, oauthAPI, API_URL } from "../utils/api";
 import { useProject } from "./ProjectContext";
-import { supabase } from "../utils/supabase/client";
 import {
   CheckCircle2,
   XCircle,
@@ -32,6 +31,7 @@ import { WordPressConnectionDialog, WordPressCredentials } from "./WordPressConn
 import { toast } from "sonner";
 import { logger } from "../utils/logger";
 import { toAppError } from "@/types";
+import { useAuth } from "./AuthContext";
 
 type Platform = "twitter" | "instagram" | "linkedin" | "facebook" | "youtube" | "tiktok" | "pinterest" | "reddit" | "blog";
 
@@ -103,6 +103,7 @@ export function PlatformConnections() {
     }
   ];
 
+  const { getToken } = useAuth();
   const [connections, setConnections] = useState<PlatformConnection[]>(defaultConnections);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -210,14 +211,10 @@ export function PlatformConnections() {
   const confirmDisconnect = async () => {
     if (platformToDisconnect && currentProject) {
       try {
-        // Ensure we have a fresh auth token
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session?.access_token) {
+        const token = await getToken();
+        if (!token) {
           throw new Error('You must be signed in to disconnect platforms');
         }
-
-        // Update auth token for API calls
-        setAuthToken(session.access_token);
 
         // Call backend to disconnect OAuth using centralized API
         const data = await oauthAPI.disconnect(platformToDisconnect, currentProject.id);
@@ -272,14 +269,10 @@ export function PlatformConnections() {
         description: 'You will be redirected to authorize PubHub'
       });
 
-      // Get current user session for authenticated request
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      const token = await getToken();
+      if (!token) {
         throw new Error('You must be signed in to connect platforms');
       }
-
-      // Update auth token for API calls
-      setAuthToken(session.access_token);
 
       // Get authorization URL from backend using centralized API
       const data = await oauthAPI.authorize(platform, currentProject.id);
@@ -314,21 +307,16 @@ export function PlatformConnections() {
     }
 
     try {
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session?.access_token) {
+      const token = await getToken();
+      if (!token) {
         throw new Error('You must be signed in to connect WordPress');
       }
 
-      // Update auth token for API calls
-      setAuthToken(session.access_token);
-
-      // Call backend to connect WordPress
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/make-server-19ccd85e/wordpress/connect`, {
+      const response = await fetch(`${API_URL}/wordpress/connect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           projectId: currentProject.id,

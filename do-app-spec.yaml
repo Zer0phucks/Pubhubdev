@@ -15,6 +15,7 @@ static_sites:
     source_dir: /
     build_command: npm install && npm run build
     output_dir: build
+    catchall_document: index.html
     envs:
       - key: VITE_SUPABASE_URL
         value: https://ykzckfwdvmzuzxhezthv.supabase.co
@@ -29,5 +30,9 @@ static_sites:
         value: "false"
         scope: RUN_AND_BUILD_TIME
       - key: VITE_USE_MOCK_SERVER
+        value: "false"
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_DEMO_MODE
         value: "true"
         scope: RUN_AND_BUILD_TIME
+

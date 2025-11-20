@@ -3,7 +3,7 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { API_URL, getAuthToken } from '../utils/api';
 import { useProject } from './ProjectContext';
 import {
   CheckCircle2,
@@ -168,16 +168,22 @@ export function OAuthDebugDashboard() {
 
     setLoading(true);
     const updatedPlatforms: PlatformDebugInfo[] = [];
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      toast.error('You must be signed in to run OAuth diagnostics.');
+      setLoading(false);
+      return;
+    }
 
     for (const config of platformConfigs) {
       try {
         // Test authorization endpoint
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${config.platform}?projectId=${currentProject.id}`,
+          `${API_URL}/oauth/authorize/${config.platform}?projectId=${currentProject.id}`,
           {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
+              'Authorization': `Bearer ${authToken}`,
             },
           }
         );
@@ -201,7 +207,7 @@ export function OAuthDebugDashboard() {
         }
 
         // Check for existing connection
-        const connections = await checkExistingConnections(config.platform);
+        const connections = await checkExistingConnections(config.platform, authToken);
         if (connections) {
           config.connection = connections;
           if (connections.connected) {
@@ -221,13 +227,13 @@ export function OAuthDebugDashboard() {
     setLoading(false);
   };
 
-  const checkExistingConnections = async (platform: Platform) => {
+  const checkExistingConnections = async (platform: Platform, token: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/connections?projectId=${currentProject?.id}`,
+        `${API_URL}/connections?projectId=${currentProject?.id}`,
         {
           headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
+            'Authorization': `Bearer ${token}`,
           },
         }
       );
@@ -251,12 +257,16 @@ export function OAuthDebugDashboard() {
 
     setTesting(platform);
     try {
-      // Start OAuth flow test
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error('You must be signed in to run OAuth tests.');
+      }
+
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e/oauth/authorize/${platform}?projectId=${currentProject.id}`,
+        `${API_URL}/oauth/authorize/${platform}?projectId=${currentProject.id}`,
         {
           headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
+            'Authorization': `Bearer ${token}`,
           },
         }
       );
