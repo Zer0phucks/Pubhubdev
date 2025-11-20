@@ -14,6 +14,9 @@ async function enableMocking() {
     await worker
       .start({
         onUnhandledRequest: "bypass",
+        serviceWorker: {
+          url: "/mockServiceWorker.js",
+        },
       })
       .then(() => console.info("[PubHub] Mock server ready."))
       .catch((error) => {
