@@ -1,0 +1,33 @@
+﻿name: pubhub
+region: nyc
+features:
+  - buildpack-stack=ubuntu-22
+domains:
+  - domain: pubhub.dev
+    type: PRIMARY
+    zone: pubhub.dev
+static_sites:
+  - name: pubhub-frontend
+    github:
+      repo: Zer0phucks/Pubhubdev
+      branch: main
+      deploy_on_push: true
+    source_dir: /
+    build_command: npm install && npm run build
+    output_dir: build
+    envs:
+      - key: VITE_SUPABASE_URL
+        value: https://ykzckfwdvmzuzxhezthv.supabase.co
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlremNrZndkdm16dXp4aGV6dGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0MTM2OTIsImV4cCI6MjA3Njk4OTY5Mn0.UoI8-lcWPepwOJz0nML-70f3MnxseCwB_AMedHLoVZE
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_SENTRY_DSN
+        value: https://f400c21bed0184aa960502392fd26c57@o4510074583842816.ingest.us.sentry.io/4510251337580544
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_SENTRY_DEBUG
+        value: "false"
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_USE_MOCK_SERVER
+        value: "true"
+        scope: RUN_AND_BUILD_TIME

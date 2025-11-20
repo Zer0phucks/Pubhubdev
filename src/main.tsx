@@ -6,13 +6,31 @@ import "./index.css";
 import "./sentry";
 import { initWebVitals } from "./utils/webVitals";
 
+async function enableMocking() {
+  const flag = (import.meta.env.VITE_USE_MOCK_SERVER ?? "true").toLowerCase();
+  if (flag !== "false") {
+    console.info("[PubHub] Demo API mock server enabled.");
+    const { worker } = await import("./mocks/browser");
+    await worker
+      .start({
+        onUnhandledRequest: "bypass",
+      })
+      .then(() => console.info("[PubHub] Mock server ready."))
+      .catch((error) => {
+        console.error("[PubHub] Failed to start mock server", error);
+      });
+  }
+}
+
 // Initialize Core Web Vitals monitoring
 initWebVitals();
 
-createRoot(document.getElementById("root")!).render(
-  <>
-    <App />
-    <Analytics />
-  </>
-);
+enableMocking().finally(() => {
+  createRoot(document.getElementById("root")!).render(
+    <>
+      <App />
+      <Analytics />
+    </>
+  );
+});
   

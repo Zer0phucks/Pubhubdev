@@ -98,5 +98,10 @@
     "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
     "type-check": "tsc --noEmit",
     "test:accessibility": "playwright test tests/accessibility/ --project=chromium"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
