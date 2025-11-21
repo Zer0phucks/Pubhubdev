@@ -7,9 +7,14 @@ import "./sentry";
 import { initWebVitals } from "./utils/webVitals";
 
 async function enableMocking() {
+  // Only enable mocking in development mode, never in production
+  if (import.meta.env.PROD) {
+    return;
+  }
+  
   const defaultFlag = import.meta.env.DEV ? "true" : "false";
   const rawFlag = (import.meta.env.VITE_USE_MOCK_SERVER ?? defaultFlag).toLowerCase();
-  const shouldMock = rawFlag === "true" && import.meta.env.DEV;
+  const shouldMock = rawFlag === "true";
 
   if (!shouldMock) {
     if (rawFlag === "true" && import.meta.env.PROD) {
@@ -66,7 +71,12 @@ enableMocking().finally(async () => {
   const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
   
   const AppContent = (
-    <ClerkProvider publishableKey={clerkPublishableKey || ""}>
+    <ClerkProvider 
+      publishableKey={clerkPublishableKey || ""}
+      // Disable custom domain to use default Clerk CDN
+      domain={undefined}
+      frontendApi={undefined}
+    >
       <App />
       <Analytics />
     </ClerkProvider>
@@ -80,9 +90,8 @@ enableMocking().finally(async () => {
     // Use setTimeout to ensure this runs after initial render and Vite build analysis
     setTimeout(() => {
       // Dynamically import and initialize PostHog after app renders
-      // Using string literal to help Vite resolve the module
-      const posthogModule = "posthog-js";
-      import(/* @vite-ignore */ posthogModule).then((posthog) => {
+      // Must use string literal, not variable, for dynamic import to work
+      import(/* @vite-ignore */ "posthog-js").then((posthog) => {
         posthog.default.init(postHogKey, {
           api_host: postHogHost,
           defaults: '2025-05-24',
