@@ -34,6 +34,10 @@ export default defineConfig({
         manualChunks: (id) => {
           // Core vendor libraries
           if (id.includes('node_modules')) {
+            // Clerk must be in its own chunk to avoid circular dependency issues
+            if (id.includes('@clerk')) {
+              return 'vendor-clerk';
+            }
             // React core stays in main bundle to ensure it loads first
             // Only split out React ecosystem libraries
             if (id.includes('next-themes') || id.includes('sonner') ||
