@@ -20,9 +20,10 @@ static_sites:
       - key: VITE_CLERK_PUBLISHABLE_KEY
         value: pk_live_Y2xlcmsucHViaHViLmRldiQ
         scope: RUN_AND_BUILD_TIME
-      - key: VITE_API_BASE_URL
-        value: https://pubhubdev.ondigitalocean.app
-        scope: RUN_AND_BUILD_TIME
+      # API URL - uncomment and set when backend service is deployed
+      # - key: VITE_API_BASE_URL
+      #   value: https://api.pubhub.dev
+      #   scope: RUN_AND_BUILD_TIME
       - key: VITE_SENTRY_DSN
         value: https://f400c21bed0184aa960502392fd26c57@o4510074583842816.ingest.us.sentry.io/4510251337580544
         scope: RUN_AND_BUILD_TIME

@@ -9,9 +9,9 @@ import type {
 
 // DigitalOcean API URL - should be set via environment variable
 // Format: https://your-api-service.ondigitalocean.app
-const FALLBACK_API_URL = 'https://pubhubdev.ondigitalocean.app';
-export const API_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || FALLBACK_API_URL;
+// If no API URL is set, use relative path (assumes API is on same domain)
+const FALLBACK_API_URL = import.meta.env.VITE_API_BASE_URL?.trim() || '';
+export const API_URL = FALLBACK_API_URL;
 
 // Storage for auth token
 let authToken: string | null = null;
@@ -57,6 +57,12 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
   
   if (!token) {
     throw new Error('Not authenticated. Please sign in first.');
+  }
+  
+  // If no API URL is configured, throw a helpful error
+  if (!API_URL) {
+    console.warn(`[PubHub] API call to ${endpoint} failed: No API URL configured. Set VITE_API_BASE_URL environment variable.`);
+    throw new Error('API service not configured. Please set VITE_API_BASE_URL environment variable.');
   }
   
   const headers: Record<string, string> = {

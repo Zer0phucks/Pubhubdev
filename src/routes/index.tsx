@@ -16,6 +16,13 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Hydrate fallback for React Router hydration
+const HydrateFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+  </div>
+);
+
 // Lazy load route components
 const Home = lazy(() => import('../components/Home').then(m => ({ default: m.Home })));
 const ContentComposer = lazy(() => import('../components/ContentComposer').then(m => ({ default: m.ContentComposer })));
@@ -31,6 +38,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingWrapper />,
+    hydrateFallbackElement: <HydrateFallback />,
   },
   {
     path: '/auth',
