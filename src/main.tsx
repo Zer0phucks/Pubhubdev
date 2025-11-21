@@ -40,19 +40,37 @@ async function enableMocking() {
 initWebVitals();
 
 enableMocking().finally(() => {
-  const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 
-  if (!clerkPublishableKey && import.meta.env.PROD) {
-    console.error(
-      "[PubHub] Missing VITE_CLERK_PUBLISHABLE_KEY. Authentication will fail until it is configured."
-    );
+  if (!clerkPublishableKey) {
+    if (import.meta.env.PROD) {
+      console.error(
+        "[PubHub] Missing VITE_CLERK_PUBLISHABLE_KEY. Authentication will fail until it is configured."
+      );
+    }
+    // In production, still render but Clerk will handle the error
+    // In development, we might want to show an error screen
   }
 
-  createRoot(document.getElementById("root")!).render(
-    <ClerkProvider publishableKey={clerkPublishableKey}>
-      <App />
-      <Analytics />
-    </ClerkProvider>
-  );
+  const root = createRoot(document.getElementById("root")!);
+  
+  // Only render ClerkProvider if we have a valid key
+  if (clerkPublishableKey) {
+    root.render(
+      <ClerkProvider publishableKey={clerkPublishableKey}>
+        <App />
+        <Analytics />
+      </ClerkProvider>
+    );
+  } else {
+    // Fallback UI when Clerk key is missing
+    root.render(
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <h1>Configuration Error</h1>
+        <p>Missing VITE_CLERK_PUBLISHABLE_KEY environment variable.</p>
+        <p>Please configure the Clerk publishable key to continue.</p>
+      </div>
+    );
+  }
 });
   
