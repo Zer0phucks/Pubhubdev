@@ -35,6 +35,12 @@ static_sites:
       - key: VITE_DEMO_MODE
         value: "true"
         scope: RUN_AND_BUILD_TIME
+      - key: VITE_PUBLIC_POSTHOG_KEY
+        value: phc_bhdrw34WNmOsCMleLW4ept8NpGhcl07xgbMy9JyMtjd
+        scope: RUN_AND_BUILD_TIME
+      - key: VITE_PUBLIC_POSTHOG_HOST
+        value: https://us.i.posthog.com
+        scope: RUN_AND_BUILD_TIME
 services:
   - name: pubhubdev
     github:
