@@ -45,8 +45,9 @@ const DEMO_SESSION_KEY = 'pubhub::demo-session';
 const isBrowser = typeof window !== 'undefined';
 
 const defaultDemoFlag = import.meta.env.DEV ? 'true' : 'false';
-const useDemoAuth =
+const demoFlagEnabled =
   (import.meta.env.VITE_DEMO_MODE ?? defaultDemoFlag).toLowerCase() === 'true';
+const useDemoAuth = import.meta.env.DEV && demoFlagEnabled;
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
