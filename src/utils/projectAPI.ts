@@ -3,7 +3,7 @@
  * Handles project CRUD operations and management
  */
 
-import { supabase } from './supabase/client';
+import { apiCall } from './api';
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@/types';
 
 /**
@@ -11,14 +11,8 @@ import type { Project, CreateProjectInput, UpdateProjectInput } from '@/types';
  */
 export async function fetchProjects(): Promise<Project[]> {
   try {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data as Project[];
+    const response = await apiCall('/projects');
+    return response.projects || [];
   } catch (error) {
     console.error('Error fetching projects:', error);
     throw error;
@@ -30,20 +24,8 @@ export async function fetchProjects(): Promise<Project[]> {
  */
 export async function fetchProject(id: string): Promise<Project | null> {
   try {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
-      throw error;
-    }
-
-    return data as Project;
+    const projects = await fetchProjects();
+    return projects.find((p) => p.id === id) || null;
   } catch (error) {
     console.error('Error fetching project:', error);
     throw error;
@@ -55,24 +37,11 @@ export async function fetchProject(id: string): Promise<Project | null> {
  */
 export async function createProject(project: CreateProjectInput): Promise<Project> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        ...project,
-        user_id: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as Project;
+    const response = await apiCall('/projects', {
+      method: 'POST',
+      body: JSON.stringify(project),
+    });
+    return response.project;
   } catch (error) {
     console.error('Error creating project:', error);
     throw error;
@@ -87,16 +56,11 @@ export async function updateProject(
   updates: UpdateProjectInput
 ): Promise<Project> {
   try {
-    const { data, error } = await supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as Project;
+    const response = await apiCall(`/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return response.project;
   } catch (error) {
     console.error('Error updating project:', error);
     throw error;
@@ -108,12 +72,9 @@ export async function updateProject(
  */
 export async function deleteProject(id: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    await apiCall(`/projects/${id}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
     console.error('Error deleting project:', error);
     throw error;
@@ -136,31 +97,23 @@ export async function fetchProjectWithDetails(id: string): Promise<{
       throw new Error('Project not found');
     }
 
-    // Fetch brand
-    const { data: brandData } = await supabase
-      .from('brands')
-      .select('*')
-      .eq('project_id', id)
-      .single();
+    // Fetch brand and persona using their respective APIs
+    // These will be converted to REST API calls in their respective files
+    const { fetchBrand } = await import('./brandAPI');
+    const { fetchPersonaRecord } = await import('./personaAPI');
+    const { fetchContentSources } = await import('./contentAPI');
 
-    // Fetch persona
-    const { data: personaData } = await supabase
-      .from('personas')
-      .select('*')
-      .eq('project_id', id)
-      .single();
-
-    // Count content sources
-    const { count } = await supabase
-      .from('content_sources')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', id);
+    const [brand, persona, contentSources] = await Promise.all([
+      fetchBrand(id).catch(() => null),
+      fetchPersonaRecord(id).catch(() => null),
+      fetchContentSources(id).catch(() => []),
+    ]);
 
     return {
       project,
-      brand: brandData,
-      persona: personaData,
-      contentSourceCount: count || 0,
+      brand,
+      persona,
+      contentSourceCount: contentSources.length,
     };
   } catch (error) {
     console.error('Error fetching project with details:', error);
@@ -182,11 +135,8 @@ export async function getOrCreateDefaultProject(): Promise<Project> {
     }
 
     // Create default project
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const defaultName = user?.email
-      ? `${user.email.split('@')[0]}'s Project`
-      : 'My First Project';
+    // Note: User email would need to be passed or fetched from profile
+    const defaultName = 'My First Project';
 
     return await createProject({
       name: defaultName,
@@ -219,20 +169,21 @@ export async function duplicateProject(
 
     // Copy brand if exists
     if (original.brand) {
+      const { createBrand } = await import('./brandAPI');
       const { id, project_id, created_at, updated_at, ...brandData } = original.brand;
-      await supabase.from('brands').insert({
+      await createBrand({
         ...brandData,
         project_id: newProject.id,
-      });
+      } as any);
     }
 
     // Copy persona if exists
     if (original.persona) {
+      const { createPersona } = await import('./personaAPI');
       const { id, project_id, created_at, updated_at, created_by, ...personaData } = original.persona;
-      await supabase.from('personas').insert({
-        ...personaData,
-        project_id: newProject.id,
-      });
+      await createPersona(newProject.id, {
+        ...personaData.persona_data,
+      } as any);
     }
 
     return newProject;

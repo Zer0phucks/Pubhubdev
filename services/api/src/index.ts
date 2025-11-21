@@ -6,15 +6,13 @@ import { rateLimiter, userRateLimiter, rateLimitConfigs } from './middleware/rat
 import * as kv from './db/kv-store';
 import { initializeBucket, uploadFile, getSignedUrlForFile } from './storage/spaces';
 import { closePool } from './db/client';
+import { getOAuthConfig } from './oauth/oauth-config';
+import { fetchRedditTrending, fetchRedditTrendingAll, NormalizedTrendingPost } from './trending/reddit-fetcher';
+import { randomUUID } from 'crypto';
 
 // Helper to generate random IDs
 function randomId(): string {
-  // Use crypto.randomUUID if available (Node.js 16+)
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return (crypto as any).randomUUID();
-  }
-  // Fallback for older Node.js versions
-  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return randomUUID();
 }
 
 const app = new Hono();
@@ -841,9 +839,29 @@ app.get('/trending', requireAuth, async (c) => {
       }
     }
 
-    // TODO: Implement trending post fetching
-    // For now, return empty array
-    const posts: any[] = [];
+    // Fetch fresh data based on platform
+    let posts: NormalizedTrendingPost[] = [];
+
+    if (platform === 'reddit' || platform === 'all') {
+      try {
+        if (category === 'all' || !category) {
+          posts = await fetchRedditTrendingAll(count);
+        } else {
+          posts = await fetchRedditTrending(category, count);
+        }
+      } catch (error) {
+        console.error('Reddit fetch error:', error);
+        // If cache exists, return stale cache on error
+        if (cachedData) {
+          return c.json({
+            ...cachedData,
+            stale: true,
+            error: 'Using cached data due to API error',
+          });
+        }
+        throw error;
+      }
+    }
 
     const responseData = {
       posts,
@@ -854,7 +872,7 @@ app.get('/trending', requireAuth, async (c) => {
       next_refresh: new Date(now.getTime() + 30 * 60 * 1000).toISOString(),
     };
 
-    // Cache the response
+    // Cache the response (30 minutes)
     await kv.set(cacheKey, responseData);
 
     return c.json(responseData);
@@ -1006,7 +1024,7 @@ app.post('/ai/chat', requireAuth, userRateLimiter(rateLimitConfigs.ai), async (c
   }
 });
 
-// ============= OAUTH ROUTES (Basic - to be expanded) =============
+// ============= OAUTH ROUTES =============
 
 app.get('/oauth/authorize/:platform', requireAuth, async (c) => {
   try {
@@ -1018,11 +1036,56 @@ app.get('/oauth/authorize/:platform', requireAuth, async (c) => {
       return c.json({ error: 'projectId is required' }, 400);
     }
 
-    // TODO: Implement full OAuth flow
-    // This is a placeholder - full implementation requires OAuth config
-    return c.json({
-      error: 'OAuth not fully implemented yet. Please configure OAuth credentials.',
+    const config = getOAuthConfig(platform);
+
+    if (!config || !config.clientId) {
+      return c.json({
+        error: `OAuth not configured for ${platform}. Please add ${platform.toUpperCase()}_CLIENT_ID and ${platform.toUpperCase()}_CLIENT_SECRET environment variables.`,
+      }, 400);
+    }
+
+    // Generate state for CSRF protection
+    const state = `${userId}:${projectId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
+
+    // Generate PKCE verifier for Twitter OAuth 2.0
+    let codeVerifier: string | undefined;
+    if (platform === 'twitter') {
+      // Generate a random code verifier (43-128 characters)
+      const randomBytes = new Uint8Array(32);
+      crypto.getRandomValues(randomBytes);
+      codeVerifier = Array.from(randomBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    // Store state temporarily for verification (including code_verifier for Twitter)
+    await kv.set(`oauth:state:${state}`, {
+      userId,
+      projectId,
+      platform,
+      codeVerifier,
+      createdAt: Date.now(),
     });
+
+    // Build authorization URL
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      scope: config.scope,
+      state,
+    });
+
+    // Platform-specific params - Twitter requires PKCE
+    if (platform === 'twitter' && codeVerifier) {
+      // Use plain method: code_challenge = code_verifier
+      params.set('code_challenge', codeVerifier);
+      params.set('code_challenge_method', 'plain');
+    }
+
+    const authUrl = `${config.authUrl}?${params.toString()}`;
+
+    return c.json({ authUrl, state });
   } catch (error: any) {
     console.error('OAuth authorize error:', error);
     return c.json({ error: `Authorization failed: ${error.message}` }, 500);
@@ -1032,8 +1095,241 @@ app.get('/oauth/authorize/:platform', requireAuth, async (c) => {
 app.post('/oauth/callback', requireAuth, async (c) => {
   try {
     const { code, state, platform } = await c.req.json();
-    // TODO: Implement OAuth callback
-    return c.json({ error: 'OAuth callback not fully implemented yet' });
+    const userId = c.get('userId');
+
+    if (!code || !state || !platform) {
+      return c.json({ error: 'Missing required parameters' }, 400);
+    }
+
+    // Verify state
+    const stateData = await kv.get(`oauth:state:${state}`);
+
+    if (!stateData || (stateData as any).userId !== userId) {
+      return c.json({ error: 'Invalid or expired state' }, 400);
+    }
+
+    const config = getOAuthConfig(platform);
+
+    if (!config) {
+      return c.json({ error: `OAuth not configured for ${platform}` }, 400);
+    }
+
+    // Exchange code for access token
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: config.redirectUri,
+      client_id: config.clientId!,
+      client_secret: config.clientSecret!,
+    });
+
+    // Some platforms need special handling
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    // Twitter OAuth 2.0 with PKCE requires Basic Auth and code_verifier
+    if (platform === 'twitter') {
+      // Twitter requires Basic Authentication header
+      const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+      headers['Authorization'] = `Basic ${basicAuth}`;
+      // Remove client credentials from body when using Basic Auth
+      tokenParams.delete('client_id');
+      tokenParams.delete('client_secret');
+      // Add code_verifier for PKCE
+      if ((stateData as any).codeVerifier) {
+        tokenParams.set('code_verifier', (stateData as any).codeVerifier);
+      }
+    }
+
+    // Reddit requires Basic Auth
+    if (platform === 'reddit') {
+      const basicAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+      headers['Authorization'] = `Basic ${basicAuth}`;
+      // Remove from params since we're using Basic Auth
+      tokenParams.delete('client_id');
+      tokenParams.delete('client_secret');
+    }
+
+    const tokenResponse = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers,
+      body: tokenParams.toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error(`Token exchange failed for ${platform}:`, errorText);
+      return c.json({ error: `Token exchange failed: ${errorText}` }, 400);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    // Get user info from platform
+    let userInfo: any = {};
+
+    try {
+      if (platform === 'twitter') {
+        const meResponse = await fetch('https://api.twitter.com/2/users/me', {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.data?.username,
+          name: meData.data?.name,
+          id: meData.data?.id,
+        };
+      } else if (platform === 'instagram') {
+        const meResponse = await fetch(
+          `https://graph.instagram.com/me?fields=id,username&access_token=${tokenData.access_token}`
+        );
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.username,
+          id: meData.id,
+        };
+      } else if (platform === 'linkedin') {
+        const meResponse = await fetch('https://api.linkedin.com/v2/me', {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          name: `${meData.localizedFirstName} ${meData.localizedLastName}`,
+          id: meData.id,
+        };
+      } else if (platform === 'facebook') {
+        const meResponse = await fetch(
+          `https://graph.facebook.com/me?fields=id,name&access_token=${tokenData.access_token}`
+        );
+        const meData = await meResponse.json();
+        userInfo = {
+          name: meData.name,
+          id: meData.id,
+        };
+      } else if (platform === 'youtube') {
+        const meResponse = await fetch(
+          'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+          {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+          }
+        );
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.items?.[0]?.snippet?.title,
+          id: meData.items?.[0]?.id,
+        };
+      } else if (platform === 'reddit') {
+        const meResponse = await fetch('https://oauth.reddit.com/api/v1/me', {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            'User-Agent': 'PubHub/1.0',
+          },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.name,
+          id: meData.id,
+        };
+      } else if (platform === 'tiktok') {
+        const meResponse = await fetch(
+          'https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name',
+          {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+          }
+        );
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.data?.user?.display_name,
+          id: meData.data?.user?.open_id,
+        };
+      } else if (platform === 'pinterest') {
+        const meResponse = await fetch('https://api.pinterest.com/v5/user_account', {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        const meData = await meResponse.json();
+        userInfo = {
+          username: meData.username,
+          id: meData.id,
+        };
+      }
+    } catch (error) {
+      console.error(`Failed to fetch user info for ${platform}:`, error);
+      // Continue anyway - we have the token
+    }
+
+    // Store tokens securely
+    const tokenRecord = {
+      platform,
+      userId,
+      projectId: (stateData as any).projectId,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      expiresAt: tokenData.expires_in ? Date.now() + tokenData.expires_in * 1000 : null,
+      userInfo,
+      connectedAt: new Date().toISOString(),
+    };
+
+    await kv.set(`oauth:token:${platform}:${(stateData as any).projectId}`, tokenRecord);
+
+    // Initialize default connections if none exist
+    const defaultConnections = [
+      { platform: 'twitter', connected: false },
+      { platform: 'instagram', connected: false },
+      { platform: 'linkedin', connected: false },
+      { platform: 'facebook', connected: false },
+      { platform: 'youtube', connected: false },
+      { platform: 'tiktok', connected: false },
+      { platform: 'pinterest', connected: false },
+      { platform: 'reddit', connected: false },
+      { platform: 'blog', connected: false },
+    ];
+
+    // Get existing connections or use defaults
+    let connections = (await kv.get(`project:${(stateData as any).projectId}:connections`)) || [];
+
+    // If no connections exist, initialize with defaults
+    if (!connections || connections.length === 0) {
+      connections = defaultConnections;
+    }
+
+    // Update or add the platform connection
+    let found = false;
+    const updatedConnections = connections.map((conn: any) => {
+      if (conn.platform === platform) {
+        found = true;
+        return {
+          ...conn,
+          connected: true,
+          username: userInfo.username || userInfo.name || `Connected Account`,
+          accountId: userInfo.id,
+          connectedAt: new Date().toISOString(),
+        };
+      }
+      return conn;
+    });
+
+    // If platform wasn't found in existing connections, add it
+    if (!found) {
+      updatedConnections.push({
+        platform,
+        connected: true,
+        username: userInfo.username || userInfo.name || `Connected Account`,
+        accountId: userInfo.id,
+        connectedAt: new Date().toISOString(),
+      });
+    }
+
+    await kv.set(`project:${(stateData as any).projectId}:connections`, updatedConnections);
+
+    // Clean up state
+    await kv.del(`oauth:state:${state}`);
+
+    return c.json({
+      success: true,
+      platform,
+      username: userInfo.username || userInfo.name,
+      connections: updatedConnections,
+    });
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     return c.json({ error: `Callback failed: ${error.message}` }, 500);
@@ -1091,7 +1387,53 @@ app.get('/oauth/token/:platform/:projectId', requireAuth, async (c) => {
       return c.json({ error: 'Token not found' }, 404);
     }
 
-    // TODO: Check expiration and refresh if needed
+    // Check if token expired and needs refresh
+    if (
+      (tokenRecord as any).expiresAt &&
+      Date.now() > (tokenRecord as any).expiresAt &&
+      (tokenRecord as any).refreshToken
+    ) {
+      // Refresh the token
+      const config = getOAuthConfig(platform);
+
+      if (config) {
+        try {
+          const refreshParams = new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: (tokenRecord as any).refreshToken,
+            client_id: config.clientId!,
+            client_secret: config.clientSecret!,
+          });
+
+          const refreshResponse = await fetch(config.tokenUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: refreshParams.toString(),
+          });
+
+          if (refreshResponse.ok) {
+            const newTokenData = await refreshResponse.json();
+
+            // Update stored token
+            const updatedRecord = {
+              ...tokenRecord,
+              accessToken: newTokenData.access_token,
+              refreshToken: newTokenData.refresh_token || (tokenRecord as any).refreshToken,
+              expiresAt: newTokenData.expires_in
+                ? Date.now() + newTokenData.expires_in * 1000
+                : null,
+            };
+
+            await kv.set(`oauth:token:${platform}:${projectId}`, updatedRecord);
+
+            return c.json({ accessToken: newTokenData.access_token });
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+        }
+      }
+    }
+
     return c.json({ accessToken: (tokenRecord as any).accessToken });
   } catch (error: any) {
     console.error('Get token error:', error);
@@ -1168,17 +1510,18 @@ process.on('SIGINT', async () => {
 
 const port = parseInt(process.env.PORT || '8080', 10);
 
-// Export for DigitalOcean App Platform
-export default {
-  port,
-  fetch: app.fetch,
-};
+// For Node.js, we need to create an HTTP server
+// Hono's app.fetch works with Node.js 18+ fetch API
+import { serve } from '@hono/node-server';
 
-// For local development with Node.js
-// DigitalOcean App Platform will use the exported fetch handler
-if (import.meta.url === `file://${process.argv[1]}` || process.env.NODE_ENV === 'development') {
-  // Use a simple HTTP server for local development
-  const server = { port, fetch: app.fetch };
-  console.log(`API server ready on port ${port}`);
-}
+// Start the server
+serve(
+  {
+    fetch: app.fetch,
+    port,
+  },
+  (info) => {
+    console.log(`API server ready on port ${info.port}`);
+  }
+);
 

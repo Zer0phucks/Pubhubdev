@@ -1,31 +1,25 @@
 /**
  * Brand API utilities
  * Handles all brand-related database operations
+ * 
+ * NOTE: These functions need database-backed API routes in the backend.
+ * For now, they're placeholders that will call the API once routes are added.
  */
 
-import { supabase } from './supabase/client';
+import { apiCall } from './api';
 import type { Brand, CreateBrandInput, UpdateBrandInput } from '@/types';
 
 /**
  * Fetch brand for a project
+ * TODO: Add /brands/:projectId route to API service
  */
 export async function fetchBrand(projectId: string): Promise<Brand | null> {
   try {
-    const { data, error } = await supabase
-      .from('brands')
-      .select('*')
-      .eq('project_id', projectId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No brand found - this is okay, return null
-        return null;
-      }
-      throw error;
-    }
-
-    return data as Brand;
+    // TODO: Implement when API route is added
+    // const response = await apiCall(`/brands/${projectId}`);
+    // return response.brand || null;
+    console.warn('fetchBrand: API route not yet implemented');
+    return null;
   } catch (error) {
     console.error('Error fetching brand:', error);
     throw error;
@@ -117,7 +111,8 @@ export async function deleteBrand(projectId: string): Promise<void> {
 }
 
 /**
- * Upload logo to Supabase Storage
+ * Upload logo to DigitalOcean Spaces
+ * TODO: Add /upload/project-logo/:projectId route to API service
  */
 export async function uploadLogo(
   projectId: string,
@@ -125,26 +120,16 @@ export async function uploadLogo(
   variant: 'light' | 'dark' | 'square'
 ): Promise<string> {
   try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${projectId}/${variant}-logo.${fileExt}`;
-    const filePath = `logos/${fileName}`;
-
-    // Upload file to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from('brand-assets')
-      .upload(filePath, file, {
-        upsert: true, // Overwrite if exists
-        contentType: file.type,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('brand-assets')
-      .getPublicUrl(filePath);
-
-    return urlData.publicUrl;
+    // TODO: Implement when API route is added
+    // const formData = new FormData();
+    // formData.append('file', file);
+    // const response = await apiCall(`/upload/project-logo/${projectId}?variant=${variant}`, {
+    //   method: 'POST',
+    //   body: formData,
+    // });
+    // return response.url;
+    console.warn('uploadLogo: API route not yet implemented');
+    throw new Error('Logo upload not yet implemented');
   } catch (error) {
     console.error('Error uploading logo:', error);
     throw error;
