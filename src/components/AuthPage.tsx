@@ -126,6 +126,7 @@ export function AuthPage() {
   };
 
   const handleOAuthSignIn = async (provider: 'google' | 'facebook' | 'twitter') => {
+    console.log('[PubHub] handleOAuthSignIn', provider);
     setError("");
     setSuccess("");
     setLoading(true);
