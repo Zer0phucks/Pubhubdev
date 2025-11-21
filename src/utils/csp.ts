@@ -13,6 +13,9 @@ export const cspConfig = {
       'https://browser.sentry-cdn.com', // Sentry
       'https://vercel.live', // Vercel Analytics
       'https://va.vercel-scripts.com', // Vercel Analytics
+      'https://clerk.pubhub.dev', // Clerk custom domain
+      'https://*.clerk.com', // Clerk default CDN
+      'https://*.clerk.accounts.dev', // Clerk accounts
     ],
     'style-src': [
       "'self'",
@@ -47,6 +50,7 @@ export const cspConfig = {
       'https://*.ondigitalocean.app', // DigitalOcean App Platform API
       'https://*.clerk.accounts.dev', // Clerk API
       'https://*.clerk.com', // Clerk API
+      'https://clerk.pubhub.dev', // Clerk custom domain
       'https://o4510074583842816.ingest.us.sentry.io', // Sentry
       'https://vitals.vercel-insights.com', // Vercel Analytics
     ],
@@ -71,6 +75,9 @@ export const cspConfig = {
       'https://browser.sentry-cdn.com',
       'https://vercel.live',
       'https://va.vercel-scripts.com',
+      'https://clerk.pubhub.dev', // Clerk custom domain
+      'https://*.clerk.com', // Clerk default CDN
+      'https://*.clerk.accounts.dev', // Clerk accounts
     ],
     'style-src': [
       "'self'",
@@ -102,6 +109,7 @@ export const cspConfig = {
       'https://*.ondigitalocean.app',
       'https://*.clerk.accounts.dev',
       'https://*.clerk.com',
+      'https://clerk.pubhub.dev', // Clerk custom domain
       'https://o4510074583842816.ingest.us.sentry.io',
       'https://vitals.vercel-insights.com',
     ],

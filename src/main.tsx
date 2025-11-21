@@ -71,12 +71,7 @@ enableMocking().finally(async () => {
   const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
   
   const AppContent = (
-    <ClerkProvider 
-      publishableKey={clerkPublishableKey || ""}
-      // Disable custom domain to use default Clerk CDN
-      domain={undefined}
-      frontendApi={undefined}
-    >
+    <ClerkProvider publishableKey={clerkPublishableKey || ""}>
       <App />
       <Analytics />
     </ClerkProvider>
