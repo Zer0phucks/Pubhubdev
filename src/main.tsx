@@ -74,24 +74,21 @@ enableMocking().finally(async () => {
     </ClerkProvider>
   );
   
+  // Render app - PostHog will be initialized separately if needed
+  root.render(AppContent);
+  
+  // Initialize PostHog separately if keys are available (after render to avoid blocking)
   if (postHogKey && postHogHost) {
-    // Lazy load PostHogProvider
-    const { PostHogProvider } = await import("posthog-js/react");
-    root.render(
-      <PostHogProvider
-        apiKey={postHogKey}
-        options={{
-          api_host: postHogHost,
-          defaults: '2025-05-24',
-          capture_exceptions: true,
-          debug: import.meta.env.MODE === "development",
-        }}
-      >
-        {AppContent}
-      </PostHogProvider>
-    );
-  } else {
-    // Render without PostHog if keys are missing
-    root.render(AppContent);
+    // Dynamically import and initialize PostHog after app renders
+    import("posthog-js").then((posthog) => {
+      posthog.default.init(postHogKey, {
+        api_host: postHogHost,
+        defaults: '2025-05-24',
+        capture_exceptions: true,
+        debug: import.meta.env.MODE === "development",
+      });
+    }).catch((error) => {
+      console.warn("[PubHub] Failed to initialize PostHog:", error);
+    });
   }
 });
