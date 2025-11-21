@@ -335,6 +335,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    console.info(`[PubHub] Starting Clerk OAuth`, strategy);
+
     if (clerkSignInClient && clerkSignInLoaded) {
       try {
         await clerkSignInClient.authenticateWithRedirect({
@@ -345,6 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       } catch (error) {
         logger.error(`Failed to start Clerk OAuth flow for ${strategy}`, error);
+        console.error(`[PubHub] Clerk OAuth error`, error);
       }
     }
 
