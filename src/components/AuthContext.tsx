@@ -370,6 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.warn(`OAuth (${provider}) is disabled in demo mode.`);
       return;
     }
+    console.log('[PubHub] Redirecting to Clerk OAuth', provider);
     window.location.href = `/sign-in?oauth=${provider}`;
   };
 
