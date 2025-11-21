@@ -45,6 +45,9 @@ initWebVitals();
 
 enableMocking().finally(async () => {
   const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
+  const clerkJsUrl =
+    import.meta.env.VITE_CLERK_JS_URL?.trim() ||
+    "https://clerk.com/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
 
   if (!clerkPublishableKey) {
     if (import.meta.env.PROD) {
@@ -71,7 +74,10 @@ enableMocking().finally(async () => {
   const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
   
   const AppContent = (
-    <ClerkProvider publishableKey={clerkPublishableKey || ""}>
+    <ClerkProvider
+      publishableKey={clerkPublishableKey || ""}
+      clerkJSUrl={clerkJsUrl}
+    >
       <App />
       <Analytics />
     </ClerkProvider>
