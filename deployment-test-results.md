@@ -67,16 +67,36 @@ All static assets loaded successfully:
 
 ## Next Steps
 
-1. **Immediate**: Add `VITE_CLERK_PUBLISHABLE_KEY` to DigitalOcean app environment variables
-   - Value: `pk_live_Y2xlcmsucHViaHViLmRldiQ`
-   - Scope: `RUN_AND_BUILD_TIME` (required for Vite build)
+### ⚠️ CRITICAL: Manual Environment Variable Configuration Required
+
+The `do-app-spec.yaml` file has been updated with `VITE_CLERK_PUBLISHABLE_KEY`, but **DigitalOcean App Platform does NOT automatically apply spec files from the repository**. Environment variables must be added manually via the DigitalOcean console.
+
+### Steps to Fix:
+
+1. **Add Environment Variable via DigitalOcean Console**:
+   - Go to: https://cloud.digitalocean.com/apps/aff826e7-0fa7-4ba5-b326-ec4d84546475
+   - Navigate to: Settings → App-Level Environment Variables (or Component → pubhub-frontend → Environment Variables)
+   - Add new variable:
+     - **Key**: `VITE_CLERK_PUBLISHABLE_KEY`
+     - **Value**: `pk_live_Y2xlcmsucHViaHViLmRldiQ`
+     - **Scope**: `RUN_AND_BUILD_TIME` (or `BUILD_TIME` for static sites)
+   - Save changes
 
 2. **Trigger New Deployment**:
-   - Option A: Push changes to GitHub (deploy_on_push is enabled)
-   - Option B: Manually trigger deployment via DigitalOcean console
-   - Option C: Use DigitalOcean API to update app spec
+   - After adding the env var, DigitalOcean will automatically trigger a new deployment
+   - Or manually trigger via: Deployments → Create Deployment
 
-3. **After Deployment**: Re-run all workflow tests
+3. **After Deployment Completes**: Re-run all workflow tests
+
+### Alternative: Use DigitalOcean CLI
+
+If you have `doctl` installed:
+```bash
+doctl apps update aff826e7-0fa7-4ba5-b326-ec4d84546475 \
+  --spec do-app-spec.yaml
+```
+
+Note: This requires the full app spec including all existing components and services.
 
 ## Screenshots Captured
 - `01-initial-load.png` - Initial page load showing blank page due to JS error
