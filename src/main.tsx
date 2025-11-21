@@ -1,4 +1,3 @@
-
 import { createRoot } from "react-dom/client";
 import { Analytics } from "@vercel/analytics/react";
 import App from "./App.tsx";
@@ -63,11 +62,36 @@ enableMocking().finally(async () => {
   const { ClerkProvider } = await import("@clerk/clerk-react");
   
   const root = createRoot(document.getElementById("root")!);
-  root.render(
+  
+  // Conditionally load PostHog if keys are available
+  const postHogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim();
+  const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
+  
+  const AppContent = (
     <ClerkProvider publishableKey={clerkPublishableKey}>
       <App />
       <Analytics />
     </ClerkProvider>
   );
-});
   
+  if (postHogKey && postHogHost) {
+    // Lazy load PostHogProvider
+    const { PostHogProvider } = await import("posthog-js/react");
+    root.render(
+      <PostHogProvider
+        apiKey={postHogKey}
+        options={{
+          api_host: postHogHost,
+          defaults: '2025-05-24',
+          capture_exceptions: true,
+          debug: import.meta.env.MODE === "development",
+        }}
+      >
+        {AppContent}
+      </PostHogProvider>
+    );
+  } else {
+    // Render without PostHog if keys are missing
+    root.render(AppContent);
+  }
+});
