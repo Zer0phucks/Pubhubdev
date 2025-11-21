@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { Analytics } from "@vercel/analytics/react";
+import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App.tsx";
 import "./index.css";
 import "./sentry";
@@ -58,9 +59,6 @@ enableMocking().finally(async () => {
     return;
   }
 
-  // Lazy load ClerkProvider to avoid circular dependency issues
-  const { ClerkProvider } = await import("@clerk/clerk-react");
-  
   const root = createRoot(document.getElementById("root")!);
   
   // Conditionally load PostHog if keys are available
@@ -68,7 +66,7 @@ enableMocking().finally(async () => {
   const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
   
   const AppContent = (
-    <ClerkProvider publishableKey={clerkPublishableKey}>
+    <ClerkProvider publishableKey={clerkPublishableKey || ""}>
       <App />
       <Analytics />
     </ClerkProvider>
