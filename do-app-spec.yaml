@@ -41,27 +41,6 @@ static_sites:
       - key: VITE_PUBLIC_POSTHOG_HOST
         value: https://us.i.posthog.com
         scope: RUN_AND_BUILD_TIME
-services:
-  - name: pubhubdev
-    github:
-      repo: Zer0phucks/Pubhubdev
-      branch: main
-      deploy_on_push: true
-    source_dir: /
-    environment_slug: node-js
-    instance_size_slug: apps-s-1vcpu-1gb-fixed
-    instance_count: 1
-    http_port: 8080
-    envs:
-      - key: DATABASE_URL
-        value: ${pubhub-db.DATABASE_URL}
-        scope: RUN_AND_BUILD_TIME
-      - key: CLERK_SECRET_KEY
-        value: sk_live_G3VOBuzo9n53i0mjL6Lgkh0sFxKIteadowN8SNFIFQ
-        scope: RUN_AND_BUILD_TIME
-      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-        value: pk_live_Y2xlcmsucHViaHViLmRldiQ
-        scope: RUN_AND_BUILD_TIME
 databases:
   - name: pubhub-db
     engine: PG
@@ -73,9 +52,4 @@ ingress:
           prefix: /
       component:
         name: pubhub-frontend
-    - match:
-        path:
-          prefix: /pubhubdev
-      component:
-        name: pubhubdev
 
