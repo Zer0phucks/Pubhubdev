@@ -47,7 +47,7 @@ enableMocking().finally(async () => {
   const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
   const clerkJsUrl =
     import.meta.env.VITE_CLERK_JS_URL?.trim() ||
-    "https://clerk.com/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+    "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 
   if (!clerkPublishableKey) {
     if (import.meta.env.PROD) {
