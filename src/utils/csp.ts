@@ -28,8 +28,10 @@ export const cspConfig = {
       "'self'",
       'data:', // Data URIs for images
       'blob:', // Blob URLs for file uploads
-      'https://*.supabase.co', // Supabase storage
-      'https://*.supabase.in', // Supabase storage (alternative domain)
+      'https://*.digitaloceanspaces.com', // DigitalOcean Spaces
+      'https://*.cdn.digitaloceanspaces.com', // DigitalOcean Spaces CDN
+      'https://*.clerk.accounts.dev', // Clerk user avatars
+      'https://img.clerk.com', // Clerk images
       'https://via.placeholder.com', // Placeholder images
       'https://images.unsplash.com', // Unsplash images
       'https://picsum.photos', // Lorem Picsum
@@ -37,22 +39,21 @@ export const cspConfig = {
     'media-src': [
       "'self'",
       'blob:', // Blob URLs for media files
-      'https://*.supabase.co', // Supabase storage
-      'https://*.supabase.in', // Supabase storage (alternative domain)
+      'https://*.digitaloceanspaces.com', // DigitalOcean Spaces
+      'https://*.cdn.digitaloceanspaces.com', // DigitalOcean Spaces CDN
     ],
     'connect-src': [
       "'self'",
-      'https://*.supabase.co', // Supabase API
-      'https://*.supabase.in', // Supabase API (alternative domain)
+      'https://*.ondigitalocean.app', // DigitalOcean App Platform API
+      'https://*.clerk.accounts.dev', // Clerk API
+      'https://*.clerk.com', // Clerk API
       'https://o4510074583842816.ingest.us.sentry.io', // Sentry
       'https://vitals.vercel-insights.com', // Vercel Analytics
-      'wss://*.supabase.co', // Supabase WebSocket
-      'wss://*.supabase.in', // Supabase WebSocket (alternative domain)
     ],
     'frame-src': [
       "'self'",
-      'https://*.supabase.co', // Supabase Auth iframes
-      'https://*.supabase.in', // Supabase Auth iframes (alternative domain)
+      'https://*.clerk.accounts.dev', // Clerk Auth iframes
+      'https://*.clerk.com', // Clerk Auth iframes
     ],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
@@ -85,28 +86,29 @@ export const cspConfig = {
       "'self'",
       'data:',
       'blob:',
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.digitaloceanspaces.com',
+      'https://*.cdn.digitaloceanspaces.com',
+      'https://*.clerk.accounts.dev',
+      'https://img.clerk.com',
     ],
     'media-src': [
       "'self'",
       'blob:',
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.digitaloceanspaces.com',
+      'https://*.cdn.digitaloceanspaces.com',
     ],
     'connect-src': [
       "'self'",
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.ondigitalocean.app',
+      'https://*.clerk.accounts.dev',
+      'https://*.clerk.com',
       'https://o4510074583842816.ingest.us.sentry.io',
       'https://vitals.vercel-insights.com',
-      'wss://*.supabase.co',
-      'wss://*.supabase.in',
     ],
     'frame-src': [
       "'self'",
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.clerk.accounts.dev',
+      'https://*.clerk.com',
     ],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
@@ -139,8 +141,10 @@ export const cspConfig = {
       "'self'",
       'data:',
       'blob:',
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.digitaloceanspaces.com',
+      'https://*.cdn.digitaloceanspaces.com',
+      'https://*.clerk.accounts.dev',
+      'https://img.clerk.com',
       'https://via.placeholder.com',
       'https://images.unsplash.com',
       'https://picsum.photos',
@@ -148,21 +152,20 @@ export const cspConfig = {
     'media-src': [
       "'self'",
       'blob:',
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.digitaloceanspaces.com',
+      'https://*.cdn.digitaloceanspaces.com',
     ],
     'connect-src': [
       "'self'",
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.ondigitalocean.app',
+      'https://*.clerk.accounts.dev',
+      'https://*.clerk.com',
       'https://o4510074583842816.ingest.us.sentry.io',
-      'wss://*.supabase.co',
-      'wss://*.supabase.in',
     ],
     'frame-src': [
       "'self'",
-      'https://*.supabase.co',
-      'https://*.supabase.in',
+      'https://*.clerk.accounts.dev',
+      'https://*.clerk.com',
     ],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],

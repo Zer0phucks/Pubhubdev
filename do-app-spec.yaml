@@ -20,11 +20,8 @@ static_sites:
       - key: VITE_CLERK_PUBLISHABLE_KEY
         value: pk_live_Y2xlcmsucHViaHViLmRldiQ
         scope: RUN_AND_BUILD_TIME
-      - key: VITE_SUPABASE_URL
-        value: https://ykzckfwdvmzuzxhezthv.supabase.co
-        scope: RUN_AND_BUILD_TIME
-      - key: VITE_SUPABASE_ANON_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlremNrZndkdm16dXp4aGV6dGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0MTM2OTIsImV4cCI6MjA3Njk4OTY5Mn0.UoI8-lcWPepwOJz0nML-70f3MnxseCwB_AMedHLoVZE
+      - key: VITE_API_BASE_URL
+        value: https://pubhubdev.ondigitalocean.app
         scope: RUN_AND_BUILD_TIME
       - key: VITE_SENTRY_DSN
         value: https://f400c21bed0184aa960502392fd26c57@o4510074583842816.ingest.us.sentry.io/4510251337580544
@@ -38,4 +35,71 @@ static_sites:
       - key: VITE_DEMO_MODE
         value: "true"
         scope: RUN_AND_BUILD_TIME
+
+services:
+  - name: pubhub-api
+    github:
+      repo: Zer0phucks/Pubhubdev
+      branch: main
+      deploy_on_push: true
+    source_dir: services/api
+    build_command: npm install && npm run build
+    run_command: node dist/index.js
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: PORT
+        value: "8080"
+        scope: RUN_TIME
+      - key: DATABASE_URL
+        value: ${pubhub-db.DATABASE_URL}
+        scope: RUN_TIME
+      - key: CLERK_SECRET_KEY
+        value: ${CLERK_SECRET_KEY}
+        scope: RUN_TIME
+      - key: SPACES_ACCESS_KEY
+        value: ${SPACES_ACCESS_KEY}
+        scope: RUN_TIME
+      - key: SPACES_SECRET_KEY
+        value: ${SPACES_SECRET_KEY}
+        scope: RUN_TIME
+      - key: SPACES_BUCKET
+        value: pubhub-uploads
+        scope: RUN_TIME
+      - key: SPACES_REGION
+        value: nyc3
+        scope: RUN_TIME
+      - key: FRONTEND_URL
+        value: https://pubhub.dev
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_ENDPOINT
+        value: ${AZURE_OPENAI_ENDPOINT}
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_API_KEY
+        value: ${AZURE_OPENAI_API_KEY}
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_DEPLOYMENT_NAME
+        value: ${AZURE_OPENAI_DEPLOYMENT_NAME}
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_API_VERSION
+        value: ${AZURE_OPENAI_API_VERSION}
+        scope: RUN_TIME
+
+databases:
+  - name: pubhub-db
+    engine: PG
+    version: "17"
+    production: false
+    cluster_name: pubhub-db-cluster
 

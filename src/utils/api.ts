@@ -1,4 +1,3 @@
-import { projectId } from './supabase/info';
 import type {
   PostPayload,
   TemplatePayload,
@@ -8,7 +7,9 @@ import type {
   ApiResponse
 } from '../types';
 
-const FALLBACK_API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-19ccd85e`;
+// DigitalOcean API URL - should be set via environment variable
+// Format: https://your-api-service.ondigitalocean.app
+const FALLBACK_API_URL = 'https://pubhubdev.ondigitalocean.app';
 export const API_URL =
   import.meta.env.VITE_API_BASE_URL?.trim() || FALLBACK_API_URL;
 

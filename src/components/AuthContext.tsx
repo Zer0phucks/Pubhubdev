@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
-import { supabase } from '../utils/supabase/client';
+import { useAuth as useClerkAuth, useUser as useClerkUser } from '@clerk/clerk-react';
 import { API_URL, registerAuthTokenProvider, setAuthToken } from '../utils/api';
 import { logger } from '../utils/logger';
 
@@ -55,8 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
+  // Clerk hooks
+  const { isSignedIn, userId: clerkUserId, getToken: getClerkToken, signOut: clerkSignOut } = useClerkAuth();
+  const { user: clerkUser, isLoaded: clerkUserLoaded } = useClerkUser();
+
   const baseUrl = API_URL;
 
+  // Register auth token provider for API calls
   useEffect(() => {
     if (useDemoAuth) {
       registerAuthTokenProvider(null);
@@ -64,17 +69,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     registerAuthTokenProvider(async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      return session?.access_token ?? null;
+      try {
+        const token = await getClerkToken();
+        return token;
+      } catch (error) {
+        logger.error('Failed to get Clerk token', error);
+        return null;
+      }
     });
 
     return () => {
       registerAuthTokenProvider(null);
     };
-  }, []);
+  }, [getClerkToken]);
 
+  // Sync Clerk user state with local user state
+  useEffect(() => {
+    if (useDemoAuth) {
+      setLoading(false);
+      return;
+    }
+
+    if (!clerkUserLoaded) {
+      setLoading(true);
+      return;
+    }
+
+    setLoading(false);
+
+    if (isSignedIn && clerkUser) {
+      const mappedUser: User = {
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress,
+        user_metadata: {
+          name: clerkUser.fullName || clerkUser.firstName || undefined,
+          profilePicture: clerkUser.imageUrl || undefined,
+        },
+      };
+      setUser(mappedUser);
+      setProfilePicture(clerkUser.imageUrl || null);
+
+      // Get token and set it
+      getClerkToken().then((token) => {
+        if (token) {
+          setAuthToken(token);
+        }
+      });
+
+      // Initialize user profile on backend if needed
+      initializeUserProfile();
+    } else {
+      setUser(null);
+      setProfilePicture(null);
+      setAuthToken(null);
+    }
+  }, [isSignedIn, clerkUser, clerkUserLoaded, getClerkToken]);
+
+  // Initialize user profile on backend
+  const initializeUserProfile = async () => {
+    if (!isSignedIn || !clerkUser) return;
+
+    try {
+      const token = await getClerkToken();
+      if (!token) return;
+
+      const response = await fetch(`${baseUrl}/auth/initialize`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user?.profilePicture) {
+          setProfilePicture(data.user.profilePicture);
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to initialize user profile', error);
+    }
+  };
+
+  // Demo auth functions (unchanged)
   const loadDemoUsers = (): DemoUserRecord[] => {
     if (!isBrowser) return [];
     try {
@@ -175,33 +253,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(session.token);
   };
 
-  // Fetch user profile with profile picture
+  // Check for existing demo session on mount
+  useEffect(() => {
+    if (useDemoAuth) {
+      const session = readDemoSession();
+      if (session) {
+        const records = loadDemoUsers();
+        const current = records.find((record) => record.id === session.userId);
+        if (current) {
+          setUser(mapDemoUserToAuthUser(current));
+          setAuthToken(session.token);
+        }
+      }
+      setLoading(false);
+    }
+  }, []);
+
   const refreshProfile = async () => {
     if (useDemoAuth) {
       return;
     }
 
-    if (!user) {
+    if (!isSignedIn || !clerkUser) {
       logger.warn('Cannot refresh profile: no user authenticated');
       return;
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        logger.warn('No session token available for profile refresh');
+      const token = await getClerkToken();
+      if (!token) {
+        logger.warn('No token available for profile refresh');
         return;
       }
 
       const response = await fetch(`${baseUrl}/auth/profile`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.user?.profilePicture) {
           setProfilePicture(data.user.profilePicture);
-          // Update user metadata
           if (user) {
             setUser({
               ...user,
@@ -223,107 +315,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Check for existing session on mount
-  useEffect(() => {
-    if (useDemoAuth) {
-      const session = readDemoSession();
-      if (session) {
-        const records = loadDemoUsers();
-        const current = records.find((record) => record.id === session.userId);
-        if (current) {
-          setUser(mapDemoUserToAuthUser(current));
-          setAuthToken(session.token);
-        }
-      }
-      setLoading(false);
-      return;
-    }
-
-    const checkSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          const mappedUser: User = {
-            id: session.user.id,
-            email: session.user.email,
-            user_metadata: session.user.user_metadata,
-          };
-          setUser(mappedUser);
-          setAuthToken(session.access_token);
-        }
-      } catch (error) {
-        logger.error('Session check error', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const mappedUser: User = {
-          id: session.user.id,
-          email: session.user.email,
-          user_metadata: session.user.user_metadata,
-        };
-        setUser(mappedUser);
-        setAuthToken(session.access_token);
-      } else {
-        setUser(null);
-        setAuthToken(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   const signin = async (email: string, password: string) => {
     if (useDemoAuth) {
       demoSignin(email, password);
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    if (data.session?.user) {
-      const mappedUser: User = {
-        id: data.session.user.id,
-        email: data.session.user.email,
-        user_metadata: data.session.user.user_metadata,
-      };
-      setUser(mappedUser);
-      setAuthToken(data.session.access_token);
-      
-      // Initialize user profile if needed (backend handles auto-init)
-      try {
-        const profileResponse = await fetch(`${baseUrl}/auth/profile`, {
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        });
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json();
-          if (profileData.user?.profilePicture) {
-            setProfilePicture(profileData.user.profilePicture);
-          }
-        }
-      } catch (err) {
-        logger.error('Profile initialization error during signin', err);
-      }
-    }
+    // Clerk handles sign-in through their UI components
+    // This function is kept for compatibility but should redirect to Clerk sign-in
+    throw new Error('Please use the sign-in button to authenticate with Clerk');
   };
 
   const signup = async (email: string, password: string, name: string) => {
@@ -332,64 +332,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-        },
-      },
-    });
-
-    if (error) {
-      // Normalize error messages for better handling
-      const errorMsg = error.message.toLowerCase();
-      
-      if (errorMsg.includes('already') || 
-          errorMsg.includes('registered') || 
-          errorMsg.includes('exists')) {
-        throw new Error('User already registered');
-      }
-      
-      if (errorMsg.includes('password')) {
-        throw error; // Pass through password errors as-is
-      }
-      
-      throw error;
-    }
-
-    // If user exists but no session, it might be waiting for email confirmation
-    if (data.user && !data.session) {
-      // Check if user was actually created (identities array is empty for existing users)
-      if (data.user.identities && data.user.identities.length === 0) {
-        throw new Error('User already registered');
-      }
-      
-      // Email confirmation is required
-      throw new Error('Please check your email to confirm your account before signing in.');
-    }
-
-    if (data.session?.user) {
-      const mappedUser: User = {
-        id: data.session.user.id,
-        email: data.session.user.email,
-        user_metadata: {
-          name,
-        },
-      };
-      setUser(mappedUser);
-      setAuthToken(data.session.access_token);
-      
-      // Initialize user profile (backend handles auto-init)
-      try {
-        await fetch(`${baseUrl}/auth/profile`, {
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        });
-      } catch (err) {
-        logger.error('Profile initialization error during signup', err);
-      }
-    }
+    // Clerk handles sign-up through their UI components
+    // This function is kept for compatibility but should redirect to Clerk sign-up
+    throw new Error('Please use the sign-up button to register with Clerk');
   };
 
   const signout = async () => {
@@ -400,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    await supabase.auth.signOut();
+    await clerkSignOut();
     setUser(null);
     setAuthToken(null);
   };
@@ -411,60 +356,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return session?.token ?? null;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    try {
+      return await getClerkToken();
+    } catch (error) {
+      logger.error('Failed to get Clerk token', error);
+      return null;
+    }
   };
 
-  // OAuth sign-in methods
+  // OAuth sign-in methods - Clerk handles these through their components
+  // These are kept for compatibility but should use Clerk's OAuth buttons
   const signinWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/oauth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
+    // Redirect to Clerk's OAuth flow
+    window.location.href = '/sign-in?oauth=google';
   };
 
   const signinWithFacebook = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: {
-        redirectTo: `${window.location.origin}/oauth/callback`,
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
+    window.location.href = '/sign-in?oauth=facebook';
   };
 
   const signinWithTwitter = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'twitter',
-      options: {
-        redirectTo: `${window.location.origin}/oauth/callback`,
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
+    window.location.href = '/sign-in?oauth=twitter';
   };
 
   // Load profile picture on mount
   useEffect(() => {
-    if (user) {
+    if (user && !useDemoAuth) {
       refreshProfile();
     }
-  }, [user?.id]);
+  }, [user?.id, isSignedIn]);
 
   return (
     <AuthContext.Provider
