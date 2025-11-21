@@ -1,7 +1,6 @@
 
 import { createRoot } from "react-dom/client";
 import { Analytics } from "@vercel/analytics/react";
-import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App.tsx";
 import "./index.css";
 import "./sentry";
@@ -39,7 +38,7 @@ async function enableMocking() {
 // Initialize Core Web Vitals monitoring
 initWebVitals();
 
-enableMocking().finally(() => {
+enableMocking().finally(async () => {
   const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 
   if (!clerkPublishableKey) {
@@ -48,22 +47,8 @@ enableMocking().finally(() => {
         "[PubHub] Missing VITE_CLERK_PUBLISHABLE_KEY. Authentication will fail until it is configured."
       );
     }
-    // In production, still render but Clerk will handle the error
-    // In development, we might want to show an error screen
-  }
-
-  const root = createRoot(document.getElementById("root")!);
-  
-  // Only render ClerkProvider if we have a valid key
-  if (clerkPublishableKey) {
-    root.render(
-      <ClerkProvider publishableKey={clerkPublishableKey}>
-        <App />
-        <Analytics />
-      </ClerkProvider>
-    );
-  } else {
     // Fallback UI when Clerk key is missing
+    const root = createRoot(document.getElementById("root")!);
     root.render(
       <div style={{ padding: '2rem', textAlign: 'center' }}>
         <h1>Configuration Error</h1>
@@ -71,6 +56,18 @@ enableMocking().finally(() => {
         <p>Please configure the Clerk publishable key to continue.</p>
       </div>
     );
+    return;
   }
+
+  // Lazy load ClerkProvider to avoid circular dependency issues
+  const { ClerkProvider } = await import("@clerk/clerk-react");
+  
+  const root = createRoot(document.getElementById("root")!);
+  root.render(
+    <ClerkProvider publishableKey={clerkPublishableKey}>
+      <App />
+      <Analytics />
+    </ClerkProvider>
+  );
 });
   
