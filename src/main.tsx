@@ -79,16 +79,21 @@ enableMocking().finally(async () => {
   
   // Initialize PostHog separately if keys are available (after render to avoid blocking)
   if (postHogKey && postHogHost) {
-    // Dynamically import and initialize PostHog after app renders
-    import("posthog-js").then((posthog) => {
-      posthog.default.init(postHogKey, {
-        api_host: postHogHost,
-        defaults: '2025-05-24',
-        capture_exceptions: true,
-        debug: import.meta.env.MODE === "development",
+    // Use setTimeout to ensure this runs after initial render and Vite build analysis
+    setTimeout(() => {
+      // Dynamically import and initialize PostHog after app renders
+      // Using string literal to help Vite resolve the module
+      const posthogModule = "posthog-js";
+      import(/* @vite-ignore */ posthogModule).then((posthog) => {
+        posthog.default.init(postHogKey, {
+          api_host: postHogHost,
+          defaults: '2025-05-24',
+          capture_exceptions: true,
+          debug: import.meta.env.MODE === "development",
+        });
+      }).catch((error) => {
+        console.warn("[PubHub] Failed to initialize PostHog:", error);
       });
-    }).catch((error) => {
-      console.warn("[PubHub] Failed to initialize PostHog:", error);
-    });
+    }, 0);
   }
 });
