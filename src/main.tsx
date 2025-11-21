@@ -73,13 +73,19 @@ enableMocking().finally(async () => {
   const postHogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim();
   const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
   
+  // Only load Vercel Analytics on Vercel (check for vercel environment)
+  const isVercel = typeof window !== 'undefined' && 
+    (window.location.hostname.includes('vercel.app') || 
+     window.location.hostname.includes('vercel.com') ||
+     import.meta.env.VITE_VERCEL_ANALYTICS === 'true');
+  
   const AppContent = (
     <ClerkProvider
       publishableKey={clerkPublishableKey || ""}
       clerkJSUrl={clerkJsUrl}
     >
       <App />
-      <Analytics />
+      {isVercel && <Analytics />}
     </ClerkProvider>
   );
   
