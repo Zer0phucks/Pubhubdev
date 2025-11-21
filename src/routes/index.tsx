@@ -7,6 +7,7 @@ import { OAuthCallback } from '../components/OAuthCallback';
 import { AuthCallback } from '../components/AuthCallback';
 import { NotFound } from '../components/NotFound';
 import { Loader2 } from 'lucide-react';
+import { ClerkSignInPage, ClerkSignUpPage } from '../components/ClerkAuthPages';
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -34,6 +35,14 @@ export const router = createBrowserRouter([
   {
     path: '/auth',
     element: <AuthPage />,
+  },
+  {
+    path: '/sign-in/*',
+    element: <ClerkSignInPage />,
+  },
+  {
+    path: '/sign-up/*',
+    element: <ClerkSignUpPage />,
   },
   {
     path: '/oauth/callback',

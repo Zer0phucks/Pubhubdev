@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
-import { useAuth as useClerkAuth, useUser as useClerkUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser as useClerkUser, useSignIn as useClerkSignIn } from '@clerk/clerk-react';
 import { API_URL, registerAuthTokenProvider, setAuthToken } from '../utils/api';
 import { logger } from '../utils/logger';
 
@@ -26,6 +26,8 @@ interface AuthContextType {
   getToken: () => Promise<string | null>;
   refreshProfile: () => Promise<void>;
 }
+
+type ClerkOAuthStrategy = 'oauth_google' | 'oauth_facebook' | 'oauth_twitter';
 
 type DemoUserRecord = {
   id: string;
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Clerk hooks
   const { isSignedIn, userId: clerkUserId, getToken: getClerkToken, signOut: clerkSignOut } = useClerkAuth();
   const { user: clerkUser, isLoaded: clerkUserLoaded } = useClerkUser();
+  const { signIn: clerkSignInClient, isLoaded: clerkSignInLoaded } = useClerkSignIn();
 
   const baseUrl = API_URL;
 
@@ -326,6 +329,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw new Error('Please use the sign-in button to authenticate with Clerk');
   };
 
+  const startOAuthFlow = async (strategy: ClerkOAuthStrategy) => {
+    if (useDemoAuth) {
+      logger.warn(`OAuth (${strategy}) is disabled in demo mode.`);
+      return;
+    }
+
+    if (clerkSignInClient && clerkSignInLoaded) {
+      try {
+        await clerkSignInClient.authenticateWithRedirect({
+          strategy,
+          redirectUrl: '/auth/callback',
+          redirectUrlComplete: '/dashboard',
+        });
+        return;
+      } catch (error) {
+        logger.error(`Failed to start Clerk OAuth flow for ${strategy}`, error);
+      }
+    }
+
+    // Fallback to Clerk's hosted sign-in page if client isn't ready
+    window.location.href = '/sign-in';
+  };
+
   const signup = async (email: string, password: string, name: string) => {
     if (useDemoAuth) {
       demoSignup(email, password, name);
@@ -366,18 +392,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // OAuth sign-in methods - Clerk handles these through their components
   // These are kept for compatibility but should use Clerk's OAuth buttons
-  const signinWithGoogle = async () => {
-    // Redirect to Clerk's OAuth flow
-    window.location.href = '/sign-in?oauth=google';
-  };
+  const signinWithGoogle = async () => startOAuthFlow('oauth_google');
 
-  const signinWithFacebook = async () => {
-    window.location.href = '/sign-in?oauth=facebook';
-  };
+  const signinWithFacebook = async () => startOAuthFlow('oauth_facebook');
 
-  const signinWithTwitter = async () => {
-    window.location.href = '/sign-in?oauth=twitter';
-  };
+  const signinWithTwitter = async () => startOAuthFlow('oauth_twitter');
 
   // Load profile picture on mount
   useEffect(() => {
