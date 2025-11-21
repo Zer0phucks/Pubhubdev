@@ -17,6 +17,9 @@ static_sites:
     output_dir: build
     catchall_document: index.html
     envs:
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        value: pk_live_Y2xlcmsucHViaHViLmRldiQ
+        scope: RUN_AND_BUILD_TIME
       - key: VITE_SUPABASE_URL
         value: https://ykzckfwdvmzuzxhezthv.supabase.co
         scope: RUN_AND_BUILD_TIME
