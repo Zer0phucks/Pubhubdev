@@ -40,11 +40,16 @@ export default defineConfig({
             }
             // React core stays in main bundle to ensure it loads first
             // Only split out React ecosystem libraries
+            // Exclude @vercel/analytics from bundle - it will be dynamically imported only on Vercel
             if (id.includes('next-themes') || id.includes('sonner') ||
                 id.includes('vaul') || id.includes('react-resizable-panels') ||
                 id.includes('embla-carousel-react') || id.includes('swr') ||
-                id.includes('react-router-dom') || id.includes('@vercel/analytics')) {
+                id.includes('react-router-dom')) {
               return 'vendor-react-ecosystem';
+            }
+            // Exclude Vercel Analytics from production bundle on DigitalOcean
+            if (id.includes('@vercel/analytics') && process.env.VITE_VERCEL_ANALYTICS !== 'true') {
+              return null; // Don't bundle it
             }
             if (id.includes('@radix-ui')) {
               return 'vendor-ui';

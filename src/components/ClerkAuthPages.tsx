@@ -38,8 +38,8 @@ export function ClerkSignInPage() {
     signIn
       .authenticateWithRedirect({
         strategy,
-        redirectUrl: "/auth/callback",
-        redirectUrlComplete: "/dashboard",
+        fallbackRedirectUrl: "/auth/callback",
+        redirectUrl: "/dashboard",
       })
       .catch((error) => {
         console.error("[PubHub] Clerk OAuth redirect failed", error);
@@ -59,7 +59,7 @@ export function ClerkSignInPage() {
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        redirectUrl="/dashboard"
+        fallbackRedirectUrl="/dashboard"
       />
     </AuthShell>
   );
@@ -72,7 +72,7 @@ export function ClerkSignUpPage() {
         routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
-        redirectUrl="/dashboard"
+        fallbackRedirectUrl="/dashboard"
       />
     </AuthShell>
   );
