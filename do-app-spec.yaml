@@ -165,14 +165,17 @@ jobs:
       branch: main
       deploy_on_push: false
     source_dir: /
-    build_command: apt-get update && apt-get install -y postgresql-client
-    run_command: bash scripts/apply-do-migrations.sh
+    build_command: npm install
+    run_command: node scripts/apply-do-migrations.js
     instance_count: 1
     instance_size_slug: basic-xxs
     kind: PRE_DEPLOY
     envs:
       - key: DATABASE_URL
         value: ${pubhub-db.DATABASE_URL}
+        scope: RUN_TIME
+      - key: NODE_ENV
+        value: production
         scope: RUN_TIME
 ingress:
   rules:
