@@ -84,7 +84,7 @@ export function rateLimiter(config: RateLimitConfig) {
           limit: maxRequests,
           windowSeconds: Math.floor(windowMs / 1000),
         },
-        statusCode
+        statusCode as 429
       );
     }
 

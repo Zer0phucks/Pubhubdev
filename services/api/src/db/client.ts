@@ -26,7 +26,7 @@ export function getDbPool(): pg.Pool {
   return pool;
 }
 
-export async function query<T = any>(
+export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   text: string,
   params?: any[]
 ): Promise<pg.QueryResult<T>> {

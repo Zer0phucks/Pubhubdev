@@ -12,6 +12,7 @@ import { query } from './db/client';
 import { fetchURL, isValidURL } from './utils/contentFetcher';
 import { chunkText, calculateReadabilityMetrics } from './utils/textUtils';
 import { randomUUID } from 'crypto';
+import type { AppContextType } from './types';
 
 // Helper to generate random IDs
 function randomId(): string {
@@ -40,7 +41,9 @@ function getLogoColumnName(variant: LogoVariant): string {
   return LOGO_VARIANT_COLUMN_MAP[variant];
 }
 
-const app = new Hono();
+import type { AppContext } from './types';
+
+const app = new Hono<AppContext>();
 
 // Enable logger
 app.use('*', logger(console.log));
@@ -1032,7 +1035,7 @@ app.post(
         throw new Error(`Azure OpenAI API error: ${error}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { choices: Array<{ message: { content: string } }> };
       const generatedText = data.choices[0].message.content.trim();
 
       return c.json({
@@ -1093,7 +1096,7 @@ app.post('/ai/chat', requireAuth, userRateLimiter(rateLimitConfigs.ai), async (c
       throw new Error(`Azure OpenAI API error: ${error}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { choices: Array<{ message: { content: string } }> };
     const assistantMessage = data.choices[0].message.content;
 
     return c.json({
@@ -1244,7 +1247,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
       return c.json({ error: `Token exchange failed: ${errorText}` }, 400);
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = (await tokenResponse.json()) as { access_token: string; [key: string]: any };
 
     // Get user info from platform
     let userInfo: any = {};
@@ -1254,7 +1257,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
         const meResponse = await fetch('https://api.twitter.com/2/users/me', {
           headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { data?: { username?: string; name?: string; id?: string } };
         userInfo = {
           username: meData.data?.username,
           name: meData.data?.name,
@@ -1264,7 +1267,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
         const meResponse = await fetch(
           `https://graph.instagram.com/me?fields=id,username&access_token=${tokenData.access_token}`
         );
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { username?: string; id?: string };
         userInfo = {
           username: meData.username,
           id: meData.id,
@@ -1273,7 +1276,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
         const meResponse = await fetch('https://api.linkedin.com/v2/me', {
           headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { localizedFirstName?: string; localizedLastName?: string; id?: string };
         userInfo = {
           name: `${meData.localizedFirstName} ${meData.localizedLastName}`,
           id: meData.id,
@@ -1282,7 +1285,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
         const meResponse = await fetch(
           `https://graph.facebook.com/me?fields=id,name&access_token=${tokenData.access_token}`
         );
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { name?: string; id?: string };
         userInfo = {
           name: meData.name,
           id: meData.id,
@@ -1294,7 +1297,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
             headers: { Authorization: `Bearer ${tokenData.access_token}` },
           }
         );
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { items?: Array<{ id?: string; snippet?: { title?: string } }> };
         userInfo = {
           username: meData.items?.[0]?.snippet?.title,
           id: meData.items?.[0]?.id,
@@ -1306,7 +1309,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
             'User-Agent': 'PubHub/1.0',
           },
         });
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { name?: string; id?: string };
         userInfo = {
           username: meData.name,
           id: meData.id,
@@ -1318,7 +1321,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
             headers: { Authorization: `Bearer ${tokenData.access_token}` },
           }
         );
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { data?: { user?: { display_name?: string; open_id?: string } } };
         userInfo = {
           username: meData.data?.user?.display_name,
           id: meData.data?.user?.open_id,
@@ -1327,7 +1330,7 @@ app.post('/oauth/callback', requireAuth, async (c) => {
         const meResponse = await fetch('https://api.pinterest.com/v5/user_account', {
           headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
-        const meData = await meResponse.json();
+        const meData = (await meResponse.json()) as { username?: string; id?: string };
         userInfo = {
           username: meData.username,
           id: meData.id,
@@ -1344,8 +1347,8 @@ app.post('/oauth/callback', requireAuth, async (c) => {
       userId,
       projectId: (stateData as any).projectId,
       accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token,
-      expiresAt: tokenData.expires_in ? Date.now() + tokenData.expires_in * 1000 : null,
+      refreshToken: (tokenData as any).refresh_token,
+      expiresAt: (tokenData as any).expires_in ? Date.now() + (tokenData as any).expires_in * 1000 : null,
       userInfo,
       connectedAt: new Date().toISOString(),
     };
@@ -1493,7 +1496,7 @@ app.get('/oauth/token/:platform/:projectId', requireAuth, async (c) => {
           });
 
           if (refreshResponse.ok) {
-            const newTokenData = await refreshResponse.json();
+            const newTokenData = (await refreshResponse.json()) as { access_token: string; refresh_token?: string; expires_in?: number };
 
             // Update stored token
             const updatedRecord = {
@@ -2147,7 +2150,7 @@ app.post('/rag/query', requireAuth, async (c) => {
       throw new Error(`Azure OpenAI Embeddings API error: ${errorText}`);
     }
 
-    const embeddingData = await embeddingResponse.json();
+    const embeddingData = (await embeddingResponse.json()) as { data: Array<{ embedding: number[] }> };
     const queryEmbedding = embeddingData.data[0].embedding;
 
     // Perform vector similarity search
@@ -2295,7 +2298,7 @@ Provide a comprehensive answer based on the context above.`;
       throw new Error(`Azure OpenAI Chat API error: ${errorText}`);
     }
 
-    const chatData = await chatResponse.json();
+    const chatData = (await chatResponse.json()) as { choices: Array<{ message: { content: string } }> };
     const answer = chatData.choices[0].message.content;
 
     // Calculate confidence based on similarity scores

@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
+// dotenv is not needed in production - environment variables are set by DigitalOcean App Platform
+// Only use dotenv in local development
+// Note: dotenv is optional and not included in production dependencies
 
 export interface OAuthConfig {
   authUrl: string;

@@ -13,11 +13,19 @@ export interface AuthUser {
   profilePicture?: string;
 }
 
+export interface AppContext {
+  Variables: {
+    userId: string;
+    user: AuthUser;
+    clerkUserId: string;
+  };
+}
+
 /**
  * Authentication middleware for Hono
  * Verifies Clerk JWT tokens and sets user context
  */
-export async function requireAuth(c: Context, next: Next) {
+export async function requireAuth(c: Context<AppContext>, next: Next) {
   const authHeader = c.req.header('Authorization');
   if (!authHeader) {
     return c.json({ error: 'Unauthorized - No authorization header' }, 401);
@@ -55,7 +63,7 @@ export async function requireAuth(c: Context, next: Next) {
 /**
  * Optional auth middleware - sets user if token is valid, but doesn't require it
  */
-export async function optionalAuth(c: Context, next: Next) {
+export async function optionalAuth(c: Context<AppContext>, next: Next) {
   const authHeader = c.req.header('Authorization');
   
   if (!authHeader || !clerkClient) {

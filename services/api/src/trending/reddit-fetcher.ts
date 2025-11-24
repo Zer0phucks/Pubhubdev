@@ -78,7 +78,7 @@ export async function fetchRedditSubreddit(
       throw new Error(`Reddit API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: RedditApiResponse = await response.json();
+    const data = (await response.json()) as RedditApiResponse;
 
     return data.data.children
       .map((child) => child.data)
