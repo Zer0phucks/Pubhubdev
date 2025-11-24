@@ -13,8 +13,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  */
 
 const spacesClient = new S3Client({
-  endpoint: `https://${process.env.SPACES_REGION || 'nyc3'}.digitaloceanspaces.com`,
-  region: process.env.SPACES_REGION || 'nyc3',
+  endpoint: `https://${process.env.SPACES_ENDPOINT || process.env.SPACES_REGION || 'sfo3'}.digitaloceanspaces.com`,
+  region: process.env.SPACES_REGION || 'sfo3',
   credentials: {
     accessKeyId: process.env.SPACES_ACCESS_KEY || '',
     secretAccessKey: process.env.SPACES_SECRET_KEY || '',
@@ -51,7 +51,7 @@ export async function uploadFile(
   // Return CDN URL if available, otherwise construct Spaces URL
   const url = CDN_ENDPOINT
     ? `https://${CDN_ENDPOINT}/${key}`
-    : `https://${BUCKET_NAME}.${process.env.SPACES_REGION || 'nyc3'}.digitaloceanspaces.com/${key}`;
+    : `https://${BUCKET_NAME}.${process.env.SPACES_REGION || 'sfo3'}.digitaloceanspaces.com/${key}`;
 
   return { url, key };
 }

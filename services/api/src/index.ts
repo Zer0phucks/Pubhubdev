@@ -18,6 +18,28 @@ function randomId(): string {
   return randomUUID();
 }
 
+// Validate logo variant against whitelist to prevent SQL injection
+const VALID_LOGO_VARIANTS = ['light', 'dark', 'square'] as const;
+type LogoVariant = typeof VALID_LOGO_VARIANTS[number];
+
+// Map variant to column name - prevents any possibility of SQL injection
+const LOGO_VARIANT_COLUMN_MAP: Record<LogoVariant, string> = {
+  light: 'logo_light_url',
+  dark: 'logo_dark_url',
+  square: 'logo_square_url',
+};
+
+function validateLogoVariant(variant: string | null | undefined): LogoVariant {
+  if (!variant || !VALID_LOGO_VARIANTS.includes(variant as LogoVariant)) {
+    return 'light'; // Default to 'light' if invalid
+  }
+  return variant as LogoVariant;
+}
+
+function getLogoColumnName(variant: LogoVariant): string {
+  return LOGO_VARIANT_COLUMN_MAP[variant];
+}
+
 const app = new Hono();
 
 // Enable logger
@@ -125,7 +147,7 @@ app.post(
       const projectId = c.req.param('projectId');
       const formData = await c.req.formData();
       const file = formData.get('file') as File;
-      const variant = (formData.get('variant') as string) || 'light';
+      const variant = validateLogoVariant(formData.get('variant') as string);
 
       if (!file) {
         return c.json({ error: 'No file provided' }, 400);
@@ -167,8 +189,8 @@ app.post(
       const { url } = await uploadFile(fileName, buffer, file.type, { public: false });
       const signedUrl = await getSignedUrlForFile(fileName, 31536000);
 
-      // Update brand record
-      const logoField = `logo_${variant}_url`;
+      // Update brand record - use validated variant mapped to column name
+      const logoField = getLogoColumnName(variant);
       await query(
         `UPDATE brands SET ${logoField} = $1, updated_at = NOW() WHERE project_id = $2`,
         [signedUrl, projectId]
@@ -210,12 +232,12 @@ app.delete('/upload/project-logo/delete', requireAuth, async (c) => {
       return c.json({ error: 'Project not found or access denied' }, 404);
     }
 
-    // Extract variant from file path
+    // Extract variant from file path and validate against whitelist
     const variantMatch = filePath.match(/brand-assets\/[^/]+\/([^/.]+)/);
-    const variant = variantMatch ? variantMatch[1] : 'light';
+    const variant = validateLogoVariant(variantMatch ? variantMatch[1] : null);
 
-    // Update brand record to remove logo URL
-    const logoField = `logo_${variant}_url`;
+    // Update brand record to remove logo URL - use validated variant mapped to column name
+    const logoField = getLogoColumnName(variant);
     await query(
       `UPDATE brands SET ${logoField} = NULL, updated_at = NOW() WHERE project_id = $1`,
       [projectId]
@@ -2135,14 +2157,15 @@ app.post('/rag/query', requireAuth, async (c) => {
     let similarChunks: any[] = [];
     try {
       // Try using the match_persona_vectors function if it exists
+      // Function signature: match_persona_vectors(query_embedding, filter_project_id, match_threshold, match_count)
       const searchResult = await query(
         `SELECT * FROM match_persona_vectors(
           $1::vector,
-          $2::float,
-          $3::int,
-          $4::uuid
+          $2::uuid,
+          $3::float,
+          $4::int
         )`,
-        [embeddingVector, similarity_threshold, top_k, project_id]
+        [embeddingVector, project_id, similarity_threshold, top_k]
       );
 
       similarChunks = searchResult.rows || [];

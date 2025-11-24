@@ -35,15 +35,15 @@ if (typeof global !== 'undefined' && !global.localStorage) {
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 
-// Mock Supabase responses
-const supabaseHandlers = [
+// Mock API responses (replacing Supabase endpoints)
+const apiHandlers = [
   // Health check endpoint
-  http.get('*/make-server-19ccd85e/health', () => {
+  http.get('*/api/health', () => {
     return HttpResponse.json({ status: 'ok' });
   }),
 
   // Auth endpoints
-  http.post('*/make-server-19ccd85e/auth/initialize', () => {
+  http.post('*/api/auth/initialize', () => {
     return HttpResponse.json({ 
       message: 'User initialized successfully',
       user: {
@@ -54,7 +54,7 @@ const supabaseHandlers = [
     });
   }),
 
-  http.get('*/make-server-19ccd85e/auth/profile', () => {
+  http.get('*/api/auth/profile', () => {
     return HttpResponse.json({ 
       user: { 
         id: 'test-user-id', 
@@ -65,7 +65,7 @@ const supabaseHandlers = [
   }),
 
   // Posts endpoints
-  http.get('*/make-server-19ccd85e/posts', ({ request }) => {
+  http.get('*/api/posts', ({ request }) => {
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     
@@ -81,7 +81,7 @@ const supabaseHandlers = [
     return HttpResponse.json({ posts });
   }),
 
-  http.post('*/make-server-19ccd85e/posts', () => {
+  http.post('*/api/posts', () => {
     return HttpResponse.json({ 
       post: { 
         id: 'post-new', 
@@ -93,7 +93,7 @@ const supabaseHandlers = [
     });
   }),
 
-  http.put('*/make-server-19ccd85e/posts/*', () => {
+  http.put('*/api/posts/*', () => {
     return HttpResponse.json({ 
       post: { 
         id: 'post-1', 
@@ -103,12 +103,12 @@ const supabaseHandlers = [
     });
   }),
 
-  http.delete('*/make-server-19ccd85e/posts/*', () => {
+  http.delete('*/api/posts/*', () => {
     return HttpResponse.json({ message: 'Post deleted successfully' });
   }),
 
   // Projects endpoints
-  http.get('*/make-server-19ccd85e/projects', () => {
+  http.get('*/api/projects', () => {
     return HttpResponse.json({ 
       projects: [
         { id: 'project-1', name: 'Test Project', description: 'A test project' }
@@ -116,7 +116,7 @@ const supabaseHandlers = [
     });
   }),
 
-  http.post('*/make-server-19ccd85e/projects', () => {
+  http.post('*/api/projects', () => {
     return HttpResponse.json({ 
       project: { 
         id: 'project-new', 
@@ -127,7 +127,7 @@ const supabaseHandlers = [
     });
   }),
 
-  http.put('*/make-server-19ccd85e/projects/*', () => {
+  http.put('*/api/projects/*', () => {
     return HttpResponse.json({ 
       project: { 
         id: 'project-1', 
@@ -138,14 +138,14 @@ const supabaseHandlers = [
   }),
 
   // OAuth endpoints
-  http.get('*/make-server-19ccd85e/oauth/authorize/*', () => {
+  http.get('*/api/oauth/authorize/*', () => {
     return HttpResponse.json({ 
       authUrl: 'https://twitter.com/i/oauth2/authorize?client_id=test&redirect_uri=test',
       state: 'test-state'
     });
   }),
 
-  http.post('*/make-server-19ccd85e/oauth/callback', () => {
+  http.post('*/api/oauth/callback', () => {
     return HttpResponse.json({ 
       success: true,
       platform: 'twitter',
@@ -154,7 +154,7 @@ const supabaseHandlers = [
   }),
 
   // File upload endpoints
-  http.post('*/make-server-19ccd85e/upload/profile-picture', async ({ request }) => {
+  http.post('*/api/upload/profile-picture', async ({ request }) => {
     try {
       // Handle both FormData and regular requests
       let file: File | null = null;
@@ -207,81 +207,6 @@ const supabaseHandlers = [
     }
   }),
 
-  // Auth endpoints
-  http.post('*/auth/v1/signup', () => {
-    return HttpResponse.json({
-      user: {
-        id: 'test-user-id',
-        email: 'test@example.com',
-        created_at: new Date().toISOString(),
-      },
-      session: {
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
-      },
-    });
-  }),
-
-  http.post('*/auth/v1/token', () => {
-    return HttpResponse.json({
-      user: {
-        id: 'test-user-id',
-        email: 'test@example.com',
-      },
-      session: {
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
-      },
-    });
-  }),
-
-  // Database endpoints
-  http.get('*/rest/v1/projects', () => {
-    return HttpResponse.json([
-      {
-        id: 'project-1',
-        name: 'Test Project',
-        description: 'A test project',
-        created_at: new Date().toISOString(),
-        user_id: 'test-user-id',
-      },
-    ]);
-  }),
-
-  http.post('*/rest/v1/projects', () => {
-    return HttpResponse.json({
-      id: 'new-project-id',
-      name: 'New Project',
-      description: 'A new test project',
-      created_at: new Date().toISOString(),
-      user_id: 'test-user-id',
-    });
-  }),
-
-  // Content endpoints
-  http.get('*/rest/v1/content', () => {
-    return HttpResponse.json([
-      {
-        id: 'content-1',
-        title: 'Test Content',
-        content: 'This is test content',
-        platform: 'twitter',
-        status: 'draft',
-        created_at: new Date().toISOString(),
-        project_id: 'project-1',
-      },
-    ]);
-  }),
-
-  // Analytics endpoints
-  http.get('*/rest/v1/analytics', () => {
-    return HttpResponse.json({
-      views: 1000,
-      likes: 50,
-      shares: 25,
-      comments: 10,
-    });
-  }),
 ];
 
 // Mock external API endpoints
@@ -314,4 +239,4 @@ const externalHandlers = [
   }),
 ];
 
-export const server = setupServer(...supabaseHandlers, ...externalHandlers);
+export const server = setupServer(...apiHandlers, ...externalHandlers);

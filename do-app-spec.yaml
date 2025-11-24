@@ -21,7 +21,7 @@ static_sites:
         value: pk_live_Y2xlcmsucHViaHViLmRldiQ
         scope: RUN_AND_BUILD_TIME
       - key: VITE_API_BASE_URL
-        value: https://api.pubhub.dev
+        value: https://pubhub.dev/api
         scope: RUN_AND_BUILD_TIME
       - key: VITE_SENTRY_DSN
         value: https://f400c21bed0184aa960502392fd26c57@o4510074583842816.ingest.us.sentry.io/4510251337580544
@@ -67,19 +67,21 @@ services:
         value: ${CLERK_SECRET_KEY}
         scope: RUN_TIME
       - key: SPACES_ACCESS_KEY
-        value: ${SPACES_ACCESS_KEY}
+        value: DO801GMJF7GNBBLE28KU
+        type: SECRET
         scope: RUN_TIME
       - key: SPACES_SECRET_KEY
-        value: ${SPACES_SECRET_KEY}
+        value: Iv/cjLDMDU8HunqP+tyR1+QygthZR9kGLUSwPqaRb8g
+        type: SECRET
         scope: RUN_TIME
       - key: SPACES_BUCKET
         value: pubhub-uploads
         scope: RUN_TIME
       - key: SPACES_REGION
-        value: nyc3
+        value: sfo3
         scope: RUN_TIME
       - key: SPACES_ENDPOINT
-        value: nyc3.digitaloceanspaces.com
+        value: sfo3.digitaloceanspaces.com
         scope: RUN_TIME
       - key: FRONTEND_URL
         value: https://pubhub.dev
@@ -156,6 +158,22 @@ databases:
   - name: pubhub-db
     engine: PG
     version: "17"
+jobs:
+  - name: run-migrations
+    github:
+      repo: Zer0phucks/Pubhubdev
+      branch: main
+      deploy_on_push: false
+    source_dir: /
+    build_command: apt-get update && apt-get install -y postgresql-client
+    run_command: bash scripts/apply-do-migrations.sh
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    kind: PRE_DEPLOY
+    envs:
+      - key: DATABASE_URL
+        value: ${pubhub-db.DATABASE_URL}
+        scope: RUN_TIME
 ingress:
   rules:
     - match:
