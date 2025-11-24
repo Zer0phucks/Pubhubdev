@@ -3,7 +3,7 @@
  * Handles content ingestion, management, and vector operations
  */
 
-import { supabase } from './supabase/client';
+import { apiCall } from './api';
 import type {
   ContentSource,
   CreateContentSourceInput,
@@ -26,33 +26,15 @@ export async function fetchContentSources(
   }
 ): Promise<ContentSource[]> {
   try {
-    let query = supabase
-      .from('content_sources')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('ingested_at', { ascending: false });
+    const params = new URLSearchParams({ projectId: projectId });
+    if (options?.platform) params.set('platform', options.platform);
+    if (options?.status) params.set('status', options.status);
+    if (options?.limit) params.set('limit', options.limit.toString());
+    if (options?.offset) params.set('offset', options.offset.toString());
 
-    if (options?.platform) {
-      query = query.eq('platform', options.platform);
-    }
-
-    if (options?.status) {
-      query = query.eq('status', options.status);
-    }
-
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    }
-
-    if (options?.offset) {
-      query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return data as ContentSource[];
+    const query = params.toString();
+    const response = await apiCall(`/content/sources?${query}`);
+    return response.sources || [];
   } catch (error) {
     console.error('Error fetching content sources:', error);
     throw error;
@@ -64,21 +46,12 @@ export async function fetchContentSources(
  */
 export async function fetchContentSource(id: string): Promise<ContentSource | null> {
   try {
-    const { data, error } = await supabase
-      .from('content_sources')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
-      throw error;
+    const response = await apiCall(`/content/sources/${id}`);
+    return response.source || null;
+  } catch (error: any) {
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      return null;
     }
-
-    return data as ContentSource;
-  } catch (error) {
     console.error('Error fetching content source:', error);
     throw error;
   }
@@ -91,19 +64,11 @@ export async function createContentSource(
   source: CreateContentSourceInput
 ): Promise<ContentSource> {
   try {
-    const { data, error } = await supabase
-      .from('content_sources')
-      .insert({
-        ...source,
-        status: 'pending',
-        ingested_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as ContentSource;
+    const response = await apiCall('/content/sources', {
+      method: 'POST',
+      body: JSON.stringify(source),
+    });
+    return response.source;
   } catch (error) {
     console.error('Error creating content source:', error);
     throw error;
@@ -119,25 +84,11 @@ export async function updateContentSourceStatus(
   errorMessage?: string
 ): Promise<ContentSource> {
   try {
-    const updates: Partial<ContentSource> = {
-      status,
-      error_message: errorMessage,
-    };
-
-    if (status === 'completed') {
-      updates.processed_at = new Date().toISOString();
-    }
-
-    const { data, error } = await supabase
-      .from('content_sources')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as ContentSource;
+    const response = await apiCall(`/content/sources/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, error_message: errorMessage }),
+    });
+    return response.source;
   } catch (error) {
     console.error('Error updating content source status:', error);
     throw error;
@@ -158,16 +109,11 @@ export async function updateContentSourceContent(
   }
 ): Promise<ContentSource> {
   try {
-    const { data, error } = await supabase
-      .from('content_sources')
-      .update(content)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as ContentSource;
+    const response = await apiCall(`/content/sources/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(content),
+    });
+    return response.source;
   } catch (error) {
     console.error('Error updating content source content:', error);
     throw error;
@@ -179,12 +125,9 @@ export async function updateContentSourceContent(
  */
 export async function deleteContentSource(id: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('content_sources')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    await apiCall(`/content/sources/${id}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
     console.error('Error deleting content source:', error);
     throw error;
@@ -193,17 +136,15 @@ export async function deleteContentSource(id: string): Promise<void> {
 
 /**
  * Ingest URLs and process them into content sources
- * This calls a Supabase Edge Function
+ * This triggers a background worker job
  */
 export async function ingestURLs(request: IngestURLRequest): Promise<IngestURLResponse> {
   try {
-    const { data, error } = await supabase.functions.invoke('ingest-content', {
-      body: request,
+    const response = await apiCall('/content/ingest', {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
-
-    if (error) throw error;
-
-    return data as IngestURLResponse;
+    return response;
   } catch (error) {
     console.error('Error ingesting URLs:', error);
     throw error;
@@ -301,17 +242,13 @@ export async function batchCreateContentSources(
       url,
       platform: detectPlatformFromURL(url),
       status: 'pending' as ContentStatus,
-      ingested_at: new Date().toISOString(),
     }));
 
-    const { data, error } = await supabase
-      .from('content_sources')
-      .insert(sources)
-      .select();
-
-    if (error) throw error;
-
-    return data as ContentSource[];
+    const response = await apiCall('/content/sources/batch', {
+      method: 'POST',
+      body: JSON.stringify({ sources }),
+    });
+    return response.sources || [];
   } catch (error) {
     console.error('Error batch creating content sources:', error);
     throw error;

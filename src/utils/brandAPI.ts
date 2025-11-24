@@ -1,9 +1,6 @@
 /**
  * Brand API utilities
  * Handles all brand-related database operations
- * 
- * NOTE: These functions need database-backed API routes in the backend.
- * For now, they're placeholders that will call the API once routes are added.
  */
 
 import { apiCall } from './api';
@@ -11,16 +8,15 @@ import type { Brand, CreateBrandInput, UpdateBrandInput } from '@/types';
 
 /**
  * Fetch brand for a project
- * TODO: Add /brands/:projectId route to API service
  */
 export async function fetchBrand(projectId: string): Promise<Brand | null> {
   try {
-    // TODO: Implement when API route is added
-    // const response = await apiCall(`/brands/${projectId}`);
-    // return response.brand || null;
-    console.warn('fetchBrand: API route not yet implemented');
-    return null;
-  } catch (error) {
+    const response = await apiCall(`/brands/${projectId}`);
+    return response.brand || null;
+  } catch (error: any) {
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      return null;
+    }
     console.error('Error fetching brand:', error);
     throw error;
   }
@@ -31,15 +27,11 @@ export async function fetchBrand(projectId: string): Promise<Brand | null> {
  */
 export async function createBrand(brand: CreateBrandInput): Promise<Brand> {
   try {
-    const { data, error } = await supabase
-      .from('brands')
-      .insert(brand)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as Brand;
+    const response = await apiCall('/brands', {
+      method: 'POST',
+      body: JSON.stringify(brand),
+    });
+    return response.brand;
   } catch (error) {
     console.error('Error creating brand:', error);
     throw error;
@@ -54,16 +46,11 @@ export async function updateBrand(
   updates: UpdateBrandInput
 ): Promise<Brand> {
   try {
-    const { data, error } = await supabase
-      .from('brands')
-      .update(updates)
-      .eq('project_id', projectId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as Brand;
+    const response = await apiCall(`/brands/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return response.brand;
   } catch (error) {
     console.error('Error updating brand:', error);
     throw error;
@@ -75,18 +62,12 @@ export async function updateBrand(
  */
 export async function upsertBrand(brand: CreateBrandInput): Promise<Brand> {
   try {
-    const { data, error } = await supabase
-      .from('brands')
-      .upsert(brand, {
-        onConflict: 'project_id',
-        ignoreDuplicates: false,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as Brand;
+    const existing = await fetchBrand(brand.project_id);
+    if (existing) {
+      return await updateBrand(brand.project_id, brand);
+    } else {
+      return await createBrand(brand);
+    }
   } catch (error) {
     console.error('Error upserting brand:', error);
     throw error;
@@ -98,12 +79,9 @@ export async function upsertBrand(brand: CreateBrandInput): Promise<Brand> {
  */
 export async function deleteBrand(projectId: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('brands')
-      .delete()
-      .eq('project_id', projectId);
-
-    if (error) throw error;
+    await apiCall(`/brands/${projectId}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
     console.error('Error deleting brand:', error);
     throw error;
@@ -112,7 +90,6 @@ export async function deleteBrand(projectId: string): Promise<void> {
 
 /**
  * Upload logo to DigitalOcean Spaces
- * TODO: Add /upload/project-logo/:projectId route to API service
  */
 export async function uploadLogo(
   projectId: string,
@@ -120,16 +97,27 @@ export async function uploadLogo(
   variant: 'light' | 'dark' | 'square'
 ): Promise<string> {
   try {
-    // TODO: Implement when API route is added
-    // const formData = new FormData();
-    // formData.append('file', file);
-    // const response = await apiCall(`/upload/project-logo/${projectId}?variant=${variant}`, {
-    //   method: 'POST',
-    //   body: formData,
-    // });
-    // return response.url;
-    console.warn('uploadLogo: API route not yet implemented');
-    throw new Error('Logo upload not yet implemented');
+    const { getAuthToken, API_URL } = await import('./api');
+    const token = await getAuthToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('variant', variant);
+    
+    const response = await fetch(`${API_URL}/upload/project-logo/${projectId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.url;
   } catch (error) {
     console.error('Error uploading logo:', error);
     throw error;
@@ -137,7 +125,7 @@ export async function uploadLogo(
 }
 
 /**
- * Delete logo from Supabase Storage
+ * Delete logo from DigitalOcean Spaces
  */
 export async function deleteLogo(logoUrl: string): Promise<void> {
   try {
@@ -149,11 +137,10 @@ export async function deleteLogo(logoUrl: string): Promise<void> {
     }
     const filePath = pathParts[1];
 
-    const { error } = await supabase.storage
-      .from('brand-assets')
-      .remove([filePath]);
-
-    if (error) throw error;
+    await apiCall('/upload/project-logo/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ filePath }),
+    });
   } catch (error) {
     console.error('Error deleting logo:', error);
     throw error;

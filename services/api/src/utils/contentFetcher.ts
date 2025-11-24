@@ -2,7 +2,7 @@
  * Content fetching utilities for different platforms
  */
 
-import { extractTextFromHTML, cleanText } from './textUtils.ts';
+import { extractTextFromHTML, cleanText } from './textUtils';
 
 export interface FetchedContent {
   title: string;
@@ -89,7 +89,7 @@ async function fetchGenericWebContent(url: string): Promise<FetchedContent> {
         fetchedAt: new Date().toISOString(),
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to fetch ${url}: ${error.message}`);
   }
 }
@@ -174,3 +174,4 @@ export function isValidURL(url: string): boolean {
     return false;
   }
 }
+

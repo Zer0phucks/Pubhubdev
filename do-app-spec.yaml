@@ -20,10 +20,9 @@ static_sites:
       - key: VITE_CLERK_PUBLISHABLE_KEY
         value: pk_live_Y2xlcmsucHViaHViLmRldiQ
         scope: RUN_AND_BUILD_TIME
-      # API URL - uncomment and set when backend service is deployed
-      # - key: VITE_API_BASE_URL
-      #   value: https://api.pubhub.dev
-      #   scope: RUN_AND_BUILD_TIME
+      - key: VITE_API_BASE_URL
+        value: https://api.pubhub.dev
+        scope: RUN_AND_BUILD_TIME
       - key: VITE_SENTRY_DSN
         value: https://f400c21bed0184aa960502392fd26c57@o4510074583842816.ingest.us.sentry.io/4510251337580544
         scope: RUN_AND_BUILD_TIME
@@ -42,6 +41,117 @@ static_sites:
       - key: VITE_PUBLIC_POSTHOG_HOST
         value: https://us.i.posthog.com
         scope: RUN_AND_BUILD_TIME
+services:
+  - name: pubhub-api
+    github:
+      repo: Zer0phucks/Pubhubdev
+      branch: main
+      deploy_on_push: true
+    source_dir: services/api
+    build_command: npm install && npm run build
+    run_command: npm start
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: PORT
+        value: "8080"
+        scope: RUN_TIME
+      - key: DATABASE_URL
+        value: ${pubhub-db.DATABASE_URL}
+        scope: RUN_TIME
+      - key: CLERK_SECRET_KEY
+        value: ${CLERK_SECRET_KEY}
+        scope: RUN_TIME
+      - key: SPACES_ACCESS_KEY
+        value: ${SPACES_ACCESS_KEY}
+        scope: RUN_TIME
+      - key: SPACES_SECRET_KEY
+        value: ${SPACES_SECRET_KEY}
+        scope: RUN_TIME
+      - key: SPACES_BUCKET
+        value: pubhub-uploads
+        scope: RUN_TIME
+      - key: SPACES_REGION
+        value: nyc3
+        scope: RUN_TIME
+      - key: SPACES_ENDPOINT
+        value: nyc3.digitaloceanspaces.com
+        scope: RUN_TIME
+      - key: FRONTEND_URL
+        value: https://pubhub.dev
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_ENDPOINT
+        value: ${AZURE_OPENAI_ENDPOINT}
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_API_KEY
+        value: ${AZURE_OPENAI_API_KEY}
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_DEPLOYMENT_NAME
+        value: ${AZURE_OPENAI_DEPLOYMENT_NAME}
+        scope: RUN_TIME
+      - key: AZURE_OPENAI_API_VERSION
+        value: ${AZURE_OPENAI_API_VERSION}
+        scope: RUN_TIME
+      # OAuth credentials
+      - key: TWITTER_CLIENT_ID
+        value: ${TWITTER_CLIENT_ID}
+        scope: RUN_TIME
+      - key: TWITTER_CLIENT_SECRET
+        value: ${TWITTER_CLIENT_SECRET}
+        scope: RUN_TIME
+      - key: INSTAGRAM_APP_ID
+        value: ${INSTAGRAM_APP_ID}
+        scope: RUN_TIME
+      - key: INSTAGRAM_APP_SECRET
+        value: ${INSTAGRAM_APP_SECRET}
+        scope: RUN_TIME
+      - key: FACEBOOK_APP_ID
+        value: ${FACEBOOK_APP_ID}
+        scope: RUN_TIME
+      - key: FACEBOOK_APP_SECRET
+        value: ${FACEBOOK_APP_SECRET}
+        scope: RUN_TIME
+      - key: LINKEDIN_CLIENT_ID
+        value: ${LINKEDIN_CLIENT_ID}
+        scope: RUN_TIME
+      - key: LINKEDIN_CLIENT_SECRET
+        value: ${LINKEDIN_CLIENT_SECRET}
+        scope: RUN_TIME
+      - key: YOUTUBE_CLIENT_ID
+        value: ${YOUTUBE_CLIENT_ID}
+        scope: RUN_TIME
+      - key: YOUTUBE_CLIENT_SECRET
+        value: ${YOUTUBE_CLIENT_SECRET}
+        scope: RUN_TIME
+      - key: REDDIT_CLIENT_ID
+        value: ${REDDIT_CLIENT_ID}
+        scope: RUN_TIME
+      - key: REDDIT_CLIENT_SECRET
+        value: ${REDDIT_CLIENT_SECRET}
+        scope: RUN_TIME
+      - key: TIKTOK_CLIENT_ID
+        value: ${TIKTOK_CLIENT_ID}
+        scope: RUN_TIME
+      - key: TIKTOK_CLIENT_SECRET
+        value: ${TIKTOK_CLIENT_SECRET}
+        scope: RUN_TIME
+      - key: PINTEREST_CLIENT_ID
+        value: ${PINTEREST_CLIENT_ID}
+        scope: RUN_TIME
+      - key: PINTEREST_CLIENT_SECRET
+        value: ${PINTEREST_CLIENT_SECRET}
+        scope: RUN_TIME
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
 databases:
   - name: pubhub-db
     engine: PG
@@ -50,7 +160,12 @@ ingress:
   rules:
     - match:
         path:
+          prefix: /api
+      component:
+        name: pubhub-api
+        preserve_path_prefix: false
+    - match:
+        path:
           prefix: /
       component:
         name: pubhub-frontend
-

@@ -1,5 +1,5 @@
 /**
- * Text processing utilities for Edge Functions
+ * Text processing utilities
  */
 
 /**
@@ -108,28 +108,3 @@ export function calculateReadabilityMetrics(text: string): {
   };
 }
 
-/**
- * Extract common phrases from text
- */
-export function extractCommonPhrases(text: string, minLength: number = 3, maxCount: number = 10): string[] {
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const phrases: Map<string, number> = new Map();
-
-  for (const sentence of sentences) {
-    const words = sentence.toLowerCase().trim().split(/\s+/);
-
-    // Extract n-grams
-    for (let n = minLength; n <= Math.min(5, words.length); n++) {
-      for (let i = 0; i <= words.length - n; i++) {
-        const phrase = words.slice(i, i + n).join(' ');
-        phrases.set(phrase, (phrases.get(phrase) || 0) + 1);
-      }
-    }
-  }
-
-  // Sort by frequency and return top phrases
-  return Array.from(phrases.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, maxCount)
-    .map(([phrase]) => phrase);
-}

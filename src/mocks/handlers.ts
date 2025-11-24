@@ -1,5 +1,4 @@
 import { http, HttpResponse } from 'msw';
-import { projectId } from '@/utils/supabase/info';
 import {
   createSession,
   ensureUserProject,
@@ -19,8 +18,8 @@ import {
   type SettingsRecord,
 } from './db';
 
-const SUPABASE_BASE = `https://${projectId}.supabase.co`;
-const FUNCTIONS_BASE = `${SUPABASE_BASE}/functions/v1/make-server-19ccd85e`;
+// Mock API base URL for testing
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

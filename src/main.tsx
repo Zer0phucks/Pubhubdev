@@ -72,31 +72,12 @@ enableMocking().finally(async () => {
   const postHogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim();
   const postHogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim();
   
-  // Only load Vercel Analytics on Vercel (check for vercel environment)
-  // Dynamically import to prevent script injection on DigitalOcean
-  const isVercel = typeof window !== 'undefined' && 
-    (window.location.hostname.includes('vercel.app') || 
-     window.location.hostname.includes('vercel.com') ||
-     import.meta.env.VITE_VERCEL_ANALYTICS === 'true');
-  
-  // Dynamically import Analytics only on Vercel to prevent script.js errors
-  let AnalyticsComponent: React.ComponentType | null = null;
-  if (isVercel) {
-    try {
-      const analyticsModule = await import("@vercel/analytics/react");
-      AnalyticsComponent = analyticsModule.Analytics;
-    } catch (error) {
-      console.warn("[PubHub] Failed to load Vercel Analytics:", error);
-    }
-  }
-  
   const AppContent = (
     <ClerkProvider
       publishableKey={clerkPublishableKey || ""}
       clerkJSUrl={clerkJsUrl}
     >
       <App />
-      {AnalyticsComponent && <AnalyticsComponent />}
     </ClerkProvider>
   );
   

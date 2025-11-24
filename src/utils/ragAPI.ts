@@ -1,9 +1,6 @@
 /**
  * RAG (Retrieval Augmented Generation) API utilities
  * Handles vector similarity search and AI-powered Q&A
- * 
- * NOTE: This calls a specialized edge function that needs to be migrated.
- * TODO: Add /rag/query route to API service
  */
 
 import { apiCall } from './api';
@@ -15,18 +12,14 @@ import type {
 
 /**
  * Query the RAG system for AI-powered answers based on project content
- * TODO: Add /rag/query route to API service
  */
 export async function queryRAG(request: RAGQueryRequest): Promise<RAGQueryResponse> {
   try {
-    // TODO: Implement when API route is added
-    // const response = await apiCall('/rag/query', {
-    //   method: 'POST',
-    //   body: JSON.stringify(request),
-    // });
-    // return response;
-    console.warn('queryRAG: API route not yet implemented');
-    throw new Error('RAG query not yet implemented');
+    const response = await apiCall('/rag/query', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+    return response;
   } catch (error) {
     console.error('Error querying RAG:', error);
     throw error;

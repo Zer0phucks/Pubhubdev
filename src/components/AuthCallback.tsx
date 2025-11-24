@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../utils/supabase/client';
+import { useAuth } from '@clerk/clerk-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { PubHubLogo } from './PubHubLogo';
@@ -9,28 +10,26 @@ import { toAppError } from '@/types';
 export function AuthCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string>('');
+  const { isSignedIn, isLoaded } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Use Supabase's built-in OAuth callback handling
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          logger.error('Auth callback error:', error);
-          setError(error.message);
-          setStatus('error');
+        // Wait for Clerk to load
+        if (!isLoaded) {
           return;
         }
 
-        if (data.session) {
+        // Check if user is signed in
+        if (isSignedIn) {
           setStatus('success');
           // Redirect to dashboard after a short delay
           setTimeout(() => {
-            window.location.href = '/';
+            navigate('/dashboard');
           }, 2000);
         } else {
-          // Check URL parameters for OAuth callback
+          // Check URL parameters for OAuth callback errors
           const urlParams = new URLSearchParams(window.location.search);
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           
@@ -44,31 +43,9 @@ export function AuthCallback() {
             return;
           }
           
-          // Check for access token in hash
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
-          
-          if (accessToken && refreshToken) {
-            // Set the session manually
-            const { error: setSessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            
-            if (setSessionError) {
-              logger.error('Set session error:', setSessionError);
-              setError(setSessionError.message);
-              setStatus('error');
-            } else {
-              setStatus('success');
-              setTimeout(() => {
-                window.location.href = '/';
-              }, 2000);
-            }
-          } else {
-            setError('No session found. Please try signing in again.');
-            setStatus('error');
-          }
+          // No session found
+          setError('No session found. Please try signing in again.');
+          setStatus('error');
         }
       } catch (err: unknown) {
         const error = toAppError(err);
@@ -79,7 +56,7 @@ export function AuthCallback() {
     };
 
     handleAuthCallback();
-  }, []);
+  }, [isSignedIn, isLoaded, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -111,7 +88,7 @@ export function AuthCallback() {
                 <p className="text-sm text-red-600">{error}</p>
               )}
               <button
-                onClick={() => window.location.href = '/auth'}
+                onClick={() => navigate('/sign-in')}
                 className="text-sm text-emerald-400 hover:text-emerald-300 underline"
               >
                 Return to Sign In

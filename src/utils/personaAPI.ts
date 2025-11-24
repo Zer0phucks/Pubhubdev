@@ -3,7 +3,7 @@
  * Handles all persona-related database operations and AI generation
  */
 
-import { supabase } from './supabase/client';
+import { apiCall } from './api';
 import type {
   CreatorPersona,
   PersonaRecord,
@@ -18,23 +18,12 @@ import type {
  */
 export async function fetchPersona(projectId: string): Promise<CreatorPersona | null> {
   try {
-    const { data, error } = await supabase
-      .from('personas')
-      .select('*')
-      .eq('project_id', projectId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No persona found - this is okay, return null
-        return null;
-      }
-      throw error;
+    const response = await apiCall(`/personas/${projectId}`);
+    return response.persona?.persona_data || null;
+  } catch (error: any) {
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      return null;
     }
-
-    const record = data as PersonaRecord;
-    return record.persona_data;
-  } catch (error) {
     console.error('Error fetching persona:', error);
     throw error;
   }
@@ -45,21 +34,12 @@ export async function fetchPersona(projectId: string): Promise<CreatorPersona | 
  */
 export async function fetchPersonaRecord(projectId: string): Promise<PersonaRecord | null> {
   try {
-    const { data, error } = await supabase
-      .from('personas')
-      .select('*')
-      .eq('project_id', projectId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
-      throw error;
+    const response = await apiCall(`/personas/${projectId}`);
+    return response.persona || null;
+  } catch (error: any) {
+    if (error.message?.includes('404') || error.message?.includes('not found')) {
+      return null;
     }
-
-    return data as PersonaRecord;
-  } catch (error) {
     console.error('Error fetching persona record:', error);
     throw error;
   }
@@ -73,34 +53,11 @@ export async function createPersona(
   persona: CreatePersonaInput
 ): Promise<PersonaRecord> {
   try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Build persona data with provenance
-    const personaData: CreatorPersona = {
-      id: crypto.randomUUID(),
-      ...persona,
-      provenance: {
-        created_at: new Date().toISOString(),
-        created_by: user?.id,
-        data_summary: persona.provenance?.data_summary || 'Manually created',
-        notes: persona.provenance?.notes,
-      },
-    };
-
-    const { data, error } = await supabase
-      .from('personas')
-      .insert({
-        project_id: projectId,
-        persona_data: personaData,
-        created_by: user?.id,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as PersonaRecord;
+    const response = await apiCall(`/personas/${projectId}`, {
+      method: 'POST',
+      body: JSON.stringify({ persona }),
+    });
+    return response.persona;
   } catch (error) {
     console.error('Error creating persona:', error);
     throw error;
@@ -115,37 +72,11 @@ export async function updatePersona(
   updates: UpdatePersonaInput
 ): Promise<PersonaRecord> {
   try {
-    // Fetch existing persona
-    const existing = await fetchPersonaRecord(projectId);
-    if (!existing) {
-      throw new Error('Persona not found');
-    }
-
-    // Merge updates with existing data
-    const updatedPersonaData: CreatorPersona = {
-      ...existing.persona_data,
-      ...updates,
-      provenance: {
-        ...existing.persona_data.provenance,
-        ...updates.provenance,
-      },
-    };
-
-    // Increment patch version
-    const { data, error } = await supabase
-      .from('personas')
-      .update({
-        persona_data: updatedPersonaData,
-        version_patch: existing.version_patch + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('project_id', projectId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as PersonaRecord;
+    const response = await apiCall(`/personas/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ updates }),
+    });
+    return response.persona;
   } catch (error) {
     console.error('Error updating persona:', error);
     throw error;
@@ -178,12 +109,9 @@ export async function upsertPersona(
  */
 export async function deletePersona(projectId: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('personas')
-      .delete()
-      .eq('project_id', projectId);
-
-    if (error) throw error;
+    await apiCall(`/personas/${projectId}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
     console.error('Error deleting persona:', error);
     throw error;
@@ -192,19 +120,17 @@ export async function deletePersona(projectId: string): Promise<void> {
 
 /**
  * Generate persona from content sources using AI
- * This calls a Supabase Edge Function
+ * This triggers a background worker job
  */
 export async function generatePersona(
   request: GeneratePersonaRequest
 ): Promise<GeneratePersonaResponse> {
   try {
-    const { data, error } = await supabase.functions.invoke('generate-persona', {
-      body: request,
+    const response = await apiCall(`/personas/${request.project_id}/generate`, {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
-
-    if (error) throw error;
-
-    return data as GeneratePersonaResponse;
+    return response;
   } catch (error) {
     console.error('Error generating persona:', error);
     throw error;
@@ -219,34 +145,11 @@ export async function bumpPersonaVersion(
   type: 'major' | 'minor'
 ): Promise<PersonaRecord> {
   try {
-    const existing = await fetchPersonaRecord(projectId);
-    if (!existing) {
-      throw new Error('Persona not found');
-    }
-
-    const updates: Partial<PersonaRecord> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (type === 'major') {
-      updates.version_major = existing.version_major + 1;
-      updates.version_minor = 0;
-      updates.version_patch = 0;
-    } else {
-      updates.version_minor = existing.version_minor + 1;
-      updates.version_patch = 0;
-    }
-
-    const { data, error } = await supabase
-      .from('personas')
-      .update(updates)
-      .eq('project_id', projectId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data as PersonaRecord;
+    const response = await apiCall(`/personas/${projectId}/bump-version`, {
+      method: 'POST',
+      body: JSON.stringify({ type }),
+    });
+    return response.persona;
   } catch (error) {
     console.error('Error bumping persona version:', error);
     throw error;
